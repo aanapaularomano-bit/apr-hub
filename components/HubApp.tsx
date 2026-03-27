@@ -2,24 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, PAY_STATUS, EXP_CATS, fB, fN, THEME as T } from '@/lib/constants';
+import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, THEME as T, fB, fN } from '@/lib/constants';
 
-const btn = (color: string) => ({
+const btn = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
-  padding: '8px 16px', color: color, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+  padding: '8px 16px', color, cursor: 'pointer', fontSize: 12, fontWeight: 600, ...extra,
 });
 
 export default function HubApp({ user }: { user: any }) {
   const [clients, setClients] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState('hub');
   const [squad, setSquad] = useState('todos');
   const [sel, setSel] = useState<any>(null);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
   const [clientTab, setClientTab] = useState('info');
   const [dailyOff, setDailyOff] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -31,30 +29,72 @@ export default function HubApp({ user }: { user: any }) {
   const [nm, setNm] = useState({ title: '', client_id: '', date: '', time: '', type: 'Alinhamento', link: '' });
   const [noteText, setNoteText] = useState('');
   const [copied, setCopied] = useState(false);
+  // Metrics editing
+  const [editingMetrics, setEditingMetrics] = useState(false);
+  const [funnelData, setFunnelData] = useState<any>({});
+  const [kpiData, setKpiData] = useState<any>({});
+  const [metricsData, setMetricsData] = useState<any>({});
 
-  // ── LOAD ALL DATA ──
-  useEffect(() => {
-    loadAll();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
     setLoading(true);
-    const [c, t, m, e] = await Promise.all([
+    const [c, t, m] = await Promise.all([
       supabase.from('clients').select('*, client_alerts(*)').order('created_at', { ascending: false }),
       supabase.from('tasks').select('*').order('created_at', { ascending: false }),
       supabase.from('meetings').select('*').order('date'),
-      supabase.from('expenses').select('*').order('created_at'),
     ]);
     setClients(c.data || []);
     setTasks(t.data || []);
     setMeetings(m.data || []);
-    setExpenses(e.data || []);
     setLoading(false);
   }
 
-  // ── CRUD ──
+  // Load client funnel & kpis
+  async function loadClientMetrics(clientId: string) {
+    const period = new Date().toISOString().slice(0, 7); // "2026-03"
+    const [f, k, met] = await Promise.all([
+      supabase.from('client_funnel').select('*').eq('client_id', clientId).eq('period', period),
+      supabase.from('client_kpis').select('*').eq('client_id', clientId).eq('period', period),
+      supabase.from('client_metrics').select('*').eq('client_id', clientId).eq('period', period).single(),
+    ]);
+    const fd: any = {};
+    (f.data || []).forEach((r: any) => { fd[r.step_key] = r.step_value; });
+    const kd: any = {};
+    (k.data || []).forEach((r: any) => { kd[r.kpi_key] = r.kpi_value; });
+    setFunnelData(fd);
+    setKpiData(kd);
+    setMetricsData(met.data || { spend: 0, revenue: 0, leads: 0, roas: 0 });
+  }
+
+  async function saveClientMetrics(clientId: string) {
+    const period = new Date().toISOString().slice(0, 7);
+    // Save funnel
+    for (const [key, value] of Object.entries(funnelData)) {
+      await supabase.from('client_funnel').upsert({
+        client_id: clientId, period, step_key: key, step_value: Number(value) || 0,
+      }, { onConflict: 'client_id,period,step_key' });
+    }
+    // Save KPIs
+    for (const [key, value] of Object.entries(kpiData)) {
+      await supabase.from('client_kpis').upsert({
+        client_id: clientId, period, kpi_key: key, kpi_value: Number(value) || 0,
+      }, { onConflict: 'client_id,period,kpi_key' });
+    }
+    // Save general metrics
+    await supabase.from('client_metrics').upsert({
+      client_id: clientId, period,
+      spend: Number(metricsData.spend) || 0,
+      revenue: Number(metricsData.revenue) || 0,
+      leads: Number(metricsData.leads) || 0,
+      roas: Number(metricsData.roas) || 0,
+    }, { onConflict: 'client_id,period' });
+    setEditingMetrics(false);
+  }
+
+  // CRUD
   async function addClient() {
-    const { data, error } = await supabase.from('clients').insert({
+    const { data } = await supabase.from('clients').insert({
       ...nc, fee: Number(nc.fee) || 0, status: 'ativo', phase: 'Onboarding', user_id: user.id,
     }).select('*, client_alerts(*)').single();
     if (data) setClients([data, ...clients]);
@@ -97,45 +137,37 @@ export default function HubApp({ user }: { user: any }) {
 
   async function addNote(clientId: string) {
     if (!noteText.trim()) return;
-    const { data } = await supabase.from('client_notes').insert({
-      client_id: clientId, text: noteText.trim(), user_id: user.id,
-    }).select().single();
+    await supabase.from('client_notes').insert({ client_id: clientId, text: noteText.trim(), user_id: user.id });
     setNoteText('');
-    // Reload client notes
-    loadAll();
   }
 
-  async function updateClient(id: string, updates: any) {
-    await supabase.from('clients').update(updates).eq('id', id);
-    setClients(clients.map(c => c.id === id ? { ...c, ...updates } : c));
-    if (sel?.id === id) setSel({ ...sel, ...updates });
-  }
-
-  // ── COMPUTED ──
+  // Computed
   const active = clients.filter(c => c.status === 'ativo');
-  const allAlerts = active.flatMap(c => (c.client_alerts || []).filter((a: any) => !a.resolved).map((a: any) => ({ ...a, cn: c.name, cid: c.id })));
+  const allAlerts = active.flatMap(c => (c.client_alerts || []).filter((a: any) => !a.resolved).map((a: any) => ({ ...a, cn: c.name })));
   const totalFee = active.reduce((s, c) => s + (c.fee || 0), 0);
   const hr = new Date().getHours();
   const greet = hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite';
   const todayStr = new Date().toISOString().split('T')[0];
   const todayMeetings = meetings.filter(m => m.date === todayStr);
-  const urgentTasks = tasks.filter(t => t.status !== 'feito' && t.priority === 'urgente');
   const pendingCount = tasks.filter(t => t.status !== 'feito').length;
 
   const filtered = clients.filter(c => {
     if (squad !== 'todos' && c.squad !== squad) return false;
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filter === 'alerts' && !(c.client_alerts?.some((a: any) => !a.resolved))) return false;
     return true;
   });
 
-  const openC = (c: any) => { setSel(c); setPage('client'); setClientTab('info'); };
+  const openC = (c: any) => {
+    setSel(c); setPage('client'); setClientTab('info'); setEditingMetrics(false);
+    loadClientMetrics(c.id);
+  };
   const goHome = () => { setPage('hub'); setSel(null); };
   const logout = async () => { await supabase.auth.signOut(); };
 
   const genReport = (c: any) => {
-    const ft = FUNNEL_TPL[c.squad as keyof typeof FUNNEL_TPL] || [];
-    const txt = `📊 *${c.name}*\n📅 ${new Date().toLocaleDateString('pt-BR')}\n▸ ${(SQUADS as any)[c.squad]?.label} · ${c.phase}\n💰 Fee: ${fB(c.fee)}/mês\n\n— APR Digital`;
+    const ft = (FUNNEL_TPL as any)[c.squad] || [];
+    const lines = ft.map((f: any) => '▸ ' + f.label + ': ' + fN(funnelData[f.key] || 0)).join('\n');
+    const txt = '📊 *' + c.name + '*\n📅 ' + new Date().toLocaleDateString('pt-BR') + '\n\n▸ ' + ((SQUADS as any)[c.squad]?.label || '') + ' · ' + c.phase + '\n\n💰 Invest: ' + fB(metricsData.spend || 0) + '\n📈 Receita: ' + fB(metricsData.revenue || 0) + '\n🔥 ROAS: ' + (metricsData.roas || 0).toFixed(2) + 'x\n\n📊 Funil\n' + lines + '\n\n— APR Digital';
     navigator.clipboard.writeText(txt).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };
 
@@ -152,29 +184,25 @@ export default function HubApp({ user }: { user: any }) {
         <div style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff' }}>A</div>
         <div><div style={{ fontSize: 12, fontWeight: 800 }}>APR Hub</div><div style={{ fontSize: 8, color: T.mt2 }}>{user.email}</div></div>
       </div>
-
       {[['hub', '📋', 'Clientes'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
         <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: page === p && !sel ? 'rgba(99,102,241,0.12)' : 'transparent', border: page === p && !sel ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent', borderRadius: 8, cursor: 'pointer', color: page === p && !sel ? '#a5b4fc' : T.mt, fontSize: 11, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
           <span>{i}</span><span style={{ flex: 1 }}>{l}</span>
           {p === 'tasks' && pendingCount > 0 && <span style={{ fontSize: 9, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '1px 6px', borderRadius: 4 }}>{pendingCount}</span>}
         </button>
       ))}
-
       <div style={{ fontSize: 8, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '8px 8px 2px' }}>Squads</div>
       {[['todos', '📋', 'Todos', '#a78bfa'], ...Object.entries(SQUADS).map(([k, v]) => [k, v.icon, v.label, v.color])].map(([key, icon, label, color]) => {
         const cnt = key === 'todos' ? clients.length : clients.filter(c => c.squad === key).length;
         const on = squad === key && page === 'hub';
         return (
-          <button key={key} onClick={() => { setSquad(key as string); setPage('hub'); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 10px', background: on ? color + '15' : 'transparent', border: on ? '1px solid ' + color + '30' : '1px solid transparent', borderRadius: 7, cursor: 'pointer', color: on ? color as string : T.mt, fontSize: 11, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
+          <button key={key as string} onClick={() => { setSquad(key as string); setPage('hub'); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 10px', background: on ? color + '15' : 'transparent', border: on ? '1px solid ' + color + '30' : '1px solid transparent', borderRadius: 7, cursor: 'pointer', color: on ? color as string : T.mt, fontSize: 11, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
             <span style={{ fontSize: 12 }}>{icon}</span><span style={{ flex: 1 }}>{label}</span>
             <span style={{ fontSize: 9, fontWeight: 700, background: 'rgba(255,255,255,0.05)', padding: '1px 5px', borderRadius: 4 }}>{cnt}</span>
           </button>
         );
       })}
-
       <div style={{ borderTop: '1px solid ' + T.bdr, margin: '6px 0' }} />
       <button onClick={() => setShowNew(true)} style={{ ...btn('#22c55e'), fontSize: 10, padding: '7px 10px', width: '100%' }}>+ Cliente</button>
-
       <div style={{ marginTop: 'auto', padding: '10px 8px', borderTop: '1px solid ' + T.bdr }}>
         <div style={{ fontSize: 9, color: T.mt2 }}>Fee: <span style={{ color: '#22c55e', fontFamily: T.mo, fontWeight: 700 }}>{fB(totalFee)}</span></div>
         <button onClick={logout} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer', fontSize: 10, marginTop: 8 }}>🚪 Sair</button>
@@ -182,15 +210,13 @@ export default function HubApp({ user }: { user: any }) {
     </aside>
   );
 
-  // ═══ AGENDA PAGE ═══
+  // ═══ AGENDA ═══
   if (page === 'agenda') {
     const grouped: Record<string, any[]> = {};
     [...meetings].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).forEach(m => {
       const d = new Date(m.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
-      if (!grouped[d]) grouped[d] = [];
-      grouped[d].push(m);
+      if (!grouped[d]) grouped[d] = []; grouped[d].push(m);
     });
-
     return (
       <div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>
         <Sidebar />
@@ -209,10 +235,7 @@ export default function HubApp({ user }: { user: any }) {
                     <div style={{ fontSize: 12, fontFamily: T.mo, color: '#a5b4fc', fontWeight: 600, minWidth: 50 }}>{m.time?.slice(0, 5)}</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 700 }}>{m.title}</div>
-                      <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(99,102,241,0.1)', color: '#a5b4fc' }}>{m.type}</span>
-                        {cl && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: ((SQUADS as any)[cl.squad]?.color || '#a78bfa') + '15', color: (SQUADS as any)[cl.squad]?.color || '#a78bfa' }}>{cl.name}</span>}
-                      </div>
+                      {cl && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: ((SQUADS as any)[cl.squad]?.color || '#a78bfa') + '15', color: (SQUADS as any)[cl.squad]?.color }}>{cl.name}</span>}
                     </div>
                     {m.link && <a href={m.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#22c55e', textDecoration: 'none', fontWeight: 600 }}>📹 Entrar</a>}
                     <button onClick={() => deleteMeeting(m.id)} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer' }}>✕</button>
@@ -221,7 +244,7 @@ export default function HubApp({ user }: { user: any }) {
               })}
             </div>
           ))}
-          {meetings.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: T.mt }}>Nenhuma reunião agendada</div>}
+          {meetings.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: T.mt }}>Nenhuma reunião</div>}
         </main>
       </div>
     );
@@ -260,9 +283,8 @@ export default function HubApp({ user }: { user: any }) {
                         <button onClick={() => deleteTask(t.id)} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer', fontSize: 10 }}>✕</button>
                       </div>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {cl && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: ((SQUADS as any)[cl.squad]?.color || '#a78bfa') + '15', color: (SQUADS as any)[cl.squad]?.color || '#a78bfa' }}>{cl.name}</span>}
+                        {cl && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: ((SQUADS as any)[cl.squad]?.color || '#a78bfa') + '15', color: (SQUADS as any)[cl.squad]?.color }}>{cl.name}</span>}
                         <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: pr.bg, color: pr.color }}>{t.priority}</span>
-                        {t.due_date && <span style={{ fontSize: 9, color: T.mt, fontFamily: T.mo }}>{new Date(t.due_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>}
                       </div>
                     </div>
                   );
@@ -275,18 +297,14 @@ export default function HubApp({ user }: { user: any }) {
     </div>
   );
 
-  // ═══ FINANCEIRO (placeholder - to be expanded) ═══
+  // ═══ FINANCEIRO ═══
   if (page === 'financeiro') return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>
       <Sidebar />
       <main style={{ flex: 1, padding: '20px 24px' }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>💰 Financeiro</h1>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-          {[
-            { l: 'Fee Mensal', v: fB(totalFee), c: '#22c55e' },
-            { l: 'Fee Anual (projeção)', v: fB(totalFee * 12), c: '#3b82f6' },
-            { l: 'Clientes Ativos', v: active.length.toString(), c: '#8b5cf6' },
-          ].map(k => (
+          {[{ l: 'Fee Mensal', v: fB(totalFee), c: '#22c55e' }, { l: 'Fee Anual', v: fB(totalFee * 12), c: '#3b82f6' }, { l: 'Clientes Ativos', v: active.length.toString(), c: '#8b5cf6' }].map(k => (
             <div key={k.l} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: k.c, opacity: 0.5 }} />
               <div style={{ fontSize: 10, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{k.l}</div>
@@ -322,16 +340,20 @@ export default function HubApp({ user }: { user: any }) {
       { l: 'WhatsApp', u: c.whatsapp_group, i: '💬', cl: '#25D366' },
     ].filter(x => x.u);
     const clientTasks = tasks.filter(t => t.client_id === c.id);
+    const funnelTpl = (FUNNEL_TPL as any)[c.squad] || [];
+    const kpiTpl = (KPI_TPL as any)[c.squad] || [];
 
     return (
       <div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>
         <Sidebar />
         <main style={{ flex: 1, padding: '20px 24px', overflowY: 'auto' }}>
+          {/* Top buttons */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
             <button onClick={goHome} style={btn('#a78bfa')}>← Hub</button>
             <button onClick={() => genReport(c)} style={btn('#25D366')}>{copied ? '✅ Copiado!' : '📋 WPP'}</button>
           </div>
 
+          {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: sq.color + '20', border: '2px solid ' + sq.color + '40', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: sq.color }}>{c.name?.charAt(0)}</div>
             <div>
@@ -344,12 +366,40 @@ export default function HubApp({ user }: { user: any }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 1, marginBottom: 14, borderBottom: '1px solid ' + T.bdr }}>
-            {[{ id: 'info', l: '📋 Info' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
-              <button key={t.id} onClick={() => setClientTab(t.id)} style={{ background: clientTab === t.id ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', padding: '7px 14px', cursor: 'pointer', borderBottom: clientTab === t.id ? '2px solid ' + sq.color : '2px solid transparent', color: clientTab === t.id ? T.tx : T.mt, fontSize: 11, fontWeight: 600 }}>{t.l}</button>
+          {/* Metrics summary */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 14 }}>
+            {[
+              { l: 'Invest.', v: fB(metricsData.spend || 0), cl: '#ef4444', k: 'spend' },
+              { l: 'Receita', v: fB(metricsData.revenue || 0), cl: '#22c55e', k: 'revenue' },
+              { l: 'Leads', v: fN(metricsData.leads || 0), cl: '#3b82f6', k: 'leads' },
+              { l: 'ROAS', v: (metricsData.roas || 0).toFixed(2) + 'x', cl: '#f59e0b', k: 'roas' },
+            ].map(m => (
+              <div key={m.l} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 11, padding: '12px 14px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: m.cl, opacity: 0.5 }} />
+                <div style={{ fontSize: 9, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{m.l}</div>
+                {editingMetrics ? (
+                  <input type="number" value={metricsData[m.k] ?? ''} onChange={e => setMetricsData({ ...metricsData, [m.k]: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid ' + T.bdr, borderRadius: 8, padding: '4px 8px', color: T.tx, fontSize: 14, fontFamily: T.mo, outline: 'none', boxSizing: 'border-box' as const, marginTop: 3 }} />
+                ) : (
+                  <div style={{ fontSize: 18, fontWeight: 700, fontFamily: T.mo, marginTop: 3, color: m.cl }}>{m.v}</div>
+                )}
+              </div>
             ))}
           </div>
 
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: 1, marginBottom: 14, borderBottom: '1px solid ' + T.bdr, overflowX: 'auto' }}>
+            {[
+              { id: 'info', l: '📋 Info' },
+              { id: 'metricas', l: '📊 Funil & Métricas' },
+              { id: 'tarefas', l: '✅ Tarefas' },
+              { id: 'notas', l: '📝 Notas' },
+            ].map(t => (
+              <button key={t.id} onClick={() => setClientTab(t.id)} style={{ background: clientTab === t.id ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', padding: '7px 14px', cursor: 'pointer', borderBottom: clientTab === t.id ? '2px solid ' + sq.color : '2px solid transparent', color: clientTab === t.id ? T.tx : T.mt, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' as const }}>{t.l}</button>
+            ))}
+          </div>
+
+          {/* ═══ INFO TAB ═══ */}
           {clientTab === 'info' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: 20 }}>
@@ -373,6 +423,111 @@ export default function HubApp({ user }: { user: any }) {
             </div>
           )}
 
+          {/* ═══ METRICS & FUNNEL TAB ═══ */}
+          {clientTab === 'metricas' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Edit/Save buttons */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!editingMetrics ? (
+                  <button onClick={() => setEditingMetrics(true)} style={btn('#3b82f6')}>✏️ Editar Métricas</button>
+                ) : (
+                  <>
+                    <button onClick={() => saveClientMetrics(c.id)} style={btn('#22c55e')}>💾 Salvar</button>
+                    <button onClick={() => { setEditingMetrics(false); loadClientMetrics(c.id); }} style={btn('#ef4444')}>Cancelar</button>
+                  </>
+                )}
+              </div>
+
+              {/* FUNNEL */}
+              <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: 20 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>Funil — {sq.label}</h3>
+                <p style={{ fontSize: 11, color: T.mt, margin: '0 0 16px' }}>
+                  {c.squad === 'lancamentos' ? 'Impressão → Inscrição → Presença → Venda' :
+                   c.squad === 'perpetuo' ? 'Sessão → Produto → Carrinho → Compra' :
+                   'Impressão → Lead → Agendamento → Fechamento'}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  {funnelTpl.map((f: any, i: number) => {
+                    const val = funnelData[f.key] || 0;
+                    const prevVal = i > 0 ? (funnelData[funnelTpl[i - 1].key] || 0) : val;
+                    const pct = i > 0 && prevVal > 0 ? (val / prevVal * 100) : 100;
+                    const w = 90 - (60 * i) / (funnelTpl.length - 1);
+                    return (
+                      <div key={f.key} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                        <div style={{ width: w + '%', minWidth: 180, background: 'linear-gradient(135deg,' + f.color + 'bb,' + f.color + '44)', border: '1px solid ' + f.color + '33', borderRadius: 10, padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{f.label}</span>
+                          {editingMetrics ? (
+                            <input type="number" value={funnelData[f.key] ?? ''} onChange={e => setFunnelData({ ...funnelData, [f.key]: e.target.value })}
+                              style={{ width: 100, textAlign: 'right' as const, fontSize: 14, fontFamily: T.mo, background: 'rgba(0,0,0,0.3)', border: '1px solid ' + T.bdr, borderRadius: 8, padding: '4px 8px', color: T.tx, outline: 'none' }} />
+                          ) : (
+                            <span style={{ fontSize: 16, fontWeight: 800, fontFamily: T.mo }}>{fN(val)}</span>
+                          )}
+                        </div>
+                        {i > 0 && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: pct > 20 ? '#22c55e' : pct > 5 ? '#f59e0b' : '#ef4444', background: 'rgba(255,255,255,0.03)', padding: '1px 7px', borderRadius: 4 }}>
+                            {pct.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Conversion rates */}
+              {funnelTpl.length > 1 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + (funnelTpl.length - 1) + ',1fr)', gap: 10 }}>
+                  {funnelTpl.slice(1).map((f: any, i: number) => {
+                    const prev = funnelTpl[i];
+                    const val = funnelData[f.key] || 0;
+                    const prevVal = funnelData[prev.key] || 0;
+                    const pct = prevVal > 0 ? (val / prevVal * 100) : 0;
+                    return (
+                      <div key={f.key} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 10, padding: '12px 8px', textAlign: 'center' as const }}>
+                        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: T.mo, color: pct > 20 ? '#22c55e' : pct > 5 ? '#f59e0b' : '#3b82f6' }}>{pct.toFixed(1)}%</div>
+                        <div style={{ fontSize: 8, color: T.mt, marginTop: 3, lineHeight: 1.3 }}>{prev.label} → {f.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* KPIs */}
+              <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: 20 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>KPIs — {sq.label}</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+                  {kpiTpl.map((k: any) => {
+                    const val = kpiData[k.key] || 0;
+                    return (
+                      <div key={k.key} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid ' + T.bdr, borderRadius: 9, padding: '10px 12px', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: k.color, opacity: 0.4 }} />
+                        <div style={{ fontSize: 8, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{k.label}</div>
+                        {editingMetrics ? (
+                          <input type="number" value={kpiData[k.key] ?? ''} onChange={e => setKpiData({ ...kpiData, [k.key]: e.target.value })}
+                            style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid ' + T.bdr, borderRadius: 6, padding: '4px 8px', color: T.tx, fontSize: 14, fontFamily: T.mo, outline: 'none', boxSizing: 'border-box' as const, marginTop: 3 }} />
+                        ) : (
+                          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: T.mo, marginTop: 3, color: k.color }}>
+                            {k.prefix || ''}{typeof val === 'number' ? val.toLocaleString('pt-BR') : val}{k.suffix || ''}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Empty state */}
+              {Object.keys(funnelData).length === 0 && !editingMetrics && (
+                <div style={{ textAlign: 'center' as const, padding: 30, color: T.mt }}>
+                  <div style={{ fontSize: 30, marginBottom: 8 }}>📊</div>
+                  <p style={{ fontSize: 13, marginBottom: 12 }}>Nenhuma métrica cadastrada para este mês</p>
+                  <button onClick={() => setEditingMetrics(true)} style={btn('#6366f1')}>Começar a preencher</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ TASKS TAB ═══ */}
           {clientTab === 'tarefas' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -395,14 +550,15 @@ export default function HubApp({ user }: { user: any }) {
             </div>
           )}
 
+          {/* ═══ NOTES TAB ═══ */}
           {clientTab === 'notas' && (
             <div>
               <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>📝 Notas</h3>
               <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                <textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Ata de reunião..." rows={3} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid ' + T.bdr, borderRadius: 10, padding: '10px 14px', color: T.tx, fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: T.fn }} />
+                <textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Ata de reunião..." rows={3} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid ' + T.bdr, borderRadius: 10, padding: '10px 14px', color: T.tx, fontSize: 13, outline: 'none', resize: 'vertical' as const, fontFamily: T.fn }} />
                 <button onClick={() => addNote(c.id)} disabled={!noteText.trim()} style={{ ...btn('#22c55e'), alignSelf: 'flex-end', opacity: noteText.trim() ? 1 : 0.4 }}>Salvar</button>
               </div>
-              <p style={{ color: T.mt, fontSize: 12 }}>As notas serão salvas no banco de dados e visíveis para toda a equipe.</p>
+              <p style={{ color: T.mt, fontSize: 12 }}>Notas salvas no banco de dados e visíveis para toda a equipe.</p>
             </div>
           )}
         </main>
@@ -426,12 +582,10 @@ export default function HubApp({ user }: { user: any }) {
             </div>
           </div>
         )}
-
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
           <h1 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>{squad === 'todos' ? '📋 Clientes' : (SQUADS as any)[squad]?.icon + ' ' + (SQUADS as any)[squad]?.label}</h1>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid ' + T.bdr, borderRadius: 7, padding: '5px 10px', color: T.tx, fontSize: 11, outline: 'none', width: 160 }} />
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
           {filtered.map(c => {
             const sq = (SQUADS as any)[c.squad] || { label: '—', icon: '📋', color: '#a78bfa' };
@@ -456,8 +610,7 @@ export default function HubApp({ user }: { user: any }) {
             );
           })}
         </div>
-
-        {filtered.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: T.mt }}>Nenhum cliente encontrado</div>}
+        {filtered.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: T.mt }}>Nenhum cliente</div>}
       </main>
 
       {/* MODALS */}
