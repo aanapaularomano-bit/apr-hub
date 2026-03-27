@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, THEME as T, fB, fN } from '@/lib/constants';
+import Financeiro from './Financeiro';
 
 const btnS = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
@@ -295,14 +296,8 @@ export default function HubApp({ user }: { user: any }) {
   </main><NewTaskModal /></div>);
 
   // ═══ FINANCEIRO ═══
-  if (page === 'financeiro') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}><Sidebar /><main style={{ flex: 1, padding: '20px 24px' }}>
-    <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>💰 Financeiro</h1>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>{[{ l: 'Fee Mensal', v: fB(totalFee), c: '#22c55e' }, { l: 'Fee Anual', v: fB(totalFee * 12), c: '#3b82f6' }, { l: 'Clientes Ativos', v: active.length.toString(), c: '#8b5cf6' }].map(k => (
-      <div key={k.l} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}><div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: k.c, opacity: 0.5 }} /><div style={{ fontSize: 10, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{k.l}</div><div style={{ fontSize: 24, fontWeight: 700, fontFamily: T.mo, marginTop: 6, color: k.c }}>{k.v}</div></div>
-    ))}</div>
-    <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: 22 }}><h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Fee por Cliente</h3>
-      {active.sort((a, b) => b.fee - a.fee).map(c => (<div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid ' + T.bdr }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ width: 4, height: 20, borderRadius: 2, background: (SQUADS as any)[c.squad]?.color || '#a78bfa' }} /><span style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</span></div><span style={{ fontSize: 13, fontWeight: 700, fontFamily: T.mo, color: '#22c55e' }}>{fB(c.fee)}/mês</span></div>))}
-    </div>
+  if (page === 'financeiro') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}><Sidebar /><main style={{ flex: 1, padding: '20px 24px', overflowY: 'auto', maxHeight: '100vh' }}>
+    <Financeiro clients={clients} user={user} />
   </main></div>);
 
   // ═══ CLIENT DETAIL ═══
