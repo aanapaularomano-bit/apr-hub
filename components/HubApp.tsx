@@ -17,7 +17,7 @@ export default function HubApp({ user }: { user: any }) {
   const [tasks, setTasks] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState('hub');
+  const [page, setPage] = useState('alice');
   const [squad, setSquad] = useState('todos');
   const [sel, setSel] = useState<any>(null);
   const [search, setSearch] = useState('');
@@ -40,6 +40,12 @@ export default function HubApp({ user }: { user: any }) {
   const [kpiData, setKpiData] = useState<any>({});
   const [metricsData, setMetricsData] = useState<any>({});
   const [clientNotes, setClientNotes] = useState<any[]>([]);
+  const [showNewAlert, setShowNewAlert] = useState(false);
+  const [newAlert, setNewAlert] = useState({ type: 'error', message: '' });
+  const [dailyCopied, setDailyCopied] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -125,6 +131,51 @@ export default function HubApp({ user }: { user: any }) {
   }
   async function deleteNote(id: string) { await supabase.from('client_notes').delete().eq('id', id); setClientNotes(clientNotes.filter(n => n.id !== id)); }
 
+  async function addAlert(cid: string) {
+    if (!newAlert.message) return;
+    const { data } = await supabase.from('client_alerts').insert({ client_id: cid, type: newAlert.type, message: newAlert.message }).select().single();
+    if (data) {
+      setClients(clients.map(c => c.id === cid ? { ...c, client_alerts: [...(c.client_alerts || []), data] } : c));
+      if (sel?.id === cid) setSel({ ...sel, client_alerts: [...(sel.client_alerts || []), data] });
+    }
+    setNewAlert({ type: 'error', message: '' }); setShowNewAlert(false);
+  }
+
+  async function resolveAlert(alertId: string, cid: string) {
+    await supabase.from('client_alerts').update({ resolved: true }).eq('id', alertId);
+    setClients(clients.map(c => c.id === cid ? { ...c, client_alerts: (c.client_alerts || []).map((a: any) => a.id === alertId ? { ...a, resolved: true } : a) } : c));
+    if (sel?.id === cid) setSel({ ...sel, client_alerts: (sel.client_alerts || []).map((a: any) => a.id === alertId ? { ...a, resolved: true } : a) });
+  }
+
+  function copyDailyReport() {
+    const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    let txt = '📋 *APR Digital — Resumo do Dia*\n📅 ' + date + '\n\n';
+    txt += '👥 *' + active.length + ' clientes ativos* · Fee: ' + fB(totalFee) + '/mês\n\n';
+    if (allAlerts.length > 0) {
+      txt += '🚨 *ALERTAS (' + allAlerts.length + ')*\n';
+      allAlerts.forEach(a => { txt += '▸ *' + a.cn + '*: ' + a.message + '\n'; });
+      txt += '\n';
+    }
+    if (todayMeetings.length > 0) {
+      txt += '📅 *REUNIÕES HOJE*\n';
+      todayMeetings.forEach(m => { const cl = clients.find(c => c.id === m.client_id); txt += '▸ ' + (m.time?.slice(0, 5) || '') + ' — ' + m.title + (cl ? ' (' + cl.name + ')' : '') + '\n'; });
+      txt += '\n';
+    }
+    const todayTasks = tasks.filter(t => t.status !== 'feito' && (t.due_date === todayStr || (t.due_date && t.due_date < todayStr)));
+    if (todayTasks.length > 0) {
+      txt += '✅ *TAREFAS DO DIA (' + todayTasks.length + ')*\n';
+      todayTasks.forEach(t => { const cl = clients.find(c => c.id === t.client_id); const od = t.due_date && t.due_date < todayStr; txt += (od ? '🔴 ' : '▸ ') + t.title + (cl ? ' (' + cl.name + ')' : '') + (od ? ' ⚠️ ATRASADA' : '') + '\n'; });
+      txt += '\n';
+    }
+    if (urgentTasks.length > 0) {
+      txt += '🔥 *URGENTES*\n';
+      urgentTasks.forEach(t => { txt += '▸ ' + t.title + '\n'; });
+      txt += '\n';
+    }
+    txt += '— APR Digital Hub';
+    navigator.clipboard.writeText(txt).then(() => { setDailyCopied(true); setTimeout(() => setDailyCopied(false), 2000); });
+  }
+
   const active = clients.filter(c => c.status === 'ativo');
   const allAlerts = active.flatMap(c => (c.client_alerts || []).filter((a: any) => !a.resolved).map((a: any) => ({ ...a, cn: c.name })));
   const totalFee = active.reduce((s, c) => s + (c.fee || 0), 0);
@@ -135,6 +186,7 @@ export default function HubApp({ user }: { user: any }) {
   const urgentTasks = tasks.filter(t => t.status !== 'feito' && t.priority === 'urgente');
   const pendingCount = tasks.filter(t => t.status !== 'feito').length;
   const overdueTasks = tasks.filter(t => t.status !== 'feito' && t.due_date && t.due_date < todayStr);
+  const todayTasks = tasks.filter(t => t.status !== 'feito' && t.due_date === todayStr);
   const filtered = clients.filter(c => {
     if (squad !== 'todos' && c.squad !== squad) return false;
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
@@ -160,9 +212,10 @@ export default function HubApp({ user }: { user: any }) {
         <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff' }}>A</div>
         <div><div style={{ fontSize: 16, fontWeight: 800 }}>APR Hub</div><div style={{ fontSize: 11, color: T.mt2, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{user.email}</div></div>
       </div>
-      {[['hub', '📋', 'Clientes'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
-        <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', background: page === p && !sel ? 'rgba(99,102,241,0.12)' : 'transparent', border: page === p && !sel ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? '#a5b4fc' : T.mt, fontSize: 15, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
+      {[['alice', '🤖', 'Alice'], ['hub', '📋', 'Clientes'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
+        <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', background: page === p && !sel ? (p === 'alice' ? 'rgba(139,92,246,0.15)' : 'rgba(99,102,241,0.12)') : 'transparent', border: page === p && !sel ? '1px solid ' + (p === 'alice' ? 'rgba(139,92,246,0.3)' : 'rgba(99,102,241,0.25)') : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? (p === 'alice' ? '#c4b5fd' : '#a5b4fc') : T.mt, fontSize: 15, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
           <span style={{ fontSize: 17 }}>{i}</span><span style={{ flex: 1 }}>{l}</span>
+          {p === 'alice' && (allAlerts.length + overdueTasks.length) > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 8px', borderRadius: 5 }}>{allAlerts.length + overdueTasks.length}</span>}
           {p === 'tasks' && pendingCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 8px', borderRadius: 5 }}>{pendingCount}</span>}
           {p === 'agenda' && todayMeetings.length > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '2px 8px', borderRadius: 5 }}>{todayMeetings.length}</span>}
         </button>
@@ -190,6 +243,195 @@ export default function HubApp({ user }: { user: any }) {
 
   // ═══ CLIENT FIELDS (shared between new + edit) ═══
   const clientFields = [{ k: 'name', l: 'Nome' }, { k: 'niche', l: 'Nicho' }, { k: 'product', l: 'Produto' }, { k: 'contact_name', l: 'Contato' }, { k: 'contact_phone', l: 'Telefone' }, { k: 'whatsapp_group', l: 'WhatsApp' }, { k: 'fee', l: 'Fee (R$)', t: 'number' }, { k: 'meta_url', l: 'Meta Ads URL' }, { k: 'google_url', l: 'Google Ads URL' }, { k: 'analytics_url', l: 'Analytics URL' }, { k: 'hotmart_url', l: 'Hotmart URL' }];
+
+  // ═══ ALICE — Chat function ═══
+  async function sendChat() {
+    if (!chatInput.trim() || chatLoading) return;
+    const userMsg = chatInput.trim();
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setChatLoading(true);
+
+    const context = `Você é a Alice, assistente IA da APR Digital. Responda em português do Brasil, de forma objetiva e útil.
+
+DADOS DA AGÊNCIA AGORA:
+- ${active.length} clientes ativos
+- Fee total: R$ ${totalFee.toLocaleString('pt-BR')}/mês
+- ${pendingCount} tarefas pendentes
+- ${allAlerts.length} alertas ativos
+- ${todayMeetings.length} reuniões hoje
+- ${overdueTasks.length} tarefas atrasadas
+
+CLIENTES:
+${clients.map(c => `• ${c.name} — ${(SQUADS as any)[c.squad]?.label || c.squad} — ${c.phase} — Fee: R$${c.fee} — Status: ${c.status}${c.niche ? ' — Nicho: ' + c.niche : ''}`).join('\n')}
+
+ALERTAS ATIVOS:
+${allAlerts.length > 0 ? allAlerts.map(a => `• ${a.cn}: ${a.message} (${a.type})`).join('\n') : 'Nenhum'}
+
+TAREFAS PENDENTES:
+${tasks.filter(t => t.status !== 'feito').slice(0, 15).map(t => { const cl = clients.find(c => c.id === t.client_id); return `• ${t.title}${cl ? ' (' + cl.name + ')' : ''} — ${t.priority} — ${t.status}${t.due_date ? ' — Prazo: ' + t.due_date : ''}`; }).join('\n')}
+
+REUNIÕES HOJE:
+${todayMeetings.length > 0 ? todayMeetings.map(m => { const cl = clients.find(c => c.id === m.client_id); return `• ${m.time?.slice(0, 5)} — ${m.title}${cl ? ' (' + cl.name + ')' : ''}`; }).join('\n') : 'Nenhuma'}
+
+Responda a pergunta da Ana Paula sobre a agência.`;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [
+            ...chatMessages.map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: context + '\n\nPergunta: ' + userMsg }
+          ],
+        }),
+      });
+      const data = await res.json();
+      const reply = data.content?.[0]?.text || 'Desculpe, não consegui processar. Tente novamente.';
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Erro ao conectar com a IA. Verifique a conexão.' }]);
+    }
+    setChatLoading(false);
+  }
+
+  // ═══ ALICE PAGE ═══
+  if (page === 'alice') {
+    const todayTasks = tasks.filter(t => t.status !== 'feito' && t.due_date === todayStr);
+    return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#8b5cf6,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🤖</div>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Alice — Central de Comando</h1>
+          <div style={{ fontSize: 13, color: T.mt2 }}>{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
+        </div>
+        <button onClick={copyDailyReport} style={{ ...btnS(dailyCopied ? '#22c55e' : '#a5b4fc', { fontSize: 12, padding: '8px 14px' }), marginLeft: 'auto' }}>{dailyCopied ? '✅ Copiado!' : '📋 Copiar Resumo WPP'}</button>
+      </div>
+
+      {/* Resumo rápido */}
+      <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, marginBottom: 18 }}>
+        {greet}, Ana Paula! Você tem <b style={{ color: T.tx }}>{active.length} clientes ativos</b> com fee de <b style={{ color: '#22c55e' }}>{fB(totalFee)}/mês</b>.
+        {allAlerts.length > 0 && <span> <b style={{ color: '#fca5a5' }}>{allAlerts.length} alerta{allAlerts.length > 1 ? 's' : ''}</b> precisam de atenção.</span>}
+        {overdueTasks.length > 0 && <span> <b style={{ color: '#ef4444' }}>{overdueTasks.length} tarefa{overdueTasks.length > 1 ? 's' : ''} atrasada{overdueTasks.length > 1 ? 's' : ''}</b>.</span>}
+        {todayMeetings.length > 0 && <span> <b style={{ color: '#a5b4fc' }}>{todayMeetings.length} reunião{todayMeetings.length > 1 ? 'ões' : ''} hoje</b>.</span>}
+        {allAlerts.length === 0 && overdueTasks.length === 0 && <span> Tudo tranquilo hoje! ✨</span>}
+      </div>
+
+      {/* 3 colunas: Alertas, Reuniões, Tarefas */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 22 }}>
+        {/* Alertas */}
+        <div style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)', borderRadius: 14, padding: '16px 18px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#fca5a5', marginBottom: 10 }}>🚨 Alertas ({allAlerts.length})</div>
+          {allAlerts.length === 0 ? <div style={{ fontSize: 14, color: T.mt }}>Nenhum alerta ✨</div> :
+            allAlerts.slice(0, 6).map((a, i) => (
+              <div key={'al' + i} style={{ fontSize: 13, marginBottom: 8, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ color: a.type === 'error' ? '#ef4444' : '#f59e0b', flexShrink: 0, fontSize: 14 }}>{a.type === 'error' ? '🔴' : '🟡'}</span>
+                <div style={{ flex: 1 }}>
+                  <b style={{ color: T.tx, fontSize: 13 }}>{a.cn}</b>
+                  <div style={{ fontSize: 12, color: '#fca5a5', marginTop: 2 }}>{a.message}</div>
+                </div>
+              </div>
+            ))}
+        </div>
+
+        {/* Reuniões */}
+        <div style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.12)', borderRadius: 14, padding: '16px 18px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#a5b4fc', marginBottom: 10 }}>📅 Reuniões Hoje ({todayMeetings.length})</div>
+          {todayMeetings.length === 0 ? <div style={{ fontSize: 14, color: T.mt }}>Nenhuma reunião</div> :
+            todayMeetings.slice(0, 6).map((m, i) => {
+              const cl = clients.find(c => c.id === m.client_id);
+              return (<div key={'mt' + i} style={{ fontSize: 13, marginBottom: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ color: '#a5b4fc', fontFamily: T.mo, fontWeight: 700, fontSize: 13, minWidth: 50 }}>{m.time?.slice(0, 5)}</span>
+                <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{m.title}</div>{cl && <div style={{ fontSize: 12, color: T.mt }}>{cl.name}</div>}</div>
+                {m.link && <a href={m.link} target="_blank" rel="noopener noreferrer" style={{ color: '#22c55e', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>📹</a>}
+              </div>);
+            })}
+        </div>
+
+        {/* Tarefas do dia */}
+        <div style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.12)', borderRadius: 14, padding: '16px 18px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#fcd34d', marginBottom: 10 }}>✅ Tarefas do Dia ({todayTasks.length + overdueTasks.length})</div>
+          {todayTasks.length === 0 && overdueTasks.length === 0 ? <div style={{ fontSize: 14, color: T.mt }}>Tudo em dia! 🎉</div> : <>
+            {overdueTasks.slice(0, 4).map((t, i) => {
+              const cl = clients.find(c => c.id === t.client_id);
+              return (<div key={'od' + i} style={{ fontSize: 13, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ color: '#ef4444', fontSize: 14 }}>🔴</span>
+                <div style={{ flex: 1 }}><div style={{ color: '#fca5a5', fontWeight: 600 }}>{t.title}</div>{cl && <div style={{ fontSize: 12, color: T.mt }}>{cl.name} · ATRASADA</div>}</div>
+              </div>);
+            })}
+            {todayTasks.slice(0, 4).map((t, i) => {
+              const cl = clients.find(c => c.id === t.client_id);
+              return (<div key={'td' + i} style={{ fontSize: 13, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ color: '#f59e0b', fontSize: 14 }}>🟡</span>
+                <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{t.title}</div>{cl && <div style={{ fontSize: 12, color: T.mt }}>{cl.name}</div>}</div>
+              </div>);
+            })}
+          </>}
+        </div>
+      </div>
+
+      {/* KPI Strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 22 }}>
+        {[{ l: 'Clientes', v: active.length.toString(), c: '#a78bfa', icon: '👥' }, { l: 'Fee Mensal', v: fB(totalFee), c: '#22c55e', icon: '💰' }, { l: 'Pendentes', v: pendingCount.toString(), c: pendingCount > 5 ? '#f59e0b' : '#3b82f6', icon: '✅' }, { l: 'Alertas', v: allAlerts.length.toString(), c: allAlerts.length > 0 ? '#ef4444' : '#22c55e', icon: allAlerts.length > 0 ? '🚨' : '✨' }].map(k => (
+          <div key={k.l} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '14px 18px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: k.c, opacity: 0.4 }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 11, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{k.l}</span><span style={{ fontSize: 16 }}>{k.icon}</span></div>
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: T.mo, marginTop: 5, color: k.c }}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chat IA */}
+      <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 250 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <span style={{ fontSize: 18 }}>🤖</span>
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Pergunte à Alice</h3>
+          <span style={{ fontSize: 12, color: T.mt, marginLeft: 'auto' }}>IA integrada com dados da agência</span>
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {chatMessages.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '30px 0', color: T.mt }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>🤖</div>
+              <div style={{ fontSize: 14, marginBottom: 14 }}>Olá! Sou a Alice, sua assistente IA.</div>
+              <div style={{ fontSize: 13, color: T.mt2, marginBottom: 16 }}>Posso consultar dados dos seus clientes, métricas, tarefas e muito mais.</div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {['Como está a agência hoje?', 'Quais clientes têm alertas?', 'Resumo das tarefas atrasadas', 'Qual cliente gera mais receita?'].map(q => (
+                  <button key={q} onClick={() => { setChatInput(q); }} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 8, padding: '8px 14px', color: '#c4b5fd', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>{q}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          {chatMessages.map((m, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div style={{
+                maxWidth: '75%', padding: '12px 16px', borderRadius: 12,
+                background: m.role === 'user' ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)',
+                border: '1px solid ' + (m.role === 'user' ? 'rgba(99,102,241,0.25)' : T.bdr),
+                fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' as const,
+              }}>
+                {m.role === 'assistant' && <span style={{ fontSize: 12, color: '#c4b5fd', fontWeight: 700, display: 'block', marginBottom: 4 }}>🤖 Alice</span>}
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {chatLoading && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: T.mt, fontSize: 13 }}><span style={{ fontSize: 16 }}>🤖</span> Alice está pensando...</div>}
+        </div>
+
+        {/* Input */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }} placeholder="Pergunte sobre seus clientes, métricas, tarefas..." style={{ ...inputS, flex: 1, fontSize: 14 }} />
+          <button onClick={sendChat} disabled={!chatInput.trim() || chatLoading} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: chatInput.trim() ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: chatInput.trim() ? '#fff' : T.mt, cursor: chatInput.trim() ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700 }}>Enviar</button>
+        </div>
+      </div>
+    </main></div>);
+  }
 
   // ═══ AGENDA ═══
   if (page === 'agenda') {
@@ -284,7 +526,24 @@ export default function HubApp({ user }: { user: any }) {
         <div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             <button onClick={() => { setEditClient(c); setEditingClient(true); }} style={btnS('#3b82f6')}>✏️ Editar Cliente</button>
+            <button onClick={() => setShowNewAlert(true)} style={btnS('#ef4444')}>🚨 Adicionar Alerta</button>
           </div>
+          {/* Active Alerts */}
+          {(() => { const alerts = (c.client_alerts || []).filter((a: any) => !a.resolved); return alerts.length > 0 ? (
+            <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 12, padding: '14px 18px', marginBottom: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#fca5a5', marginBottom: 8 }}>🚨 Alertas Ativos</div>
+              {alerts.map((a: any) => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(239,68,68,0.1)' }}>
+                  <span style={{ fontSize: 14 }}>{a.type === 'error' ? '🔴' : a.type === 'warning' ? '🟡' : '🔵'}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{a.message}</div>
+                    <div style={{ fontSize: 11, color: T.mt }}>{new Date(a.created_at).toLocaleDateString('pt-BR')}</div>
+                  </div>
+                  <button onClick={() => resolveAlert(a.id, c.id)} style={btnS('#22c55e', { fontSize: 11, padding: '5px 12px' })}>✅ Resolver</button>
+                </div>
+              ))}
+            </div>
+          ) : null; })()}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: 22 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 14px' }}>Dados</h3>
@@ -417,43 +676,6 @@ export default function HubApp({ user }: { user: any }) {
   return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}
     <main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}>
 
-      {/* Daily Summary */}
-      {!dailyOff && (
-        <div style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.08),rgba(139,92,246,0.04))', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 16, padding: '22px 26px', marginBottom: 20, position: 'relative' }}>
-          <button onClick={() => setDailyOff(true)} style={{ position: 'absolute', top: 12, right: 14, background: 'none', border: 'none', color: T.mt, cursor: 'pointer', fontSize: 16 }}>✕</button>
-          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 10 }}>{greet}, Ana Paula! 👋</div>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.8, marginBottom: 14 }}>
-            Você tem <b style={{ color: T.tx }}>{active.length} clientes ativos</b> gerenciando <b style={{ color: '#22c55e' }}>{fB(totalFee)}/mês</b>.
-            {allAlerts.length > 0 && <span> <b style={{ color: '#fca5a5' }}>{allAlerts.length} alerta{allAlerts.length > 1 ? 's' : ''}</b>.</span>}
-            {urgentTasks.length > 0 && <span> <b style={{ color: '#ef4444' }}>{urgentTasks.length} urgente{urgentTasks.length > 1 ? 's' : ''}</b>.</span>}
-            {overdueTasks.length > 0 && <span> <b style={{ color: '#ef4444' }}>{overdueTasks.length} atrasada{overdueTasks.length > 1 ? 's' : ''}</b>.</span>}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-            <div><div style={{ fontSize: 12, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, marginBottom: 8 }}>📅 Reuniões Hoje</div>
-              {todayMeetings.length === 0 ? <div style={{ fontSize: 13, color: T.mt }}>Nenhuma reunião hoje</div> :
-                todayMeetings.slice(0, 4).map((m, i) => (<div key={i} style={{ fontSize: 13, marginBottom: 5, display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ color: '#a5b4fc', fontFamily: T.mo, fontWeight: 600 }}>{m.time?.slice(0, 5)}</span><span>{m.title}</span>{m.link && <a href={m.link} target="_blank" rel="noopener noreferrer" style={{ color: '#22c55e', textDecoration: 'none', fontSize: 12 }}>📹</a>}</div>))}
-            </div>
-            <div><div style={{ fontSize: 12, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, marginBottom: 8 }}>🚨 Ações Urgentes</div>
-              {allAlerts.length === 0 && urgentTasks.length === 0 ? <div style={{ fontSize: 13, color: T.mt }}>Tudo em dia! 🎉</div> : <>
-                {allAlerts.slice(0, 3).map((a, i) => <div key={'a' + i} style={{ fontSize: 13, color: '#fca5a5', marginBottom: 4 }}><b>{a.cn}:</b> {a.message}</div>)}
-                {urgentTasks.slice(0, 3).map((t, i) => <div key={'t' + i} style={{ fontSize: 13, color: '#fcd34d', marginBottom: 4 }}>✅ {t.title}</div>)}
-              </>}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* KPI Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
-        {[{ l: 'Clientes Ativos', v: active.length.toString(), c: '#a78bfa', icon: '👥' }, { l: 'Fee Mensal', v: fB(totalFee), c: '#22c55e', icon: '💰' }, { l: 'Tarefas Pendentes', v: pendingCount.toString(), c: pendingCount > 5 ? '#f59e0b' : '#3b82f6', icon: '✅' }, { l: 'Alertas', v: allAlerts.length.toString(), c: allAlerts.length > 0 ? '#ef4444' : '#22c55e', icon: allAlerts.length > 0 ? '🚨' : '✨' }].map(k => (
-          <div key={k.l} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: k.c, opacity: 0.4 }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 11, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{k.l}</span><span style={{ fontSize: 16 }}>{k.icon}</span></div>
-            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: T.mo, marginTop: 5, color: k.c }}>{k.v}</div>
-          </div>
-        ))}
-      </div>
-
       {/* Filters */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{squad === 'todos' ? '📋 Todos os Clientes' : (SQUADS as any)[squad]?.icon + ' ' + (SQUADS as any)[squad]?.label}</h2>
@@ -551,6 +773,34 @@ export default function HubApp({ user }: { user: any }) {
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setShowNewMeeting(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: '1px solid ' + T.bdr, background: 'transparent', color: T.mt, cursor: 'pointer', fontSize: 14 }}>Cancelar</button>
             <button onClick={addMeeting} disabled={!nm.title || !nm.date} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', background: nm.title && nm.date ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: nm.title && nm.date ? '#fff' : T.mt, cursor: nm.title && nm.date ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700 }}>Agendar</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ═══ MODAL: New Alert ═══ */}
+    {showNewAlert && sel && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowNewAlert(false)}>
+        <div onClick={e => e.stopPropagation()} style={{ background: '#12121e', border: '1px solid ' + T.bdr, borderRadius: 16, padding: 28, width: 420 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 16px' }}>🚨 Novo Alerta — {sel.name}</h2>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelS}>Tipo</label>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[['error', '🔴 Crítico', '#ef4444'], ['warning', '🟡 Atenção', '#f59e0b'], ['info', '🔵 Info', '#3b82f6']].map(([k, l, cl]) => (
+                <button key={k} onClick={() => setNewAlert({ ...newAlert, type: k })} style={{ flex: 1, padding: 10, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, background: newAlert.type === k ? cl + '20' : 'rgba(255,255,255,0.03)', border: newAlert.type === k ? '1px solid ' + cl + '40' : '1px solid ' + T.bdr, color: newAlert.type === k ? cl : T.mt }}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelS}>Mensagem</label>
+            <input value={newAlert.message} onChange={e => setNewAlert({ ...newAlert, message: e.target.value })} placeholder="Ex: Conta Meta Ads bloqueada, Erro pagamento..." style={inputS} />
+          </div>
+          <div style={{ fontSize: 12, color: T.mt, marginBottom: 14 }}>
+            Sugestões: Conta Meta bloqueada · Erro de pagamento Meta · Pixel com problema · Orçamento pausado · Domínio expirado
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowNewAlert(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: '1px solid ' + T.bdr, background: 'transparent', color: T.mt, cursor: 'pointer', fontSize: 14 }}>Cancelar</button>
+            <button onClick={() => addAlert(sel.id)} disabled={!newAlert.message} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', background: newAlert.message ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'rgba(255,255,255,0.05)', color: newAlert.message ? '#fff' : T.mt, cursor: newAlert.message ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700 }}>Criar Alerta</button>
           </div>
         </div>
       </div>
