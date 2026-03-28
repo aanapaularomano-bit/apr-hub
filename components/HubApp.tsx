@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, THEME as T, fB, fN, ONBOARDING_ITEMS } from '@/lib/constants';
 import Financeiro from './Financeiro';
+import Prospects from './Prospects';
 
 const btnS = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
@@ -279,7 +280,7 @@ export default function HubApp({ user }: { user: any }) {
         <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff' }}>A</div>
         <div><div style={{ fontSize: 16, fontWeight: 800 }}>APR Hub</div><div style={{ fontSize: 11, color: T.mt2, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{user.email}</div></div>
       </div>
-      {[['alice', '🤖', 'Alice'], ['hub', '📋', 'Clientes'], ['crm', '🏢', 'CRM'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
+      {[['alice', '🤖', 'Alice'], ['hub', '📋', 'Clientes'], ['prospects', '🎯', 'Prospects'], ['crm', '🏢', 'CRM'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
         <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', background: page === p && !sel ? (p === 'alice' ? 'rgba(139,92,246,0.15)' : 'rgba(99,102,241,0.12)') : 'transparent', border: page === p && !sel ? '1px solid ' + (p === 'alice' ? 'rgba(139,92,246,0.3)' : 'rgba(99,102,241,0.25)') : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? (p === 'alice' ? '#c4b5fd' : '#a5b4fc') : T.mt, fontSize: 15, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
           <span style={{ fontSize: 17 }}>{i}</span><span style={{ flex: 1 }}>{l}</span>
           {p === 'alice' && (allAlerts.length + overdueTasks.length) > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 8px', borderRadius: 5 }}>{allAlerts.length + overdueTasks.length}</span>}
@@ -303,7 +304,7 @@ export default function HubApp({ user }: { user: any }) {
       <div style={{ marginTop: 'auto', padding: '14px 8px', borderTop: '1px solid ' + T.bdr }}>
         <div style={{ fontSize: 12, color: T.mt2, marginBottom: 4 }}>Fee Mensal: <span style={{ color: '#22c55e', fontFamily: T.mo, fontWeight: 700 }}>{fB(totalFee)}</span></div>
         <div style={{ fontSize: 12, color: T.mt2, marginBottom: 10 }}>Clientes: <span style={{ color: '#a5b4fc', fontWeight: 700 }}>{active.length} ativos</span></div>
-        <button onClick={logout} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer', fontSize: 12 }}>🚪 Sair</button>
+        <button onClick={logout} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 8, padding: '8px 14px', color: '#fca5a5', cursor: 'pointer', fontSize: 14, fontWeight: 600, width: '100%' }}>🚪 Sair</button>
       </div>
     </aside>
   );
@@ -500,50 +501,76 @@ Responda a pergunta da Ana Paula sobre a agência.`;
     </main></div>);
   }
 
-  // ═══ CRM PAGE (sidebar) ═══
-  if (page === 'crm') {
-    return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px' }}>🏢 CRM & Onboarding</h1>
+  // ═══ PROSPECTS ═══
+  if (page === 'prospects') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}><Prospects user={user} /></main></div>);
 
-      {/* Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 22 }}>
-        {[
-          { l: 'Total Clientes', v: clients.length.toString(), c: '#a78bfa', icon: '👥' },
-          { l: 'Em Onboarding', v: clients.filter(c => c.phase === 'Onboarding').length.toString(), c: '#f59e0b', icon: '🚀' },
-          { l: 'Ativos', v: active.length.toString(), c: '#22c55e', icon: '✅' },
-        ].map(k => (
-          <div key={k.l} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: k.c, opacity: 0.4 }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 11, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{k.l}</span><span style={{ fontSize: 16 }}>{k.icon}</span></div>
-            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: T.mo, marginTop: 5, color: k.c }}>{k.v}</div>
+  // ═══ CRM PAGE — Pipeline Kanban ═══
+  if (page === 'crm') {
+    const formClients = clients.filter(c => c.phase === 'Onboarding' && c.status === 'ativo');
+    const onboardingClients = clients.filter(c => c.phase !== 'Onboarding' && c.phase !== 'Manutenção' && c.phase !== 'Growth' && c.phase !== 'Escala' && c.phase !== 'Debriefing' && c.phase !== 'Pós-Lançamento' && c.status === 'ativo');
+    const activeClients = clients.filter(c => ['Manutenção', 'Growth', 'Escala', 'Debriefing', 'Pós-Lançamento', 'Otimização', 'Captação', 'Lançamento', 'Aquecimento', 'Geração Leads'].includes(c.phase) && c.status === 'ativo');
+
+    const columns = [
+      { key: 'form', label: '📋 Formulário Enviado', color: '#8b5cf6', clients: formClients, desc: 'Cliente preencheu o formulário, aguardando setup' },
+      { key: 'onboarding', label: '🚀 Onboarding', color: '#f59e0b', clients: onboardingClients, desc: 'Setup técnico em andamento' },
+      { key: 'active', label: '✅ Contrato Ativo', color: '#22c55e', clients: activeClients, desc: 'Operando normalmente' },
+    ];
+
+    return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>🏢 CRM — Pipeline de Clientes</h1>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ fontSize: 13, color: T.mt, display: 'flex', gap: 14, alignItems: 'center' }}>
+            <span><b style={{ color: '#8b5cf6' }}>{formClients.length}</b> formulário</span>
+            <span><b style={{ color: '#f59e0b' }}>{onboardingClients.length}</b> onboarding</span>
+            <span><b style={{ color: '#22c55e' }}>{activeClients.length}</b> ativos</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Pipeline Kanban */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        {columns.map(col => (
+          <div key={col.key} style={{ flex: 1, background: 'rgba(255,255,255,0.015)', border: '1px solid ' + T.bdr, borderRadius: 16, padding: 16, minHeight: 400 }}>
+            {/* Column header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: col.color }} />
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{col.label}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, background: col.color + '15', color: col.color, padding: '2px 8px', borderRadius: 5, marginLeft: 'auto' }}>{col.clients.length}</span>
+            </div>
+            <div style={{ fontSize: 11, color: T.mt, marginBottom: 14 }}>{col.desc}</div>
+
+            {/* Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {col.clients.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '30px 10px', color: T.mt2, fontSize: 13 }}>
+                  Nenhum cliente
+                </div>
+              )}
+              {col.clients.map(c => {
+                const sq = (SQUADS as any)[c.squad] || { label: '—', icon: '📋', color: '#a78bfa' };
+                return (
+                  <div key={c.id} onClick={() => openC(c)} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: sq.color, opacity: 0.4 }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 10, background: sq.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: sq.color }}>{c.name?.charAt(0)}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{c.name}</div>
+                        <div style={{ fontSize: 11, color: T.mt }}>{c.niche || sq.label}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: sq.color + '15', color: sq.color }}>{sq.icon} {sq.label}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(255,255,255,0.05)', color: T.mt }}>{c.phase}</span>
+                      {c.fee > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#22c55e15', color: '#22c55e' }}>{fB(c.fee)}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ))}
       </div>
-
-      {/* Client list with onboarding status */}
-      {clients.map(c => {
-        const sq = (SQUADS as any)[c.squad] || { label: '—', icon: '📋', color: '#a78bfa' };
-        const isOnboarding = c.phase === 'Onboarding';
-        return (
-          <div key={c.id} onClick={() => openC(c)} style={{ background: T.card, border: '1px solid ' + (isOnboarding ? 'rgba(245,158,11,0.2)' : T.bdr), borderRadius: 14, padding: '16px 20px', marginBottom: 10, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: sq.color, opacity: 0.4 }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: sq.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: sq.color }}>{c.name?.charAt(0)}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{c.name}</div>
-                <div style={{ display: 'flex', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: sq.color + '15', color: sq.color }}>{sq.icon} {sq.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: isOnboarding ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)', color: isOnboarding ? '#f59e0b' : '#22c55e' }}>{isOnboarding ? '🚀 Onboarding' : '✅ ' + c.phase}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: '#22c55e15', color: '#22c55e' }}>{fB(c.fee)}/mês</span>
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' as const }}>
-                <div style={{ fontSize: 13, color: '#a5b4fc', fontWeight: 600 }}>Ver CRM →</div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
     </main></div>);
   }
 
