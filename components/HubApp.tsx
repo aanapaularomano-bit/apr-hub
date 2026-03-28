@@ -274,37 +274,58 @@ export default function HubApp({ user }: { user: any }) {
   if (loading) return (<div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', fontFamily: T.fn }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div><span style={{ fontWeight: 600, fontSize: 18 }}>Carregando APR Hub...</span></div></div>);
 
   // ═══ SIDEBAR ═══
+  const navBtn = (p: string, i: string, l: string, badge?: number) => (
+    <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: page === p && !sel ? 'rgba(99,102,241,0.12)' : 'transparent', border: page === p && !sel ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? '#a5b4fc' : T.mt, fontSize: 14, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
+      <span style={{ fontSize: 16 }}>{i}</span><span style={{ flex: 1 }}>{l}</span>
+      {badge !== undefined && badge > 0 && <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 7px', borderRadius: 5 }}>{badge}</span>}
+    </button>
+  );
+  const sectionLabel = (text: string) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, letterSpacing: '0.12em', padding: '12px 8px 4px' }}>{text}</div>
+  );
+
   const sidebar = (
-    <aside style={{ width: 240, minHeight: '100vh', background: 'rgba(255,255,255,0.015)', borderRight: '1px solid ' + T.bdr, padding: '18px 14px', display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+    <aside style={{ width: 240, minHeight: '100vh', background: 'rgba(255,255,255,0.015)', borderRight: '1px solid ' + T.bdr, padding: '18px 14px', display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 8px', marginBottom: 12 }}>
         <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff' }}>A</div>
         <div><div style={{ fontSize: 16, fontWeight: 800 }}>APR Hub</div><div style={{ fontSize: 11, color: T.mt2, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{user.email}</div></div>
       </div>
-      {[['alice', '🤖', 'Alice'], ['hub', '📋', 'Clientes'], ['prospects', '🎯', 'Prospects'], ['crm', '🏢', 'CRM'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
-        <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', background: page === p && !sel ? (p === 'alice' ? 'rgba(139,92,246,0.15)' : 'rgba(99,102,241,0.12)') : 'transparent', border: page === p && !sel ? '1px solid ' + (p === 'alice' ? 'rgba(139,92,246,0.3)' : 'rgba(99,102,241,0.25)') : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? (p === 'alice' ? '#c4b5fd' : '#a5b4fc') : T.mt, fontSize: 15, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
-          <span style={{ fontSize: 17 }}>{i}</span><span style={{ flex: 1 }}>{l}</span>
-          {p === 'alice' && (allAlerts.length + overdueTasks.length) > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 8px', borderRadius: 5 }}>{allAlerts.length + overdueTasks.length}</span>}
-          {p === 'tasks' && pendingCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 8px', borderRadius: 5 }}>{pendingCount}</span>}
-          {p === 'agenda' && todayMeetings.length > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '2px 8px', borderRadius: 5 }}>{todayMeetings.length}</span>}
-        </button>
-      ))}
-      <div style={{ fontSize: 11, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '14px 8px 5px' }}>Squads</div>
+
+      {navBtn('alice', '🤖', 'Alice', allAlerts.length + overdueTasks.length)}
+
+      {sectionLabel('CRM')}
+      {navBtn('prospects', '🎯', 'Prospects')}
+      {navBtn('hub', '📋', 'Clientes Ativos')}
+      {navBtn('crm', '🏢', 'Onboarding')}
+
+      {sectionLabel('Operação')}
+      {navBtn('tasks', '✅', 'Tarefas', pendingCount)}
+      {navBtn('agenda', '📅', 'Agenda', todayMeetings.length)}
+
+      <div style={{ borderTop: '1px solid ' + T.bdr, margin: '8px 0' }} />
+      {navBtn('financeiro', '💰', 'Financeiro')}
+
+      <div style={{ borderTop: '1px solid ' + T.bdr, margin: '6px 0' }} />
+
+      {sectionLabel('Squads')}
       {[['todos', '📋', 'Todos', '#a78bfa'], ...Object.entries(SQUADS).map(([k, v]) => [k, v.icon, v.label, v.color])].map(([key, icon, label, color]) => {
         const cnt = key === 'todos' ? clients.length : clients.filter(c => c.squad === key).length;
         const on = squad === key && page === 'hub' && !sel;
         return (
-          <button key={key as string} onClick={() => { setSquad(key as string); setPage('hub'); setSel(null); setFilter('all'); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', background: on ? color + '15' : 'transparent', border: on ? '1px solid ' + color + '30' : '1px solid transparent', borderRadius: 8, cursor: 'pointer', color: on ? color as string : T.mt, fontSize: 14, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
-            <span style={{ fontSize: 16 }}>{icon}</span><span style={{ flex: 1 }}>{label}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 5 }}>{cnt}</span>
+          <button key={key as string} onClick={() => { setSquad(key as string); setPage('hub'); setSel(null); setFilter('all'); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', background: on ? color + '15' : 'transparent', border: on ? '1px solid ' + color + '30' : '1px solid transparent', borderRadius: 8, cursor: 'pointer', color: on ? color as string : T.mt, fontSize: 13, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
+            <span style={{ fontSize: 15 }}>{icon}</span><span style={{ flex: 1 }}>{label}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: 5 }}>{cnt}</span>
           </button>
         );
       })}
-      <div style={{ borderTop: '1px solid ' + T.bdr, margin: '10px 0' }} />
+
+      <div style={{ borderTop: '1px solid ' + T.bdr, margin: '8px 0' }} />
       <button onClick={() => setShowNew(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 12px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 9, cursor: 'pointer', color: '#22c55e', fontSize: 14, fontWeight: 600, width: '100%' }}>+ Novo Cliente</button>
+
       <div style={{ marginTop: 'auto', padding: '14px 8px', borderTop: '1px solid ' + T.bdr }}>
-        <div style={{ fontSize: 12, color: T.mt2, marginBottom: 4 }}>Fee Mensal: <span style={{ color: '#22c55e', fontFamily: T.mo, fontWeight: 700 }}>{fB(totalFee)}</span></div>
+        <div style={{ fontSize: 12, color: T.mt2, marginBottom: 4 }}>Fee: <span style={{ color: '#22c55e', fontFamily: T.mo, fontWeight: 700 }}>{fB(totalFee)}</span></div>
         <div style={{ fontSize: 12, color: T.mt2, marginBottom: 10 }}>Clientes: <span style={{ color: '#a5b4fc', fontWeight: 700 }}>{active.length} ativos</span></div>
-        <button onClick={logout} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 8, padding: '8px 14px', color: '#fca5a5', cursor: 'pointer', fontSize: 14, fontWeight: 600, width: '100%' }}>🚪 Sair</button>
+        <button onClick={logout} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 9, padding: '10px 14px', color: '#fca5a5', cursor: 'pointer', fontSize: 15, fontWeight: 700, width: '100%' }}>🚪 Sair</button>
       </div>
     </aside>
   );
