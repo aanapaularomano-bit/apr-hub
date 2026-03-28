@@ -279,7 +279,7 @@ export default function HubApp({ user }: { user: any }) {
         <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff' }}>A</div>
         <div><div style={{ fontSize: 16, fontWeight: 800 }}>APR Hub</div><div style={{ fontSize: 11, color: T.mt2, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{user.email}</div></div>
       </div>
-      {[['alice', '🤖', 'Alice'], ['hub', '📋', 'Clientes'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
+      {[['alice', '🤖', 'Alice'], ['hub', '📋', 'Clientes'], ['crm', '🏢', 'CRM'], ['agenda', '📅', 'Agenda'], ['tasks', '✅', 'Tarefas'], ['financeiro', '💰', 'Financeiro']].map(([p, i, l]) => (
         <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', background: page === p && !sel ? (p === 'alice' ? 'rgba(139,92,246,0.15)' : 'rgba(99,102,241,0.12)') : 'transparent', border: page === p && !sel ? '1px solid ' + (p === 'alice' ? 'rgba(139,92,246,0.3)' : 'rgba(99,102,241,0.25)') : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? (p === 'alice' ? '#c4b5fd' : '#a5b4fc') : T.mt, fontSize: 15, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
           <span style={{ fontSize: 17 }}>{i}</span><span style={{ flex: 1 }}>{l}</span>
           {p === 'alice' && (allAlerts.length + overdueTasks.length) > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 8px', borderRadius: 5 }}>{allAlerts.length + overdueTasks.length}</span>}
@@ -497,6 +497,53 @@ Responda a pergunta da Ana Paula sobre a agência.`;
           <button onClick={sendChat} disabled={!chatInput.trim() || chatLoading} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: chatInput.trim() ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: chatInput.trim() ? '#fff' : T.mt, cursor: chatInput.trim() ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700 }}>Enviar</button>
         </div>
       </div>
+    </main></div>);
+  }
+
+  // ═══ CRM PAGE (sidebar) ═══
+  if (page === 'crm') {
+    return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px' }}>🏢 CRM & Onboarding</h1>
+
+      {/* Summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 22 }}>
+        {[
+          { l: 'Total Clientes', v: clients.length.toString(), c: '#a78bfa', icon: '👥' },
+          { l: 'Em Onboarding', v: clients.filter(c => c.phase === 'Onboarding').length.toString(), c: '#f59e0b', icon: '🚀' },
+          { l: 'Ativos', v: active.length.toString(), c: '#22c55e', icon: '✅' },
+        ].map(k => (
+          <div key={k.l} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: k.c, opacity: 0.4 }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 11, color: T.mt, textTransform: 'uppercase' as const, fontWeight: 600 }}>{k.l}</span><span style={{ fontSize: 16 }}>{k.icon}</span></div>
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: T.mo, marginTop: 5, color: k.c }}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Client list with onboarding status */}
+      {clients.map(c => {
+        const sq = (SQUADS as any)[c.squad] || { label: '—', icon: '📋', color: '#a78bfa' };
+        const isOnboarding = c.phase === 'Onboarding';
+        return (
+          <div key={c.id} onClick={() => openC(c)} style={{ background: T.card, border: '1px solid ' + (isOnboarding ? 'rgba(245,158,11,0.2)' : T.bdr), borderRadius: 14, padding: '16px 20px', marginBottom: 10, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: sq.color, opacity: 0.4 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: sq.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: sq.color }}>{c.name?.charAt(0)}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{c.name}</div>
+                <div style={{ display: 'flex', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: sq.color + '15', color: sq.color }}>{sq.icon} {sq.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: isOnboarding ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)', color: isOnboarding ? '#f59e0b' : '#22c55e' }}>{isOnboarding ? '🚀 Onboarding' : '✅ ' + c.phase}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: '#22c55e15', color: '#22c55e' }}>{fB(c.fee)}/mês</span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' as const }}>
+                <div style={{ fontSize: 13, color: '#a5b4fc', fontWeight: 600 }}>Ver CRM →</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </main></div>);
   }
 
