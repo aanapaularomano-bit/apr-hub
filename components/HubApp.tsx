@@ -53,6 +53,8 @@ export default function HubApp({ user }: { user: any }) {
   const [formLink, setFormLink] = useState('');
   const [formData, setFormData] = useState<any>(null);
   const [formCopied, setFormCopied] = useState(false);
+  const [logEntries, setLogEntries] = useState<any[]>([]);
+  const [newLog, setNewLog] = useState({ action: '', category: 'otimizacao' });
 
   useEffect(() => { loadAll(); }, []);
 
@@ -90,6 +92,26 @@ export default function HubApp({ user }: { user: any }) {
     const { data: crmNotes } = await supabase.from('client_notes').select('*').eq('client_id', cid).like('text', 'CRM_FIELD:%');
     (crmNotes || []).forEach((n: any) => { const parts = n.text.split(':'); if (parts.length >= 3) { cd[parts[1]] = parts.slice(2).join(':'); } });
     setCrmData(cd);
+  }
+
+  async function addLogEntry(cid: string) {
+    if (!newLog.action.trim()) return;
+    const text = 'LOG:' + newLog.category + ':' + newLog.action.trim();
+    await supabase.from('client_notes').insert({ client_id: cid, text, user_id: user.id });
+    setNewLog({ action: '', category: 'otimizacao' });
+    // Reload logs
+    const { data } = await supabase.from('client_notes').select('*').eq('client_id', cid).like('text', 'LOG:%').order('created_at', { ascending: false });
+    setLogEntries(data || []);
+  }
+
+  async function loadLogs(cid: string) {
+    const { data } = await supabase.from('client_notes').select('*').eq('client_id', cid).like('text', 'LOG:%').order('created_at', { ascending: false });
+    setLogEntries(data || []);
+  }
+
+  async function deleteLogEntry(id: string, cid: string) {
+    await supabase.from('client_notes').delete().eq('id', id);
+    setLogEntries(logEntries.filter(l => l.id !== id));
   }
 
   async function toggleOnboarding(cid: string, key: string, checked: boolean) {
@@ -261,7 +283,7 @@ export default function HubApp({ user }: { user: any }) {
     if (filter === 'alerts') return (c.client_alerts || []).some((a: any) => !a.resolved);
     return true;
   });
-  const openC = (c: any) => { setSel(c); setPage('client'); setClientTab('crm'); setEditingMetrics(false); setEditingClient(false); setEditClient(c); setEditingCrm(false); loadClientMetrics(c.id); loadFormData(c.id); };
+  const openC = (c: any) => { setSel(c); setPage('client'); setClientTab('crm'); setEditingMetrics(false); setEditingClient(false); setEditClient(c); setEditingCrm(false); loadClientMetrics(c.id); loadFormData(c.id); loadLogs(c.id); };
   const goHome = () => { setPage('hub'); setSel(null); setEditingClient(false); };
   const logout = async () => { await supabase.auth.signOut(); };
   const genReport = (c: any) => {
@@ -281,7 +303,7 @@ export default function HubApp({ user }: { user: any }) {
     </button>
   );
   const sectionLabel = (text: string) => (
-    <div style={{ fontSize: 10, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, letterSpacing: '0.12em', padding: '12px 8px 4px' }}>{text}</div>
+    <div style={{ fontSize: 12, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, letterSpacing: '0.12em', padding: '14px 8px 6px' }}>{text}</div>
   );
 
   const sidebar = (
@@ -678,7 +700,7 @@ Responda a pergunta da Ana Paula sobre a agência.`;
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 16, borderBottom: '1px solid ' + T.bdr }}>
-        {[{ id: 'crm', l: '🏢 CRM & Onboarding' }, { id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
+        {[{ id: 'crm', l: '🏢 CRM & Onboarding' }, { id: 'log', l: '📝 Activity Log' }, { id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
           <button key={t.id} onClick={() => setClientTab(t.id)} style={{ background: clientTab === t.id ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', padding: '9px 16px', cursor: 'pointer', borderBottom: clientTab === t.id ? '2px solid ' + sq.color : '2px solid transparent', color: clientTab === t.id ? T.tx : T.mt, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' as const }}>{t.l}</button>
         ))}
       </div>
@@ -857,6 +879,90 @@ Responda a pergunta da Ana Paula sobre a agência.`;
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ═══ ACTIVITY LOG TAB ═══ */}
+      {clientTab === 'log' && (
+        <div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 16px' }}>📝 Activity Log — {c.name}</h3>
+
+          {/* Add new entry */}
+          <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: 20, marginBottom: 18 }}>
+            <div style={{ marginBottom: 10 }}>
+              <label style={labelS}>O que foi feito?</label>
+              <textarea value={newLog.action} onChange={e => setNewLog({ ...newLog, action: e.target.value })} placeholder="Ex: Otimizei campanha de captação, ajustei público LAL 1%..." rows={2} style={{ ...inputS, resize: 'vertical' as const }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelS}>Categoria</label>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {[
+                    ['otimizacao', '⚡ Otimização', '#f59e0b'],
+                    ['campanha', '📢 Campanha', '#3b82f6'],
+                    ['criativo', '🎨 Criativo', '#8b5cf6'],
+                    ['reuniao', '🤝 Reunião', '#22c55e'],
+                    ['estrategia', '🎯 Estratégia', '#ef4444'],
+                    ['outro', '📋 Outro', '#64748b'],
+                  ].map(([k, l, cl]) => (
+                    <button key={k} onClick={() => setNewLog({ ...newLog, category: k })} style={{ padding: '6px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 600, background: newLog.category === k ? cl + '20' : 'rgba(255,255,255,0.03)', border: newLog.category === k ? '1px solid ' + cl + '40' : '1px solid ' + T.bdr, color: newLog.category === k ? cl : T.mt }}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => addLogEntry(c.id)} disabled={!newLog.action.trim()} style={{ ...btnS('#22c55e'), opacity: newLog.action.trim() ? 1 : 0.4 }}>+ Registrar</button>
+            </div>
+          </div>
+
+          {/* Log entries */}
+          {logEntries.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: T.mt }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>📝</div>
+              <p style={{ fontSize: 15 }}>Nenhuma ação registrada ainda</p>
+              <p style={{ fontSize: 13, color: T.mt2 }}>Registre otimizações, mudanças de campanha, reuniões e decisões aqui.</p>
+            </div>
+          ) : (
+            <div style={{ position: 'relative', paddingLeft: 24 }}>
+              {/* Timeline line */}
+              <div style={{ position: 'absolute', left: 10, top: 0, bottom: 0, width: 2, background: 'rgba(255,255,255,0.06)' }} />
+
+              {logEntries.map((entry, i) => {
+                const parts = entry.text.replace('LOG:', '').split(':');
+                const category = parts[0] || 'outro';
+                const action = parts.slice(1).join(':');
+                const catInfo: any = {
+                  otimizacao: { label: 'Otimização', color: '#f59e0b', icon: '⚡' },
+                  campanha: { label: 'Campanha', color: '#3b82f6', icon: '📢' },
+                  criativo: { label: 'Criativo', color: '#8b5cf6', icon: '🎨' },
+                  reuniao: { label: 'Reunião', color: '#22c55e', icon: '🤝' },
+                  estrategia: { label: 'Estratégia', color: '#ef4444', icon: '🎯' },
+                  outro: { label: 'Outro', color: '#64748b', icon: '📋' },
+                }[category] || { label: 'Outro', color: '#64748b', icon: '📋' };
+                const date = new Date(entry.created_at);
+                const isToday = date.toISOString().split('T')[0] === todayStr;
+                const isYesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0] === date.toISOString().split('T')[0];
+
+                return (
+                  <div key={entry.id} style={{ display: 'flex', gap: 14, marginBottom: 14, position: 'relative' }}>
+                    {/* Timeline dot */}
+                    <div style={{ position: 'absolute', left: -18, top: 6, width: 12, height: 12, borderRadius: '50%', background: catInfo.color, border: '2px solid #08080f', zIndex: 1 }} />
+
+                    <div style={{ flex: 1, background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '14px 18px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: catInfo.color + '15', color: catInfo.color }}>{catInfo.icon} {catInfo.label}</span>
+                          <span style={{ fontSize: 12, color: T.mt, fontFamily: T.mo }}>
+                            {isToday ? 'Hoje' : isYesterday ? 'Ontem' : date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <button onClick={() => deleteLogEntry(entry.id, c.id)} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer', fontSize: 12 }}>✕</button>
+                      </div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' as const }}>{action}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
