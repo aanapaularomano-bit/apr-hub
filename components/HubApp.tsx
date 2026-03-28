@@ -49,6 +49,9 @@ export default function HubApp({ user }: { user: any }) {
   const [onboardingData, setOnboardingData] = useState<any>({});
   const [crmData, setCrmData] = useState<any>({});
   const [editingCrm, setEditingCrm] = useState(false);
+  const [formLink, setFormLink] = useState('');
+  const [formData, setFormData] = useState<any>(null);
+  const [formCopied, setFormCopied] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -109,6 +112,33 @@ export default function HubApp({ user }: { user: any }) {
       await supabase.from('client_kpis').upsert({ client_id: cid, period: 'crm', kpi_key: 'crm_' + key, kpi_value: Number(crmData[key]) || 0 }, { onConflict: 'client_id,period,kpi_key' });
     }
     setEditingCrm(false);
+  }
+
+  async function generateFormLink(cid: string) {
+    const code = cid.slice(0, 8) + Date.now().toString(36);
+    // Check if form already exists
+    const { data: existing } = await supabase.from('client_forms').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(1);
+    if (existing && existing.length > 0) {
+      setFormLink(window.location.origin + '/form/' + existing[0].form_code);
+      setFormData(existing[0]);
+      return;
+    }
+    const { data } = await supabase.from('client_forms').insert({ client_id: cid, form_code: code }).select().single();
+    if (data) {
+      setFormLink(window.location.origin + '/form/' + code);
+      setFormData(data);
+    }
+  }
+
+  async function loadFormData(cid: string) {
+    const { data } = await supabase.from('client_forms').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(1);
+    if (data && data.length > 0) {
+      setFormData(data[0]);
+      setFormLink(window.location.origin + '/form/' + data[0].form_code);
+    } else {
+      setFormData(null);
+      setFormLink('');
+    }
   }
 
   async function saveClientMetrics(cid: string) {
@@ -230,7 +260,7 @@ export default function HubApp({ user }: { user: any }) {
     if (filter === 'alerts') return (c.client_alerts || []).some((a: any) => !a.resolved);
     return true;
   });
-  const openC = (c: any) => { setSel(c); setPage('client'); setClientTab('info'); setEditingMetrics(false); setEditingClient(false); setEditClient(c); loadClientMetrics(c.id); };
+  const openC = (c: any) => { setSel(c); setPage('client'); setClientTab('crm'); setEditingMetrics(false); setEditingClient(false); setEditClient(c); setEditingCrm(false); loadClientMetrics(c.id); loadFormData(c.id); };
   const goHome = () => { setPage('hub'); setSel(null); setEditingClient(false); };
   const logout = async () => { await supabase.auth.signOut(); };
   const genReport = (c: any) => {
@@ -561,6 +591,68 @@ Responda a pergunta da Ana Paula sobre a agência.`;
       {/* ═══ CRM & ONBOARDING TAB ═══ */}
       {clientTab === 'crm' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+          {/* Form Link Section */}
+          <div style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.03))', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 14, padding: '18px 22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>📋 Formulário de Cadastro</h3>
+              {formData?.status === 'preenchido' && <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>✅ Preenchido</span>}
+              {formData && formData.status !== 'preenchido' && <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>⏳ Aguardando</span>}
+            </div>
+            <p style={{ fontSize: 13, color: T.mt, marginBottom: 14 }}>Gere um link para o cliente preencher os dados cadastrais. Quando ele enviar, os dados aparecem aqui automaticamente.</p>
+            
+            {!formLink ? (
+              <button onClick={() => generateFormLink(c.id)} style={{ ...btnS('#6366f1'), fontSize: 14, padding: '12px 20px' }}>🔗 Gerar Link do Formulário</button>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                  <input value={formLink} readOnly style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid ' + T.bdr, borderRadius: 10, padding: '10px 14px', color: '#a5b4fc', fontSize: 13, fontFamily: T.mo, outline: 'none' }} />
+                  <button onClick={() => { navigator.clipboard.writeText(formLink); setFormCopied(true); setTimeout(() => setFormCopied(false), 2000); }} style={btnS(formCopied ? '#22c55e' : '#6366f1', { fontSize: 13, padding: '10px 16px' })}>{formCopied ? '✅ Copiado!' : '📋 Copiar'}</button>
+                  <a href={formLink} target="_blank" rel="noopener noreferrer" style={{ ...btnS('#22c55e'), fontSize: 13, padding: '10px 16px', textDecoration: 'none', display: 'inline-block' }}>👁️ Ver</a>
+                </div>
+                {formData?.status === 'preenchido' && (
+                  <button onClick={() => loadFormData(c.id)} style={btnS('#3b82f6', { fontSize: 12, padding: '8px 14px' })}>🔄 Atualizar dados do formulário</button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Form data preview if submitted */}
+          {formData?.status === 'preenchido' && (
+            <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.12)', borderRadius: 14, padding: '18px 22px' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 14px', color: '#22c55e' }}>📬 Dados Recebidos do Cliente</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  { k: 'nome_socio', l: 'Nome Sócio', icon: '👤' },
+                  { k: 'nome_empresa', l: 'Empresa', icon: '🏢' },
+                  { k: 'email', l: 'Email', icon: '📧' },
+                  { k: 'whatsapp', l: 'WhatsApp', icon: '💬' },
+                  { k: 'cnpj', l: 'CNPJ', icon: '📄' },
+                  { k: 'cpf_socio', l: 'CPF', icon: '🪪' },
+                  { k: 'rg', l: 'RG', icon: '🪪' },
+                  { k: 'endereco_cep', l: 'Endereço', icon: '📍' },
+                  { k: 'profissao', l: 'Profissão', icon: '💼' },
+                  { k: 'estado_civil', l: 'Estado Civil', icon: '💍' },
+                  { k: 'site_instagram', l: 'Site/Instagram', icon: '📱' },
+                  { k: 'dia_pagamento', l: 'Dia Pagamento', icon: '📅' },
+                  { k: 'produto_servico', l: 'Produto/Serviço', icon: '🎯' },
+                  { k: 'publico_alvo', l: 'Público-alvo', icon: '👥' },
+                  { k: 'orcamento_trafego', l: 'Orçamento Tráfego', icon: '💵' },
+                  { k: 'objetivos', l: 'Objetivos', icon: '🎯' },
+                  { k: 'concorrentes', l: 'Concorrentes', icon: '⚔️' },
+                  { k: 'historico', l: 'Histórico', icon: '📖' },
+                  { k: 'dados_bancarios', l: 'Dados Bancários', icon: '🏦' },
+                  { k: 'tipo_cobranca', l: 'Tipo Cobrança', icon: '📋' },
+                  { k: 'observacoes', l: 'Observações', icon: '📝' },
+                ].map(f => formData[f.k] ? (
+                  <div key={f.k} style={{ padding: '8px 0', borderBottom: '1px solid rgba(34,197,94,0.08)' }}>
+                    <div style={{ fontSize: 11, color: T.mt }}>{f.icon} {f.l}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{formData[f.k]}</div>
+                  </div>
+                ) : null)}
+              </div>
+            </div>
+          )}
           {/* Onboarding Progress */}
           {(() => {
             const done = ONBOARDING_ITEMS.filter(item => onboardingData[item.key]);
