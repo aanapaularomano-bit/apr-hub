@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, THEME as T, fB, fN, ONBOARDING_ITEMS } from '@/lib/constants';
 import Financeiro from './Financeiro';
 import Prospects from './Prospects';
+import BancoEstrategias from './BancoEstrategias';
 
 const btnS = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
@@ -323,6 +324,7 @@ export default function HubApp({ user }: { user: any }) {
       {sectionLabel('Operação')}
       {navBtn('tasks', '✅', 'Tarefas', pendingCount)}
       {navBtn('agenda', '📅', 'Agenda', todayMeetings.length)}
+      {navBtn('estrategias', '📚', 'Estratégias')}
 
       <div style={{ borderTop: '1px solid ' + T.bdr, margin: '8px 0' }} />
       {navBtn('financeiro', '💰', 'Financeiro')}
@@ -546,6 +548,9 @@ Responda a pergunta da Ana Paula sobre a agência.`;
 
   // ═══ PROSPECTS ═══
   if (page === 'prospects') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}><Prospects user={user} /></main></div>);
+
+  // ═══ ESTRATÉGIAS ═══
+  if (page === 'estrategias') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}><BancoEstrategias user={user} /></main></div>);
 
   // ═══ CRM PAGE — Pipeline Kanban ═══
   if (page === 'crm') {
