@@ -4,6 +4,22 @@ export const SQUADS = {
   negocios_locais: { label: "Neg. Locais", icon: "📍", color: "#22c55e" },
 };
 
+export const ONBOARDING_ITEMS = [
+  { key: "contrato", label: "Contrato assinado", icon: "📝", cat: "Admin" },
+  { key: "briefing", label: "Briefing preenchido", icon: "📋", cat: "Admin" },
+  { key: "whatsapp", label: "Grupo WhatsApp criado", icon: "💬", cat: "Comunicação" },
+  { key: "kickoff", label: "Reunião de kickoff realizada", icon: "🤝", cat: "Comunicação" },
+  { key: "meta_ads", label: "Acesso ao Meta Ads recebido", icon: "📘", cat: "Acessos" },
+  { key: "google_ads", label: "Acesso ao Google Ads recebido", icon: "🔍", cat: "Acessos" },
+  { key: "analytics", label: "Acesso ao Analytics recebido", icon: "📊", cat: "Acessos" },
+  { key: "hotmart", label: "Acesso Hotmart/Kiwify recebido", icon: "🔥", cat: "Acessos" },
+  { key: "pixel", label: "Pixel/GTM instalado", icon: "🏷️", cat: "Técnico" },
+  { key: "paginas", label: "Páginas de captura criadas", icon: "🌐", cat: "Técnico" },
+  { key: "criativos", label: "Criativos aprovados", icon: "🎨", cat: "Produção" },
+  { key: "campanhas", label: "Campanhas configuradas", icon: "⚙️", cat: "Produção" },
+  { key: "primeira_camp", label: "Primeira campanha no ar", icon: "🚀", cat: "Produção" },
+];
+
 export const PHASES = {
   lancamentos: ["Onboarding", "Planejamento", "Aquecimento", "Captação", "Lançamento", "Pós-Lançamento", "Debriefing"],
   perpetuo: ["Onboarding", "Setup Funil", "Testes", "Otimização", "Escala", "Manutenção"],

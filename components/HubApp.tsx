@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, THEME as T, fB, fN } from '@/lib/constants';
+import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, THEME as T, fB, fN, ONBOARDING_ITEMS } from '@/lib/constants';
 import Financeiro from './Financeiro';
 
 const btnS = (color: string, extra?: any) => ({
@@ -46,6 +46,9 @@ export default function HubApp({ user }: { user: any }) {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [onboardingData, setOnboardingData] = useState<any>({});
+  const [crmData, setCrmData] = useState<any>({});
+  const [editingCrm, setEditingCrm] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -72,6 +75,40 @@ export default function HubApp({ user }: { user: any }) {
     setFunnelData(fd); setKpiData(kd);
     setMetricsData(met.data || { spend: 0, revenue: 0, leads: 0, roas: 0 });
     setClientNotes(notes.data || []);
+    // Load onboarding checklist
+    const { data: onbData } = await supabase.from('client_kpis').select('*').eq('client_id', cid).like('kpi_key', 'onb_%');
+    const od: any = {}; (onbData || []).forEach((r: any) => { od[r.kpi_key.replace('onb_', '')] = r.kpi_value === 1; });
+    setOnboardingData(od);
+    // Load CRM data
+    const { data: crmD } = await supabase.from('client_kpis').select('*').eq('client_id', cid).like('kpi_key', 'crm_%');
+    const cd: any = {}; (crmD || []).forEach((r: any) => { cd[r.kpi_key.replace('crm_', '')] = r.kpi_value === 0 ? '' : String(r.kpi_value); });
+    // Also load text CRM fields from client_notes with special prefix
+    const { data: crmNotes } = await supabase.from('client_notes').select('*').eq('client_id', cid).like('text', 'CRM_FIELD:%');
+    (crmNotes || []).forEach((n: any) => { const parts = n.text.split(':'); if (parts.length >= 3) { cd[parts[1]] = parts.slice(2).join(':'); } });
+    setCrmData(cd);
+  }
+
+  async function toggleOnboarding(cid: string, key: string, checked: boolean) {
+    const newData = { ...onboardingData, [key]: checked };
+    setOnboardingData(newData);
+    await supabase.from('client_kpis').upsert({ client_id: cid, period: 'onboarding', kpi_key: 'onb_' + key, kpi_value: checked ? 1 : 0 }, { onConflict: 'client_id,period,kpi_key' });
+  }
+
+  async function saveCrmData(cid: string) {
+    const textFields = ['endereco', 'instagram_site', 'produto_servico', 'publico_alvo', 'objetivos', 'concorrentes', 'historico', 'dados_bancarios', 'tipo_cobranca'];
+    for (const key of textFields) {
+      if (crmData[key]) {
+        // Delete old note if exists
+        await supabase.from('client_notes').delete().eq('client_id', cid).like('text', 'CRM_FIELD:' + key + ':%');
+        await supabase.from('client_notes').insert({ client_id: cid, text: 'CRM_FIELD:' + key + ':' + crmData[key], user_id: user.id });
+      }
+    }
+    // Numeric fields
+    const numFields = ['orcamento_trafego', 'fee_acordado'];
+    for (const key of numFields) {
+      await supabase.from('client_kpis').upsert({ client_id: cid, period: 'crm', kpi_key: 'crm_' + key, kpi_value: Number(crmData[key]) || 0 }, { onConflict: 'client_id,period,kpi_key' });
+    }
+    setEditingCrm(false);
   }
 
   async function saveClientMetrics(cid: string) {
@@ -516,10 +553,125 @@ Responda a pergunta da Ana Paula sobre a agência.`;
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 16, borderBottom: '1px solid ' + T.bdr }}>
-        {[{ id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
+        {[{ id: 'crm', l: '🏢 CRM & Onboarding' }, { id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
           <button key={t.id} onClick={() => setClientTab(t.id)} style={{ background: clientTab === t.id ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', padding: '9px 16px', cursor: 'pointer', borderBottom: clientTab === t.id ? '2px solid ' + sq.color : '2px solid transparent', color: clientTab === t.id ? T.tx : T.mt, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' as const }}>{t.l}</button>
         ))}
       </div>
+
+      {/* ═══ CRM & ONBOARDING TAB ═══ */}
+      {clientTab === 'crm' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Onboarding Progress */}
+          {(() => {
+            const done = ONBOARDING_ITEMS.filter(item => onboardingData[item.key]);
+            const pct = Math.round((done.length / ONBOARDING_ITEMS.length) * 100);
+            return (
+              <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: 22 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>🚀 Onboarding — Checklist</h3>
+                  <span style={{ fontSize: 14, fontWeight: 700, fontFamily: T.mo, color: pct === 100 ? '#22c55e' : pct > 50 ? '#f59e0b' : '#ef4444' }}>{pct}% ({done.length}/{ONBOARDING_ITEMS.length})</span>
+                </div>
+                {/* Progress bar */}
+                <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, marginBottom: 18, overflow: 'hidden' }}>
+                  <div style={{ width: pct + '%', height: '100%', borderRadius: 4, background: pct === 100 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : 'linear-gradient(90deg,#6366f1,#8b5cf6)', transition: 'width 0.5s ease' }} />
+                </div>
+                {/* Items by category */}
+                {['Admin', 'Comunicação', 'Acessos', 'Técnico', 'Produção'].map(cat => {
+                  const items = ONBOARDING_ITEMS.filter(i => i.cat === cat);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={cat} style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, marginBottom: 8 }}>{cat}</div>
+                      {items.map(item => {
+                        const checked = !!onboardingData[item.key];
+                        return (
+                          <div key={item.key} onClick={() => toggleOnboarding(c.id, item.key, !checked)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: checked ? 'rgba(34,197,94,0.04)' : 'rgba(255,255,255,0.01)', border: '1px solid ' + (checked ? 'rgba(34,197,94,0.15)' : T.bdr), borderRadius: 10, cursor: 'pointer', marginBottom: 6, transition: 'all 0.2s' }}>
+                            <div style={{ width: 24, height: 24, borderRadius: 7, border: '2px solid ' + (checked ? '#22c55e' : 'rgba(255,255,255,0.15)'), background: checked ? '#22c55e' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, transition: 'all 0.2s' }}>{checked ? '✓' : ''}</div>
+                            <span style={{ fontSize: 15 }}>{item.icon}</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: checked ? T.mt : T.tx, textDecoration: checked ? 'line-through' : 'none', flex: 1 }}>{item.label}</span>
+                            {checked && <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>Concluído</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+                {pct === 100 && <div style={{ textAlign: 'center', padding: '14px 0', fontSize: 15, color: '#22c55e', fontWeight: 700 }}>🎉 Onboarding completo! Cliente pronto para operar.</div>}
+              </div>
+            );
+          })()}
+
+          {/* CRM Data */}
+          <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>🏢 Dados do Cliente (CRM)</h3>
+              {!editingCrm ? <button onClick={() => setEditingCrm(true)} style={btnS('#3b82f6', { fontSize: 12, padding: '7px 14px' })}>✏️ Editar</button>
+                : <div style={{ display: 'flex', gap: 6 }}><button onClick={() => saveCrmData(c.id)} style={btnS('#22c55e', { fontSize: 12, padding: '7px 14px' })}>💾 Salvar</button><button onClick={() => { setEditingCrm(false); loadClientMetrics(c.id); }} style={btnS('#ef4444', { fontSize: 12, padding: '7px 14px' })}>Cancelar</button></div>}
+            </div>
+
+            {editingCrm ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {[
+                  { k: 'endereco', l: 'Endereço', full: true },
+                  { k: 'instagram_site', l: 'Instagram / Site' },
+                  { k: 'produto_servico', l: 'Produto / Serviço' },
+                  { k: 'publico_alvo', l: 'Público-alvo', full: true },
+                  { k: 'orcamento_trafego', l: 'Orçamento mensal de tráfego (R$)', t: 'number' },
+                  { k: 'fee_acordado', l: 'Fee acordado (R$)', t: 'number' },
+                  { k: 'tipo_cobranca', l: 'Tipo de cobrança (fixo, %, mix)' },
+                  { k: 'dados_bancarios', l: 'Dados bancários / PIX' },
+                  { k: 'objetivos', l: 'Objetivos (leads, vendas, seguidores)', full: true },
+                  { k: 'concorrentes', l: 'Concorrentes', full: true },
+                  { k: 'historico', l: 'Histórico (já anunciou antes?)', full: true },
+                ].map(f => (
+                  <div key={f.k} style={{ gridColumn: (f as any).full ? '1 / -1' : undefined }}>
+                    <label style={labelS}>{f.l}</label>
+                    {(f as any).full ? (
+                      <textarea value={crmData[f.k] || ''} onChange={e => setCrmData({ ...crmData, [f.k]: e.target.value })} rows={2} style={{ ...inputS, resize: 'vertical' as const }} />
+                    ) : (
+                      <input type={f.t || 'text'} value={crmData[f.k] || ''} onChange={e => setCrmData({ ...crmData, [f.k]: e.target.value })} style={inputS} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  { k: 'endereco', l: 'Endereço', icon: '📍' },
+                  { k: 'instagram_site', l: 'Instagram / Site', icon: '📱' },
+                  { k: 'produto_servico', l: 'Produto / Serviço', icon: '🎯' },
+                  { k: 'publico_alvo', l: 'Público-alvo', icon: '👥' },
+                  { k: 'orcamento_trafego', l: 'Orçamento Tráfego', icon: '💵', prefix: 'R$ ' },
+                  { k: 'fee_acordado', l: 'Fee Acordado', icon: '💰', prefix: 'R$ ' },
+                  { k: 'tipo_cobranca', l: 'Tipo de Cobrança', icon: '📋' },
+                  { k: 'dados_bancarios', l: 'Dados Bancários / PIX', icon: '🏦' },
+                  { k: 'objetivos', l: 'Objetivos', icon: '🎯' },
+                  { k: 'concorrentes', l: 'Concorrentes', icon: '⚔️' },
+                  { k: 'historico', l: 'Histórico', icon: '📖' },
+                ].map(f => {
+                  const val = crmData[f.k];
+                  return (
+                    <div key={f.k} style={{ padding: '10px 0', borderBottom: '1px solid ' + T.bdr }}>
+                      <div style={{ fontSize: 11, color: T.mt, marginBottom: 3 }}>{(f as any).icon} {f.l}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: val ? T.tx : T.mt2 }}>
+                        {val ? ((f as any).prefix || '') + val : '—'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {!editingCrm && Object.values(crmData).every(v => !v) && (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: T.mt }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
+                <p style={{ fontSize: 14, marginBottom: 12 }}>Nenhum dado CRM preenchido ainda</p>
+                <button onClick={() => setEditingCrm(true)} style={btnS('#3b82f6')}>Preencher dados do cliente</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ═══ INFO TAB — with edit ═══ */}
       {clientTab === 'info' && !editingClient && (
