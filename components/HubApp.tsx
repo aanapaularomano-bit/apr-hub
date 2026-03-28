@@ -667,7 +667,36 @@ Responda a pergunta da Ana Paula sobre a agência.`;
             <button onClick={() => deleteNote(n.id)} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer', fontSize: 12, marginTop: 6 }}>🗑️ Excluir</button>
           </div>))}
       </div>)}
-    </main></div>);
+    </main>
+    
+    {/* Alert Modal for Client */}
+    {showNewAlert && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowNewAlert(false)}>
+        <div onClick={e => e.stopPropagation()} style={{ background: '#12121e', border: '1px solid ' + T.bdr, borderRadius: 16, padding: 28, width: 420 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 16px' }}>🚨 Novo Alerta — {c.name}</h2>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelS}>Tipo</label>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[['error', '🔴 Crítico', '#ef4444'], ['warning', '🟡 Atenção', '#f59e0b'], ['info', '🔵 Info', '#3b82f6']].map(([k, l, cl]) => (
+                <button key={k} onClick={() => setNewAlert({ ...newAlert, type: k })} style={{ flex: 1, padding: 10, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, background: newAlert.type === k ? cl + '20' : 'rgba(255,255,255,0.03)', border: newAlert.type === k ? '1px solid ' + cl + '40' : '1px solid ' + T.bdr, color: newAlert.type === k ? cl : T.mt }}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelS}>Mensagem</label>
+            <input value={newAlert.message} onChange={e => setNewAlert({ ...newAlert, message: e.target.value })} placeholder="Ex: Conta Meta Ads bloqueada, Erro pagamento..." style={inputS} />
+          </div>
+          <div style={{ fontSize: 12, color: T.mt, marginBottom: 14 }}>
+            Sugestões: Conta Meta bloqueada · Erro de pagamento Meta · Pixel com problema · Orçamento pausado · Domínio expirado
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowNewAlert(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: '1px solid ' + T.bdr, background: 'transparent', color: T.mt, cursor: 'pointer', fontSize: 14 }}>Cancelar</button>
+            <button onClick={() => { addAlert(c.id); setShowNewAlert(false); setNewAlert({ type: 'error', message: '' }); }} disabled={!newAlert.message} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', background: newAlert.message ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'rgba(255,255,255,0.05)', color: newAlert.message ? '#fff' : T.mt, cursor: newAlert.message ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700 }}>Criar Alerta</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </div>);
   }
 
   // ═══════════════════════════════════════════
