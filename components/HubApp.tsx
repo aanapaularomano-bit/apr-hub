@@ -284,7 +284,7 @@ export default function HubApp({ user }: { user: any }) {
     if (filter === 'alerts') return (c.client_alerts || []).some((a: any) => !a.resolved);
     return true;
   });
-  const openC = (c: any) => { setSel(c); setPage('client'); setClientTab('crm'); setEditingMetrics(false); setEditingClient(false); setEditClient(c); setEditingCrm(false); loadClientMetrics(c.id); loadFormData(c.id); loadLogs(c.id); };
+  const openC = (c: any) => { setSel(c); setPage('client'); setClientTab('log'); setEditingMetrics(false); setEditingClient(false); setEditClient(c); setEditingCrm(false); loadClientMetrics(c.id); loadFormData(c.id); loadLogs(c.id); };
   const goHome = () => { setPage('hub'); setSel(null); setEditingClient(false); };
   const logout = async () => { await supabase.auth.signOut(); };
   const genReport = (c: any) => {
@@ -598,7 +598,7 @@ Responda a pergunta da Ana Paula sobre a agência.`;
               {col.clients.map(c => {
                 const sq = (SQUADS as any)[c.squad] || { label: '—', icon: '📋', color: '#a78bfa' };
                 return (
-                  <div key={c.id} onClick={() => openC(c)} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}>
+                  <div key={c.id} onClick={() => { setSel(c); setPage('onboarding_detail'); setEditingCrm(false); loadClientMetrics(c.id); loadFormData(c.id); }} style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 12, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: sq.color, opacity: 0.4 }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <div style={{ width: 34, height: 34, borderRadius: 10, background: sq.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: sq.color }}>{c.name?.charAt(0)}</div>
@@ -618,6 +618,104 @@ Responda a pergunta da Ana Paula sobre a agência.`;
             </div>
           </div>
         ))}
+      </div>
+    </main></div>);
+  }
+
+  // ═══ ONBOARDING DETAIL ═══
+  if (page === 'onboarding_detail' && sel) {
+    const c = sel;
+    const sq = (SQUADS as any)[c.squad] || { label: '—', icon: '📋', color: '#a78bfa' };
+
+    return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <button onClick={() => { setPage('crm'); setSel(null); }} style={btnS('#a78bfa')}>← CRM Pipeline</button>
+        <button onClick={() => openC(c)} style={btnS('#3b82f6')}>📋 Ver como Cliente Ativo</button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+        <div style={{ width: 50, height: 50, borderRadius: 14, background: sq.color + '20', border: '2px solid ' + sq.color + '40', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: sq.color }}>{c.name?.charAt(0)}</div>
+        <div><h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{c.name}</h1>
+          <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 7, background: sq.color + '20', color: sq.color }}>{sq.icon} {sq.label}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 7, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>🚀 {c.phase}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        {/* LEFT: Form + CRM Data */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Form link */}
+          <div style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.03))', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 14, padding: '18px 22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>📋 Formulário de Cadastro</h3>
+              {formData?.status === 'preenchido' && <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>✅ Preenchido</span>}
+              {formData && formData.status !== 'preenchido' && <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>⏳ Aguardando</span>}
+            </div>
+            {!formLink ? (
+              <button onClick={() => generateFormLink(c.id)} style={{ ...btnS('#6366f1'), fontSize: 14, padding: '12px 20px' }}>🔗 Gerar Link do Formulário</button>
+            ) : (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input value={formLink} readOnly style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid ' + T.bdr, borderRadius: 10, padding: '10px 14px', color: '#a5b4fc', fontSize: 12, fontFamily: T.mo, outline: 'none' }} />
+                <button onClick={() => { navigator.clipboard.writeText(formLink); setFormCopied(true); setTimeout(() => setFormCopied(false), 2000); }} style={btnS(formCopied ? '#22c55e' : '#6366f1', { fontSize: 12, padding: '10px 14px' })}>{formCopied ? '✅' : '📋'}</button>
+                <a href={formLink} target="_blank" rel="noopener noreferrer" style={{ ...btnS('#22c55e'), fontSize: 12, padding: '10px 14px', textDecoration: 'none', display: 'inline-block' }}>👁️</a>
+              </div>
+            )}
+          </div>
+
+          {/* Form data if submitted */}
+          {formData?.status === 'preenchido' && (
+            <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.12)', borderRadius: 14, padding: '18px 22px' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 14px', color: '#22c55e' }}>📬 Dados Recebidos</h3>
+              {[['nome_socio', 'Nome Sócio'], ['nome_empresa', 'Empresa'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['cnpj', 'CNPJ'], ['cpf_socio', 'CPF'], ['rg', 'RG'], ['endereco_cep', 'Endereço'], ['profissao', 'Profissão'], ['estado_civil', 'Estado Civil'], ['site_instagram', 'Site/Instagram'], ['dia_pagamento', 'Dia Pagamento'], ['produto_servico', 'Produto/Serviço'], ['publico_alvo', 'Público-alvo'], ['objetivos', 'Objetivos'], ['concorrentes', 'Concorrentes'], ['historico', 'Histórico']].map(([k, l]) => formData[k] ? (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(34,197,94,0.08)', fontSize: 13 }}>
+                  <span style={{ color: T.mt }}>{l}</span>
+                  <span style={{ fontWeight: 600, textAlign: 'right' as const, maxWidth: '60%' }}>{formData[k]}</span>
+                </div>
+              ) : null)}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Onboarding Checklist */}
+        <div>
+          {(() => {
+            const done = ONBOARDING_ITEMS.filter(item => onboardingData[item.key]);
+            const pct = Math.round((done.length / ONBOARDING_ITEMS.length) * 100);
+            return (
+              <div style={{ background: T.card, border: '1px solid ' + T.bdr, borderRadius: 14, padding: 22 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>🚀 Checklist de Onboarding</h3>
+                  <span style={{ fontSize: 14, fontWeight: 700, fontFamily: T.mo, color: pct === 100 ? '#22c55e' : pct > 50 ? '#f59e0b' : '#ef4444' }}>{pct}%</span>
+                </div>
+                <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, marginBottom: 18, overflow: 'hidden' }}>
+                  <div style={{ width: pct + '%', height: '100%', borderRadius: 4, background: pct === 100 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : 'linear-gradient(90deg,#6366f1,#8b5cf6)', transition: 'width 0.5s ease' }} />
+                </div>
+                {['Admin', 'Comunicação', 'Acessos', 'Técnico', 'Produção'].map(cat => {
+                  const items = ONBOARDING_ITEMS.filter(i => i.cat === cat);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={cat} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.mt2, textTransform: 'uppercase' as const, marginBottom: 6 }}>{cat}</div>
+                      {items.map(item => {
+                        const checked = !!onboardingData[item.key];
+                        return (
+                          <div key={item.key} onClick={() => toggleOnboarding(c.id, item.key, !checked)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: checked ? 'rgba(34,197,94,0.04)' : 'transparent', border: '1px solid ' + (checked ? 'rgba(34,197,94,0.15)' : T.bdr), borderRadius: 9, cursor: 'pointer', marginBottom: 5 }}>
+                            <div style={{ width: 22, height: 22, borderRadius: 6, border: '2px solid ' + (checked ? '#22c55e' : 'rgba(255,255,255,0.15)'), background: checked ? '#22c55e' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>{checked ? '✓' : ''}</div>
+                            <span style={{ fontSize: 14 }}>{item.icon}</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: checked ? T.mt : T.tx, textDecoration: checked ? 'line-through' : 'none' }}>{item.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+                {pct === 100 && <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 15, color: '#22c55e', fontWeight: 700 }}>🎉 Onboarding completo!</div>}
+              </div>
+            );
+          })()}
+        </div>
       </div>
     </main></div>);
   }
@@ -705,7 +803,7 @@ Responda a pergunta da Ana Paula sobre a agência.`;
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 16, borderBottom: '1px solid ' + T.bdr }}>
-        {[{ id: 'crm', l: '🏢 CRM & Onboarding' }, { id: 'log', l: '📝 Activity Log' }, { id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
+        {[{ id: 'log', l: '📝 Activity Log' }, { id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
           <button key={t.id} onClick={() => setClientTab(t.id)} style={{ background: clientTab === t.id ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', padding: '9px 16px', cursor: 'pointer', borderBottom: clientTab === t.id ? '2px solid ' + sq.color : '2px solid transparent', color: clientTab === t.id ? T.tx : T.mt, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' as const }}>{t.l}</button>
         ))}
       </div>
