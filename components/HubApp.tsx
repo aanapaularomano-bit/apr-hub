@@ -56,6 +56,11 @@ export default function HubApp({ user }: { user: any }) {
   const [formCopied, setFormCopied] = useState(false);
   const [logEntries, setLogEntries] = useState<any[]>([]);
   const [newLog, setNewLog] = useState({ action: '', category: 'otimizacao' });
+  const [dashes, setDashes] = useState<any[]>([]);
+  const [dLoading, setDLoading] = useState(false);
+  const [showNewDash, setShowNewDash] = useState(false);
+  const [editDash, setEditDash] = useState<any>(null);
+  const [dForm, setDForm] = useState<any>({});
 
   useEffect(() => { loadAll(); }, []);
 
@@ -723,14 +728,9 @@ Responda a pergunta da Ana Paula sobre a agência.`;
 
   // ═══ DASHBOARDS ═══
   if (page === 'dashboards') {
-    const [dashes, setDashes] = useState<any[]>([]);
-    const [dLoading, setDLoading] = useState(true);
-    const [showNewDash, setShowNewDash] = useState(false);
-    const [editDash, setEditDash] = useState<any>(null);
-    const [dForm, setDForm] = useState<any>({});
 
-    useEffect(() => { loadDashes(); }, []);
     async function loadDashes() { setDLoading(true); const { data } = await supabase.from('client_dashboards').select('*').order('created_at', { ascending: false }); setDashes(data || []); setDLoading(false); }
+    if (dashes.length === 0 && !dLoading && !editDash) { loadDashes(); }
 
     async function createDash() {
       const code = 'd' + Date.now().toString(36);
