@@ -6,7 +6,7 @@ import { SQUADS, PHASES, FUNNEL_TPL, KPI_TPL, TASK_COLS, PRIO, THEME as T, fB, f
 import Financeiro from './Financeiro';
 import Prospects from './Prospects';
 import BancoEstrategias from './BancoEstrategias';
-import Dashboards from './Dashboards';
+import DashboardManager from './DashboardManager';
 
 const btnS = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
@@ -723,7 +723,7 @@ Responda a pergunta da Ana Paula sobre a agência.`;
   }
 
   // ═══ DASHBOARDS ═══
-  if (page === 'dashboards') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}><Dashboards clients={clients} user={user} /></main></div>);
+  if (page === 'dashboards') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}><DashboardManager clients={clients} user={user} T={T} /></main></div>);
 
 
   // ═══ AGENDA ═══
