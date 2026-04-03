@@ -557,3 +557,4 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
   );
 }
  
+// force rebuild Fri Apr  3 14:34:36 -03 2026
