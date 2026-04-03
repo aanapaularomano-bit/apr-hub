@@ -224,7 +224,7 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
                   <div style={{ fontSize: 10, color: T.tx3 }}>ROAS: <span style={{ color: T.yellow, fontWeight: 600 }}>{(d.roas || 0).toFixed(2)}x</span></div>
                   <div style={{ fontSize: 10, color: T.tx3 }}>{d.theme === 'dark' ? '🌙' : '☀️'}</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); deleteDash(d.id); }} style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', cursor: 'pointer', fontSize: 11, padding: '4px 8px', borderRadius: 6, fontWeight: 700 }}>🗑️</button>
+                <button onClick={e => { e.stopPropagation(); deleteDash(d.id); }} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: '4px 8px', borderRadius: 6, fontWeight: 700 }}>🗑️</button>
               </div>
             ))}
           </div>
@@ -239,14 +239,14 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
       {/* Top bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' as const, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => setSelected(null)} style={{ background: T.bg3, border: `1px solid ${T.bdr}`, borderRadius: 8, padding: '6px 12px', color: T.tx2, cursor: 'pointer', fontSize: 12 }}>← Voltar</button>
-          <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{selected.title}</h2>
-          <span style={{ padding: '3px 10px', background: T.bg3, borderRadius: 6, fontSize: 10, fontWeight: 700, color: T.accent }}>
+          <button onClick={() => setSelected(null)} style={{ background: T.bg3 || '#1a1a3e', border: `1px solid ${T.bdr || 'rgba(99,102,241,0.15)'}`, borderRadius: 8, padding: '6px 12px', color: '#a0a0c0', cursor: 'pointer', fontSize: 12 }}>← Voltar</button>
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: T.tx || '#e8e8f0' }}>{selected.title}</h2>
+          <span style={{ padding: '3px 10px', background: T.bg3 || '#1a1a3e', borderRadius: 6, fontSize: 10, fontWeight: 700, color: T.accent || '#6366f1' }}>
             {selected.template === 'mega' ? '🚀 Mega' : selected.template === 'complete' ? '📈 Completo' : '📊 Simples'}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={copyLink} style={{ padding: '8px 16px', background: copied ? T.green : T.bg3, color: copied ? '#fff' : T.tx2, border: `1px solid ${T.bdr}`, borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 600, transition: 'all 0.2s' }}>
+          <button onClick={copyLink} style={{ padding: '8px 16px', background: copied ? '#22c55e' : (T.bg3 || '#1a1a3e'), color: copied ? '#fff' : '#a0a0c0', border: `1px solid ${T.bdr || 'rgba(99,102,241,0.15)'}`, borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 600, transition: 'all 0.2s' }}>
             {copied ? '✅ Link copiado!' : '🔗 Copiar Link Público'}
           </button>
           <a href={`/dash/${selected.dash_code}`} target="_blank" style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 11, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
@@ -264,9 +264,9 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
 
       {/* Edit tabs */}
       <div style={{ overflowX: 'auto', marginBottom: 20, WebkitOverflowScrolling: 'touch' }}>
-        <div style={{ display: 'flex', gap: 0, background: T.bg3, borderRadius: 10, padding: 4, width: 'max-content' }}>
+        <div style={{ display: 'flex', gap: 0, background: T.bg3 || '#1a1a3e', borderRadius: 10, padding: 4, width: 'max-content' }}>
           {editTabs.map(t => (
-            <button key={t.k} onClick={() => setEditTab(t.k)} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: editTab === t.k ? T.accent : 'transparent', color: editTab === t.k ? '#fff' : T.tx2, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{t.l}</button>
+            <button key={t.k} onClick={() => setEditTab(t.k)} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: editTab === t.k ? (T.accent || '#6366f1') : 'transparent', color: editTab === t.k ? '#fff' : '#a0a0c0', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{t.l}</button>
           ))}
         </div>
       </div>
