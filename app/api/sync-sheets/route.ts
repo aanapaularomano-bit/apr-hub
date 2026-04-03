@@ -62,11 +62,34 @@ function getAdType(adName: string): string {
   return 'Outro';
 }
 
-function getAudienceTemp(adsetName: string): string {
+function getAudienceTemp(adsetName: string, campaignName?: string): string {
   const lower = adsetName.toLowerCase();
-  if (lower.includes('envolvimento') || lower.includes('remarketing') || lower.includes('retargeting') || lower.includes('custom') || lower.includes('lookalike') || lower.includes('lal')) return 'Quente';
+  const campLower = (campaignName || '').toLowerCase();
+  // Check campaign name for _PQ (público quente)
+  if (campLower.includes('_pq') || campLower.includes('remarketing') || campLower.includes('rmkt')) return 'Quente';
+  if (lower.includes('envolvimento') || lower.includes('remarketing') || lower.includes('retargeting') || lower.includes('custom') || lower.includes('lookalike') || lower.includes('lal') || lower.includes('seguidores') || lower.includes('engaj')) return 'Quente';
   if (lower.includes('interesse') || lower.includes('broad') || lower.includes('aberto')) return 'Frio';
   return 'Misto';
+}
+
+// Convert Excel/Sheets serial date number to dd/mm format
+function serialDateToStr(serial: any): string {
+  if (typeof serial === 'string') {
+    // Already a date string like "2026-03-27"
+    if (serial.includes('-')) {
+      const parts = serial.split('-');
+      return `${parts[2]}/${parts[1]}`;
+    }
+    return serial;
+  }
+  if (typeof serial === 'number') {
+    // Excel serial date: days since 1899-12-30
+    const date = new Date((serial - 25569) * 86400000);
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    return `${day}/${month}`;
+  }
+  return String(serial);
 }
 
 /* ═══════════════════════════════════════════
@@ -174,15 +197,14 @@ function processSheetRows(rows: any[][]) {
     totalReach += reach;
     totalPurchases += purchases;
 
-    // Temperature
-    const temp = getAudienceTemp(adset);
+    // Temperature - pass campaign name too for _PQ detection
+    const temp = getAudienceTemp(adset, campaign);
     if (temp === 'Quente') { leadsQuentes += leads; spendQuente += spend; }
-    else { leadsFrios += leads; spendFrio += spend; }
+    else if (temp === 'Frio') { leadsFrios += leads; spendFrio += spend; }
+    else { leadsFrios += leads; spendFrio += spend; } // Default to Frio
 
     // Format date for display
-    const dateKey = date.includes('-')
-      ? date.split('-').slice(1).reverse().join('/')
-      : date;
+    const dateKey = serialDateToStr(row[iDate]);
 
     // Daily
     if (!dailyMap[dateKey]) {
@@ -231,9 +253,9 @@ function processSheetRows(rows: any[][]) {
 
   // Calculate derived metrics for daily
   const daily = Object.values(dailyMap).sort((a: any, b: any) => {
-    const [dA, mA] = a.date.split('/');
-    const [dB, mB] = b.date.split('/');
-    return (parseInt(mA || '0') * 100 + parseInt(dA || '0')) - (parseInt(mB || '0') * 100 + parseInt(dB || '0'));
+    const [dA, mA] = (a.date || '').split('/').map(Number);
+    const [dB, mB] = (b.date || '').split('/').map(Number);
+    return ((mA || 0) * 100 + (dA || 0)) - ((mB || 0) * 100 + (dB || 0));
   });
   for (const d of daily) {
     d.cpl = d.leads > 0 ? d.investimento / d.leads : 0;

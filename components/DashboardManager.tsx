@@ -64,11 +64,14 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
   }
 
   // ═══ FIELD EDITOR HELPER ═══
+  const inputStyle = { width: '100%', background: T.bg3 || '#1a1a3e', color: T.tx || '#e8e8f0', border: `1px solid ${T.bdr || 'rgba(99,102,241,0.15)'}`, borderRadius: 8, padding: '8px 12px', fontSize: 12, outline: 'none' };
+
   function Field({ label, field, type = 'number', json = false }: { label: string; field: string; type?: string; json?: boolean }) {
-    const val = json ? JSON.stringify(selected?.[field] || (type === 'array' ? [] : ''), null, 2) : (selected?.[field] ?? '');
+    const rawVal = selected?.[field];
+    const val = json ? JSON.stringify(rawVal || (type === 'array' ? [] : ''), null, 2) : (rawVal ?? '');
     return (
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 10, color: T.tx3, textTransform: 'uppercase' as const, fontWeight: 700, letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{label}</label>
+        <label style={{ fontSize: 10, color: T.tx3 || '#6b6b90', textTransform: 'uppercase' as const, fontWeight: 700, letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{label}</label>
         {json ? (
           <textarea
             value={val}
@@ -77,22 +80,22 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
               setSelected({ ...selected, [field]: e.target.value });
             }}
             onBlur={e => { try { const parsed = JSON.parse(e.target.value); saveDash({ [field]: parsed }); } catch {} }}
-            style={{ width: '100%', background: T.bg3, color: T.tx, border: `1px solid ${T.bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", minHeight: 120, resize: 'vertical' as const }}
+            style={{ ...inputStyle, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", minHeight: 120, resize: 'vertical' as const }}
           />
         ) : type === 'textarea' ? (
           <textarea
             value={val}
             onChange={e => setSelected({ ...selected, [field]: e.target.value })}
             onBlur={e => saveDash({ [field]: e.target.value })}
-            style={{ width: '100%', background: T.bg3, color: T.tx, border: `1px solid ${T.bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 12, minHeight: 80, resize: 'vertical' as const }}
+            style={{ ...inputStyle, minHeight: 80, resize: 'vertical' as const }}
           />
         ) : (
           <input
-            type={type}
+            type={type === 'number' ? 'text' : type}
             value={val}
             onChange={e => setSelected({ ...selected, [field]: type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value })}
             onBlur={e => saveDash({ [field]: type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value })}
-            style={{ width: '100%', background: T.bg3, color: T.tx, border: `1px solid ${T.bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 12 }}
+            style={inputStyle}
           />
         )}
       </div>
@@ -150,11 +153,11 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ fontSize: 10, color: T.tx3, fontWeight: 700, display: 'block', marginBottom: 4 }}>TÍTULO</label>
-                <input value={newDash.title} onChange={e => setNewDash({ ...newDash, title: e.target.value })} placeholder="Ex: Dashboard Fran Maftum - L1" style={{ width: '100%', padding: '8px 12px', background: T.bg3, color: T.tx, border: `1px solid ${T.bdr}`, borderRadius: 8, fontSize: 12 }} />
+                <input value={newDash.title} onChange={e => setNewDash({ ...newDash, title: e.target.value })} placeholder="Ex: Dashboard Fran Maftum - L1" style={{ width: '100%', padding: '8px 12px', background: T.bg3 || '#1a1a3e', color: T.tx || '#e8e8f0', border: `1px solid ${T.bdr || 'rgba(99,102,241,0.15)'}`, borderRadius: 8, fontSize: 12 }} />
               </div>
               <div>
                 <label style={{ fontSize: 10, color: T.tx3, fontWeight: 700, display: 'block', marginBottom: 4 }}>CLIENTE</label>
-                <select value={newDash.client_id} onChange={e => setNewDash({ ...newDash, client_id: e.target.value })} style={{ width: '100%', padding: '8px 12px', background: T.bg3, color: T.tx, border: `1px solid ${T.bdr}`, borderRadius: 8, fontSize: 12 }}>
+                <select value={newDash.client_id} onChange={e => setNewDash({ ...newDash, client_id: e.target.value })} style={{ width: '100%', padding: '8px 12px', background: T.bg3 || '#1a1a3e', color: T.tx || '#e8e8f0', border: `1px solid ${T.bdr || 'rgba(99,102,241,0.15)'}`, borderRadius: 8, fontSize: 12 }}>
                   <option value="">Sem cliente vinculado</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -284,16 +287,16 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
             </FieldRow>
             <FieldRow>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 10, color: T.tx3, fontWeight: 700, display: 'block', marginBottom: 4 }}>TEMPLATE</label>
-                <select value={selected.template} onChange={e => saveDash({ template: e.target.value })} style={{ width: '100%', padding: '8px 12px', background: T.bg3, color: T.tx, border: `1px solid ${T.bdr}`, borderRadius: 8, fontSize: 12 }}>
+                <label style={{ fontSize: 10, color: T.tx3 || '#6b6b90', fontWeight: 700, display: 'block', marginBottom: 4 }}>TEMPLATE</label>
+                <select value={selected.template} onChange={e => saveDash({ template: e.target.value })} style={{ ...inputStyle }}>
                   <option value="simple">📊 Simples (2 páginas)</option>
                   <option value="complete">📈 Completo (7 páginas)</option>
                   <option value="mega">🚀 Mega (16+ páginas)</option>
                 </select>
               </div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 10, color: T.tx3, fontWeight: 700, display: 'block', marginBottom: 4 }}>TEMA</label>
-                <select value={selected.theme} onChange={e => saveDash({ theme: e.target.value })} style={{ width: '100%', padding: '8px 12px', background: T.bg3, color: T.tx, border: `1px solid ${T.bdr}`, borderRadius: 8, fontSize: 12 }}>
+                <label style={{ fontSize: 10, color: T.tx3 || '#6b6b90', fontWeight: 700, display: 'block', marginBottom: 4 }}>TEMA</label>
+                <select value={selected.theme} onChange={e => saveDash({ theme: e.target.value })} style={{ ...inputStyle }}>
                   <option value="dark">🌙 Dark</option>
                   <option value="light">☀️ Light</option>
                 </select>
@@ -556,5 +559,3 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
     </div>
   );
 }
- 
-// force rebuild Fri Apr  3 14:34:36 -03 2026
