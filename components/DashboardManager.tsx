@@ -221,7 +221,7 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
                   <div style={{ fontSize: 10, color: T.tx3 }}>ROAS: <span style={{ color: T.yellow, fontWeight: 600 }}>{(d.roas || 0).toFixed(2)}x</span></div>
                   <div style={{ fontSize: 10, color: T.tx3 }}>{d.theme === 'dark' ? '🌙' : '☀️'}</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); deleteDash(d.id); }} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: T.tx3, cursor: 'pointer', fontSize: 12, padding: 4 }}>✕</button>
+                <button onClick={e => { e.stopPropagation(); deleteDash(d.id); }} style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', cursor: 'pointer', fontSize: 11, padding: '4px 8px', borderRadius: 6, fontWeight: 700 }}>🗑️</button>
               </div>
             ))}
           </div>
