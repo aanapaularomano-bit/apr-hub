@@ -556,3 +556,4 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
     </div>
   );
 }
+ 
