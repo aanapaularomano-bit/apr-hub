@@ -221,7 +221,7 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
                   <div style={{ fontSize: 10, color: T.tx3 }}>ROAS: <span style={{ color: T.yellow, fontWeight: 600 }}>{(d.roas || 0).toFixed(2)}x</span></div>
                   <div style={{ fontSize: 10, color: T.tx3 }}>{d.theme === 'dark' ? '🌙' : '☀️'}</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); deleteDash(d.id); }} style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', cursor: 'pointer', fontSize: 11, padding: '4px 8px', borderRadius: 6, fontWeight: 700 }}>🗑️</button>
+                <button onClick={e => { e.stopPropagation(); deleteDash(d.id); }} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: T.tx3, cursor: 'pointer', fontSize: 12, padding: 4 }}>✕</button>
               </div>
             ))}
           </div>
@@ -300,6 +300,48 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
               </div>
             </FieldRow>
             <Field label="Resumo Executivo" field="resumo" type="textarea" />
+
+            <SectionHeader title="Integração Google Sheets (Stract)" icon="📊" />
+            <Field label="URL da Planilha Google Sheets" field="sheet_url" type="text" />
+            <Field label="Nome da Aba (deixe vazio para primeira aba)" field="sheet_tab" type="text" />
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8 }}>
+              <button
+                onClick={async () => {
+                  if (!selected.sheet_url) { alert('Cole o link da planilha primeiro!'); return; }
+                  setSaving(true);
+                  try {
+                    const res = await fetch('/api/sync-sheets', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ dashboard_id: selected.id }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      alert(`✅ Sync concluído!\n\nLeads: ${data.leads}\nInvestimento: R$ ${data.investimento?.toFixed(2)}\nDias: ${data.daily_count}\nAnúncios: ${data.ads_count}`);
+                      // Reload dashboard data
+                      const { data: updated } = await supabase.from('client_dashboards').select('*, clients(name)').eq('id', selected.id).single();
+                      if (updated) { setSelected(updated); setDashes(dashes.map(d => d.id === selected.id ? updated : d)); }
+                    } else {
+                      alert('❌ Erro: ' + (data.error || 'Desconhecido'));
+                    }
+                  } catch (err: any) {
+                    alert('❌ Erro: ' + err.message);
+                  }
+                  setSaving(false);
+                }}
+                style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+              >
+                🔄 Sincronizar Agora
+              </button>
+              {selected.last_sync && (
+                <span style={{ fontSize: 11, color: T.tx3 }}>
+                  Último sync: {new Date(selected.last_sync).toLocaleString('pt-BR')}
+                </span>
+              )}
+              <span style={{ fontSize: 10, color: T.tx3, marginLeft: 'auto' }}>
+                ⏰ Sync automático a cada 6 horas
+              </span>
+            </div>
           </>
         )}
 
