@@ -19,9 +19,14 @@ function extractSpreadsheetId(url: string): string | null {
 
 function parseNumber(val: any): number {
   if (val === null || val === undefined || val === '') return 0;
-  const str = String(val).replace(/\./g, '').replace(',', '.');
-  const num = parseFloat(str);
-  return isNaN(num) ? 0 : num;
+  // UNFORMATTED_VALUE returns raw numbers, just parse directly
+  if (typeof val === 'number') return val;
+  const str = String(val).trim();
+  // If it has comma as decimal (Brazilian format text), convert
+  if (str.includes(',') && !str.includes('.')) {
+    return parseFloat(str.replace(',', '.')) || 0;
+  }
+  return parseFloat(str) || 0;
 }
 
 function parseCampaignName(name: string) {
@@ -432,4 +437,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
-// sync
