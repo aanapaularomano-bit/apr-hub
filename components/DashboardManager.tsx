@@ -266,7 +266,7 @@ export default function DashboardManager({ user, clients, T }: DashManagerProps)
       <div style={{ overflowX: 'auto', marginBottom: 20, WebkitOverflowScrolling: 'touch' }}>
         <div style={{ display: 'flex', gap: 0, background: T.bg3 || '#1a1a3e', borderRadius: 10, padding: 4, width: 'max-content' }}>
           {editTabs.map(t => (
-            <button key={t.k} onClick={() => setEditTab(t.k)} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: editTab === t.k ? (T.accent || '#6366f1') : 'transparent', color: editTab === t.k ? '#fff' : '#a0a0c0', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{t.l}</button>
+            <button key={t.k} onClick={() => setEditTab(t.k)} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: editTab === t.k ? '#6366f1' : 'rgba(255,255,255,0.06)', color: editTab === t.k ? '#ffffff' : '#b0b0d0', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{t.l}</button>
           ))}
         </div>
       </div>
