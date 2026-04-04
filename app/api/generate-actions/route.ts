@@ -24,8 +24,9 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      return NextResponse.json({ error: 'API error: ' + res.status + ' ' + errText }, { status: res.status });
+      const errBody = await res.text();
+      console.error('Anthropic API error:', res.status, errBody);
+      return NextResponse.json({ error: 'API ' + res.status, detail: errBody }, { status: 200 });
     }
 
     const data = await res.json();
