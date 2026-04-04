@@ -7,6 +7,7 @@ import Financeiro from './Financeiro';
 import Prospects from './Prospects';
 import BancoEstrategias from './BancoEstrategias';
 import DashboardManager from './DashboardManager';
+import ProximasAcoes from './ProximasAcoes';
 
 const btnS = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
@@ -809,7 +810,7 @@ Responda a pergunta da Ana Paula sobre a agência.`;
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 16, borderBottom: '1px solid ' + T.bdr }}>
-        {[{ id: 'log', l: '📝 Activity Log' }, { id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
+        {[{ id: 'log', l: '📝 Activity Log' }, { id: 'acoes', l: '🚀 Próximas Ações' }, { id: 'info', l: '📋 Info' }, { id: 'metricas', l: '📊 Funil & Métricas' }, { id: 'tarefas', l: '✅ Tarefas' }, { id: 'notas', l: '📝 Notas' }].map(t => (
           <button key={t.id} onClick={() => setClientTab(t.id)} style={{ background: clientTab === t.id ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', padding: '9px 16px', cursor: 'pointer', borderBottom: clientTab === t.id ? '2px solid ' + sq.color : '2px solid transparent', color: clientTab === t.id ? T.tx : T.mt, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' as const }}>{t.l}</button>
         ))}
       </div>
@@ -990,7 +991,10 @@ Responda a pergunta da Ana Paula sobre a agência.`;
           </div>
         </div>
       )}
-
+{/* ═══ PRÓXIMAS AÇÕES TAB ═══ */}
+      {clientTab === 'acoes' && (
+        <ProximasAcoes client={c} user={user} />
+      )}
       {/* ═══ ACTIVITY LOG TAB ═══ */}
       {clientTab === 'log' && (
         <div>
