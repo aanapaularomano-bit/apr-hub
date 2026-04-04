@@ -46,44 +46,7 @@ export default function Dossies({ client, user }: DossiesProps) {
     const typeInfo = TYPES.find(t => t.k === selectedType) || TYPES[7];
     const dossieTitle = title.trim() || (typeInfo.l.split(' ').slice(1).join(' ') + ' — ' + client.name);
 
-    const prompt = `Você é a Alice, estrategista digital sênior da APR Digital. Gere um DOSSIÊ ESTRATÉGICO visual e profissional.
-
-CLIENTE: ${client.name}
-TIPO: ${typeInfo.l} — ${typeInfo.desc}
-NICHO: ${client.niche || 'não informado'}
-PRODUTO: ${client.product || 'não informado'}
-
-DADOS FORNECIDOS:
-${rawData}
-
-Gere o dossiê como um JSON puro (sem markdown, sem backticks). O formato é um array de SECTIONS. Cada section tem:
-- "title": título da seção (curto, impactante)
-- "category": categoria curta (ex: "ANÁLISE", "ESTRATÉGIA", "COPY", "PERFIL", "INSIGHTS")
-- "type": um de: "text", "cards", "metrics", "tags", "accordion", "list", "quote", "highlight"
-- "content": texto (para types text, quote, highlight)
-- "items": array (para types cards, metrics, tags, accordion, list)
-
-TIPOS DE SECTION:
-- "text": parágrafo de análise. content = string
-- "cards": cards visuais. items = [{title, description, emoji, tags:[], metric:0-100, metric_label}]
-- "metrics": KPIs grandes. items = [{value, label, icon}]
-- "tags": badges/tags. items = [{label, color}] ou ["tag1","tag2"]
-- "accordion": seções expansíveis. items = [{title, content, tags:[]}]
-- "list": lista numerada. items = [{title, description}]
-- "quote": citação destacada. content = texto, author = string
-- "highlight": bloco destacado. content = texto
-
-REGRAS:
-- Gere entre 5 e 10 seções variando os tipos para ficar visualmente rico
-- Use linguagem profissional mas acessível
-- Seja ESPECÍFICO com os dados fornecidos, não genérico
-- Para cards, use emojis relevantes e tags impactantes
-- Para métricas, use dados reais dos dados fornecidos
-- Comece com métricas/overview, depois aprofunde
-- Termine com ações recomendadas ou próximos passos
-- Tudo em português do Brasil
-
-Retorne APENAS o JSON array de sections.`;
+    const prompt = 'Voce e a Alice, estrategista digital senior da APR Digital. Gere um DOSSIE ESTRATEGICO visual e profissional.\n\nCLIENTE: ' + client.name + '\nTIPO: ' + typeInfo.l + ' — ' + typeInfo.desc + '\nNICHO: ' + (client.niche || 'nao informado') + '\nPRODUTO: ' + (client.product || 'nao informado') + '\n\nDADOS FORNECIDOS:\n' + rawData + '\n\nGere o dossie como um JSON puro (sem markdown, sem backticks, sem texto antes ou depois). O formato e um array de SECTIONS. Cada section tem:\n- "title": titulo da secao\n- "category": categoria curta (ex: "ANALISE", "ESTRATEGIA", "COPY", "PERFIL")\n- "type": um de: "text", "cards", "metrics", "tags", "accordion", "list", "highlight"\n- "content": texto (para types text, highlight)\n- "items": array (para types cards, metrics, tags, accordion, list)\n\nTIPOS DE SECTION:\n- "text": paragrafo. content = string\n- "cards": cards visuais. items = [{"title":"x","description":"x","emoji":"x","tags":["x"],"metric":50,"metric_label":"Volume"}]\n- "metrics": KPIs. items = [{"value":"x","label":"x","icon":"x"}]\n- "tags": badges. items = [{"label":"x"}]\n- "accordion": expansiveis. items = [{"title":"x","content":"x","tags":["x"]}]\n- "list": lista numerada. items = [{"title":"x","description":"x"}]\n- "highlight": bloco destaque. content = string\n\nREGRAS:\n- Gere entre 5 e 8 secoes variando os tipos\n- Seja ESPECIFICO com os dados fornecidos\n- Comece com metricas/overview, depois aprofunde\n- Termine com acoes recomendadas\n- Tudo em portugues do Brasil\n- IMPORTANTE: Retorne APENAS o JSON array, nada mais. Sem explicacao, sem markdown.';
 
     try {
       const res = await fetch('/api/generate-actions', {
@@ -91,16 +54,39 @@ Retorne APENAS o JSON array de sections.`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
-  const text = data.content?.[0]?.text || '';
-      console.log('AI RAW:', text.substring(0, 200));
-      if (!text) { alert('❌ IA não retornou resposta. Verifique a API key.'); setGenerating(false); return; }
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      
+      console.log('AI RAW response length:', text.length);
+      console.log('AI RAW first 200:', text.substring(0, 200));
+      
+      if (!text) {
+        alert('IA nao retornou resposta. Verifique a API key no Vercel.');
+        setGenerating(false);
+        return;
+      }
+
+      if (data.error) {
+        alert('Erro da API: ' + JSON.stringify(data.error));
+        setGenerating(false);
+        return;
+      }
+      
       const cleanText = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      
       let sections;
-      try { sections = JSON.parse(cleanText); } catch (e) { console.error('JSON PARSE ERROR:', cleanText.substring(cleanText.length - 100)); alert('❌ Resposta da IA veio incompleta. Tente com menos dados.'); setGenerating(false); return; }
+      try {
+        sections = JSON.parse(cleanText);
+      } catch (parseErr) {
+        console.error('JSON parse failed. Last 200 chars:', cleanText.substring(cleanText.length - 200));
+        alert('Resposta da IA veio incompleta. Tente com menos dados ou texto mais curto.');
+        setGenerating(false);
+        return;
+      }
 
       if (Array.isArray(sections)) {
         const code = Math.random().toString(36).substring(2, 10) + Date.now().toString(36).slice(-4);
-        const { data: saved } = await supabase.from('client_dossies').insert({
+        const { data: saved, error: saveErr } = await supabase.from('client_dossies').insert({
           client_id: client.id,
           user_id: user.id,
           dossie_code: code,
@@ -111,6 +97,12 @@ Retorne APENAS o JSON array de sections.`;
           sections,
         }).select().single();
 
+        if (saveErr) {
+          alert('Erro ao salvar: ' + saveErr.message);
+          setGenerating(false);
+          return;
+        }
+
         if (saved) {
           setDossies([saved, ...dossies]);
           setCreating(false);
@@ -119,15 +111,15 @@ Retorne APENAS o JSON array de sections.`;
           window.open('/dossie/' + code, '_blank');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('DOSSIE ERROR:', err);
-      alert('❌ Erro: ' + (err instanceof Error ? err.message : String(err)));
+      alert('Erro: ' + (err.message || String(err)));
     }
     setGenerating(false);
   }
 
   async function deleteDossie(id: string) {
-    if (!confirm('Excluir este dossiê?')) return;
+    if (!confirm('Excluir este dossie?')) return;
     await supabase.from('client_dossies').delete().eq('id', id);
     setDossies(dossies.filter(d => d.id !== id));
   }
@@ -141,7 +133,7 @@ Retorne APENAS o JSON array de sections.`;
 
   const T = { card: 'rgba(255,255,255,0.02)', bdr: 'rgba(255,255,255,0.06)', tx: '#e2e8f0', mt: 'rgba(255,255,255,0.4)', mt2: 'rgba(255,255,255,0.2)', mo: "'JetBrains Mono', monospace" };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: T.mt }}>Carregando dossiês...</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' as const, color: T.mt }}>Carregando dossies...</div>;
 
   return (
     <div>
@@ -176,8 +168,8 @@ Retorne APENAS o JSON array de sections.`;
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={labelS}>Cole todos os dados aqui (pesquisa, métricas, análise, contexto...)</label>
-            <textarea value={rawData} onChange={e => setRawData(e.target.value)} placeholder={"Cole aqui tudo que a IA precisa saber:\n\n• Dados da pesquisa de leads\n• Métricas do funil\n• Análise do site/LP\n• Perfil do público\n• Dores e objeções identificadas\n• Qualquer contexto relevante\n\nQuanto mais dados, melhor o dossiê!"} rows={10} style={{ ...inputS, resize: 'vertical' as const, fontSize: 13, lineHeight: 1.6 }} />
+            <label style={labelS}>Cole todos os dados aqui</label>
+            <textarea value={rawData} onChange={e => setRawData(e.target.value)} placeholder={"Cole aqui tudo que a IA precisa saber:\n\n- Dados da pesquisa de leads\n- Métricas do funil\n- Análise do site/LP\n- Perfil do público\n- Dores e objeções\n- Qualquer contexto relevante"} rows={10} style={{ ...inputS, resize: 'vertical' as const, fontSize: 13, lineHeight: 1.6 }} />
           </div>
 
           <button onClick={generateDossie} disabled={!rawData.trim() || generating} style={{ padding: '12px 28px', borderRadius: 10, border: 'none', background: rawData.trim() && !generating ? 'linear-gradient(135deg,#8b5cf6,#6366f1)' : 'rgba(255,255,255,0.05)', color: rawData.trim() && !generating ? '#fff' : T.mt, cursor: rawData.trim() && !generating ? 'pointer' : 'not-allowed', fontSize: 15, fontWeight: 700 }}>
@@ -201,7 +193,7 @@ Retorne APENAS o JSON array de sections.`;
               <div style={{ fontSize: 11, color: T.mt, marginBottom: 8 }}>{d.dossie_type} · {new Date(d.created_at).toLocaleDateString('pt-BR')}</div>
               <div style={{ fontSize: 11, color: T.mt2, marginBottom: 12 }}>{(d.sections || []).length} seções</div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <a href={'/dossie/' + d.dossie_code} target="_blank" rel="noopener noreferrer" style={btnS('#6366f1', { fontSize: 11, padding: '6px 12px', textDecoration: 'none' })}>👁️ Ver</a>
+                <a href={'/dossie/' + d.dossie_code} target="_blank" rel="noopener noreferrer" style={{ ...btnS('#6366f1', { fontSize: 11, padding: '6px 12px' }), textDecoration: 'none' }}>👁️ Ver</a>
                 <button onClick={() => copyLink(d.dossie_code)} style={btnS(copied === d.dossie_code ? '#22c55e' : '#3b82f6', { fontSize: 11, padding: '6px 12px' })}>{copied === d.dossie_code ? '✅ Copiado!' : '🔗 Link'}</button>
                 <button onClick={() => deleteDossie(d.id)} style={btnS('#ef4444', { fontSize: 11, padding: '6px 12px', marginLeft: 'auto' })}>🗑️</button>
               </div>
