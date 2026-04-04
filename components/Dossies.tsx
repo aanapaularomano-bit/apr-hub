@@ -91,10 +91,12 @@ Retorne APENAS o JSON array de sections.`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
-      const data = await res.json();
-      const text = data.content?.[0]?.text || '';
+  const text = data.content?.[0]?.text || '';
+      console.log('AI RAW:', text.substring(0, 200));
+      if (!text) { alert('❌ IA não retornou resposta. Verifique a API key.'); setGenerating(false); return; }
       const cleanText = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-      const sections = JSON.parse(cleanText);
+      let sections;
+      try { sections = JSON.parse(cleanText); } catch (e) { console.error('JSON PARSE ERROR:', cleanText.substring(cleanText.length - 100)); alert('❌ Resposta da IA veio incompleta. Tente com menos dados.'); setGenerating(false); return; }
 
       if (Array.isArray(sections)) {
         const code = Math.random().toString(36).substring(2, 10) + Date.now().toString(36).slice(-4);
@@ -118,8 +120,8 @@ Retorne APENAS o JSON array de sections.`;
         }
       }
     } catch (err) {
-      alert('❌ Erro ao gerar dossiê. Tente novamente.');
-      console.error(err);
+      console.error('DOSSIE ERROR:', err);
+      alert('❌ Erro: ' + (err instanceof Error ? err.message : String(err)));
     }
     setGenerating(false);
   }
