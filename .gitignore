@@ -1,3 +1,8 @@
 node_modules/
 .next/
 .env.local
+
+# APR Financeiro - arquivos de atualização
+apr-financeiro-update.zip
+apr-financeiro-update/
+*.zip
