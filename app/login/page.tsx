@@ -1,138 +1,67 @@
 'use client';
 
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/';
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
-
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setError(error.message);
-      else setSuccess('Conta criada! Verifique seu email para confirmar.');
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setError('Email ou senha incorretos');
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        router.push(redirect);
+        router.refresh();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Senha incorreta');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('Erro de conexão. Tente novamente.');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(145deg, #08080f 0%, #0d0d1a 50%, #08080f 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-      color: '#e2e8f0',
-    }}>
-      <div style={{
-        width: 400,
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 20,
-        padding: 40,
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16, margin: '0 auto 16px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, fontWeight: 800, color: '#fff',
-          }}>A</div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>APR Hub</h1>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
-            {isSignUp ? 'Criar nova conta' : 'Faça login para acessar'}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              required
-              style={{
-                width: '100%', background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12,
-                padding: '12px 16px', color: '#e2e8f0', fontSize: 14, outline: 'none',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Senha</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-              style={{
-                width: '100%', background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12,
-                padding: '12px 16px', color: '#e2e8f0', fontSize: 14, outline: 'none',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          {error && (
-            <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5', fontSize: 12 }}>
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: '#86efac', fontSize: 12 }}>
-              {success}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%', padding: '14px',
-              background: loading ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              border: 'none', borderRadius: 12,
-              color: '#fff', fontSize: 14, fontWeight: 700,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? 'Aguarde...' : isSignUp ? 'Criar Conta' : 'Entrar'}
+    <div style={{minHeight:'100vh',background:'#0a0a0d',color:'#e9e9f2',fontFamily:'Inter,sans-serif',display:'flex',alignItems:'center',justifyContent:'center',padding:20,position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 20% 30%, rgba(200,255,90,.08), transparent 40%), radial-gradient(circle at 80% 70%, rgba(122,252,184,.05), transparent 50%)',pointerEvents:'none'}}/>
+      <div style={{background:'rgba(16,16,21,0.85)',backdropFilter:'blur(20px)',border:'1px solid #2a2a3a',borderRadius:20,padding:'48px 40px',maxWidth:420,width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(200,255,90,.05)',position:'relative',zIndex:1}}>
+        <div style={{width:64,height:64,borderRadius:16,background:'linear-gradient(135deg,#c8ff5a 0%,#7afcb8 100%)',display:'flex',alignItems:'center',justifyContent:'center',color:'#0a0a0d',fontFamily:'Georgia,serif',fontWeight:700,fontSize:28,marginBottom:24,boxShadow:'0 0 40px rgba(200,255,90,.3)'}}>A</div>
+        <h1 style={{fontFamily:'Georgia,serif',fontSize:28,fontWeight:600,letterSpacing:'-0.02em',margin:'0 0 8px'}}>APR Hub</h1>
+        <div style={{color:'#6a6a80',fontSize:13,textTransform:'uppercase',letterSpacing:'0.15em',fontFamily:'monospace',marginBottom:32}}>Acesso Restrito</div>
+        <form onSubmit={handleSubmit}>
+          <label style={{display:'block',fontSize:11,textTransform:'uppercase',letterSpacing:'0.12em',color:'#6a6a80',marginBottom:8,fontFamily:'monospace'}}>Senha de acesso</label>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Digite sua senha" autoFocus required disabled={loading}
+            style={{width:'100%',padding:'14px 16px',background:'#161620',border:'1px solid #2a2a3a',borderRadius:10,color:'#e9e9f2',fontFamily:'inherit',fontSize:15,outline:'none',boxSizing:'border-box'}}/>
+          {error && <div style={{background:'rgba(255,107,138,.1)',border:'1px solid rgba(255,107,138,.3)',color:'#ff6b8a',padding:'12px 14px',borderRadius:8,fontSize:13,marginTop:16}}>⚠ {error}</div>}
+          <button type="submit" disabled={loading||!password}
+            style={{width:'100%',padding:14,background:'#c8ff5a',color:'#0a0a0d',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:15,fontWeight:600,cursor:'pointer',marginTop:20,opacity:loading||!password?0.6:1}}>
+            {loading ? 'Validando...' : 'Entrar →'}
           </button>
         </form>
-
-        <div style={{ textAlign: 'center', marginTop: 20 }}>
-          <button
-            onClick={() => { setIsSignUp(!isSignUp); setError(''); setSuccess(''); }}
-            style={{
-              background: 'none', border: 'none', color: '#a5b4fc',
-              cursor: 'pointer', fontSize: 13, fontWeight: 500,
-            }}
-          >
-            {isSignUp ? 'Já tem conta? Fazer login' : 'Não tem conta? Criar agora'}
-          </button>
-        </div>
+        <div style={{marginTop:32,paddingTop:24,borderTop:'1px solid #2a2a3a',textAlign:'center',fontSize:11,color:'#6a6a80',fontFamily:'monospace',letterSpacing:'0.1em'}}>APR DIGITAL · 2026</div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{minHeight:'100vh',background:'#0a0a0d'}}/>}>
+      <LoginForm />
+    </Suspense>
   );
 }
