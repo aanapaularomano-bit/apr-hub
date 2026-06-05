@@ -1,17 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+// Acesso via API server-side (/api/financeiro)
 
 /* ============================================
    APR FINANCEIRO — Next.js + Supabase
    Rota: /financeiro
    ============================================ */
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Supabase acessado apenas no servidor
 
 const MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -85,16 +82,14 @@ export default function FinanceiroPage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('apr_financeiro')
-        .select('*')
-        .order('month_key', { ascending: true });
-      if (error) {
-        console.error(error);
+      const res = await fetch('/api/financeiro');
+      const json = await res.json();
+      if (json.error) {
+        console.error(json.error);
         setSaveStatus('Erro ao carregar');
       } else {
         const newDb: Record<string, any> = {};
-        (data || []).forEach((row: any) => {
+        (json.data || []).forEach((row: any) => {
           newDb[row.month_key] = row.data;
         });
         setDb(newDb);
@@ -107,11 +102,14 @@ export default function FinanceiroPage() {
   // SALVAR no Supabase (debounced)
   const saveMonth = useCallback(async (monthKey: string, monthData: any) => {
     setSaveStatus('Salvando...');
-    const { error } = await supabase
-      .from('apr_financeiro')
-      .upsert({ month_key: monthKey, data: monthData, updated_at: new Date().toISOString() }, { onConflict: 'month_key' });
-    if (error) {
-      console.error(error);
+    const res = await fetch('/api/financeiro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month_key: monthKey, data: monthData }),
+    });
+    const json = await res.json();
+    if (json.error) {
+      console.error(json.error);
       setSaveStatus('Erro ao salvar');
     } else {
       setSaveStatus('Salvo na nuvem ✓');
