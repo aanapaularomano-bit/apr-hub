@@ -499,15 +499,7 @@ export default function FinanceiroPage() {
               onUpd={(i, f, v) => updRow('cust-pf', i, f, v)} onDel={i => delRow('cust-pf', i)} onAdd={() => addRow('cust-pf')}
               totalLabel="TOTAL CUSTOS PF" totalSpan={3} totalValue={fmtBR(sumValor(m['cust-pf']))} />
 
-            <TableBlock title="🛒 Variáveis · Pessoal" badge="pontual"
-              data={m['var-pf'] || []} fields={[
-                { k: 'desc', type: 'text', ph: 'Descrição' },
-                { k: 'cat', type: 'select', opts: ['Lazer', 'Compras', 'Restaurante', 'Beleza', 'Viagem', 'Presente', 'Outros'] },
-                { k: 'data', type: 'text', ph: 'dia' },
-                { k: 'valor', type: 'number', right: true },
-              ]} headers={['Descrição', 'Categoria', 'Data', 'Valor (R$)']}
-              onUpd={(i, f, v) => updRow('var-pf', i, f, v)} onDel={i => delRow('var-pf', i)} onAdd={() => addRow('var-pf')}
-              totalLabel="TOTAL VARIÁVEIS PF" totalSpan={3} totalValue={fmtBR(sumValor(m['var-pf']))} />
+
           </section>
         )}
 
