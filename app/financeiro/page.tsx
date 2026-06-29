@@ -128,6 +128,32 @@ export default function FinanceiroPage() {
     });
   }, [currentMonth, saveMonth]);
 
+  const copyPreviousMonth = () => {
+    const [y, mo] = currentMonth.split('-').map(Number);
+    const prevDate = new Date(y, mo - 2, 1);
+    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    const prevData = db[prevKey];
+    if (!prevData) {
+      alert('Nenhum dado encontrado no mês anterior para copiar.');
+      return;
+    }
+    if (!confirm(`Copiar dados de \${MESES_NOMES[prevDate.getMonth()]} / \${prevDate.getFullYear()} para o mês atual? Isso substituirá os dados atuais.`)) return;
+    const copied = JSON.parse(JSON.stringify(prevData));
+    // Reseta campos de status (recebido/pago) para o novo mês
+    (copied['rec-pj'] || []).forEach((r: any) => { r.recebido = false; });
+    (copied['rec-pf'] || []).forEach((r: any) => { r.recebido = false; });
+    (copied['cust-pj'] || []).forEach((r: any) => { r.pago = false; });
+    (copied['cust-pf'] || []).forEach((r: any) => { r.pago = false; });
+    copied.notes = '';
+    setDb(prev => {
+      const newDb = { ...prev, [currentMonth]: copied };
+      saveMonth(currentMonth, copied);
+      return newDb;
+    });
+  };
+
+
+
   const m = db[currentMonth] || makeEmptyMonth();
 
   // ===== CÁLCULOS =====
@@ -332,6 +358,7 @@ export default function FinanceiroPage() {
               {monthOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
             </select>
           </div>
+          <button className="btn" onClick={copyPreviousMonth}>📋 Copiar mês anterior</button>
           <a href="/" className="btn">← Voltar ao Hub</a>
         </div>
       </header>
@@ -427,7 +454,255 @@ export default function FinanceiroPage() {
                 </div>
               </div>
             </div>
-          </section>
+
+            {/* GRÁFICOS */}
+            <div className="two-col">
+              {/* Concentração de receita por cliente */}
+              <div className="block">
+                <div className="block-head"><div className="block-title">🎯 Concentração de Receita</div></div>
+                <div className="block-body">
+                  {(() => {
+                    const clientes = (m['rec-pj'] || []).filter((r: any) => r.valor > 0 && r.status === 'Ativo');
+                    if (!clientes.length) return <div style={{textAlign:'center',color:'var(--text-dim)',padding:20,fontSize:13}}>Preencha os valores dos clientes pra ver a concentração.</div>;
+                    const total = clientes.reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const sorted = [...clientes].sort((a: any, b: any) => (b.valor || 0) - (a.valor || 0));
+                    const colors = ['var(--accent)', 'var(--accent-2)', 'var(--info)', 'var(--warn)', '#c084fc', '#f472b6', '#67e8f9', '#fbbf24'];
+                    return (
+                      <div>
+                        {/* Barra horizontal empilhada */}
+                        <div style={{display:'flex',height:32,borderRadius:8,overflow:'hidden',marginBottom:16}}>
+                          {sorted.map((cl: any, idx: number) => {
+                            const pct = total > 0 ? (cl.valor / total) * 100 : 0;
+                            return <div key={idx} style={{width:pct+'%',background:colors[idx % colors.length],minWidth:pct>3?'auto':'2px',position:'relative',cursor:'pointer'}} title={cl.cliente+': '+pct.toFixed(1)+'%'}></div>;
+                          })}
+                        </div>
+                        {/* Legenda */}
+                        {sorted.map((cl: any, idx: number) => {
+                          const pct = total > 0 ? (cl.valor / total) * 100 : 0;
+                          const isRisk = pct > 30;
+                          return (
+                            <div key={idx} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--line-soft)',fontSize:13}}>
+                              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                <span style={{width:10,height:10,borderRadius:2,background:colors[idx % colors.length],display:'inline-block'}}></span>
+                                <span>{cl.cliente}</span>
+                              </div>
+                              <div style={{fontFamily:'JetBrains Mono,monospace',display:'flex',gap:12,alignItems:'center'}}>
+                                <span>{fmtBR(cl.valor)}</span>
+                                <span style={{color: isRisk ? 'var(--danger)' : 'var(--text-dim)',fontWeight: isRisk ? 600 : 400}}>
+                                  {pct.toFixed(1)}% {isRisk ? '⚠' : ''}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {sorted.some((cl: any) => total > 0 && (cl.valor / total) * 100 > 30) && (
+                          <div style={{marginTop:12,padding:'10px 14px',borderRadius:8,background:'rgba(255,107,138,.08)',border:'1px solid rgba(255,107,138,.2)',fontSize:12,color:'var(--danger)'}}>
+                            ⚠ Atenção: cliente(s) com mais de 30% da receita. Considere diversificar a base.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Tendência vs mês anterior */}
+              <div className="block">
+                <div className="block-head"><div className="block-title">📈 Tendência vs Mês Anterior</div></div>
+                <div className="block-body">
+                  {(() => {
+                    const [y, mo] = currentMonth.split('-').map(Number);
+                    const prevDate = new Date(y, mo - 2, 1);
+                    const prevKey = prevDate.getFullYear() + '-' + String(prevDate.getMonth() + 1).padStart(2, '0');
+                    const prev = db[prevKey];
+                    if (!prev) return <div style={{textAlign:'center',color:'var(--text-dim)',padding:20,fontSize:13}}>Sem dados do mês anterior para comparar.</div>;
+                    const prevRecPJ = (prev['rec-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const prevRecPF = (prev['rec-pf'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const prevCustPJ = (prev['cust-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0) + (prev['var-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const prevCustPF = (prev['cust-pf'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const prevTotal = prevRecPJ + prevRecPF;
+                    const prevCust = prevCustPJ + prevCustPF;
+                    const prevRes = prevTotal - prevCust;
+                    const items = [
+                      { label: 'Receita PJ', atual: recPJ, anterior: prevRecPJ },
+                      { label: 'Receita PF', atual: recPF, anterior: prevRecPF },
+                      { label: 'Despesas', atual: custTotal, anterior: prevCust },
+                      { label: 'Resultado', atual: resultado, anterior: prevRes },
+                    ];
+                    return (
+                      <div>
+                        {items.map((item, idx) => {
+                          const diff = item.anterior > 0 ? ((item.atual - item.anterior) / item.anterior) * 100 : (item.atual > 0 ? 100 : 0);
+                          const isUp = diff > 0;
+                          const isDespesa = item.label === 'Despesas';
+                          const good = isDespesa ? !isUp : isUp;
+                          return (
+                            <div key={idx} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--line-soft)'}}>
+                              <div>
+                                <div style={{fontSize:13,marginBottom:4}}>{item.label}</div>
+                                <div style={{fontSize:11,color:'var(--text-dim)',fontFamily:'JetBrains Mono,monospace'}}>
+                                  ant: {fmtBR(item.anterior)}
+                                </div>
+                              </div>
+                              <div style={{textAlign:'right'}}>
+                                <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:15,fontWeight:600}}>{fmtBR(item.atual)}</div>
+                                <div style={{fontSize:13,fontFamily:'JetBrains Mono,monospace',color: good ? 'var(--accent)' : 'var(--danger)',fontWeight:600}}>
+                                  {isUp ? '↑' : '↓'} {Math.abs(diff).toFixed(1)}%
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Receita vs Despesa - Barras do mês */}
+            <div className="block" style={{marginTop:24}}>
+              <div className="block-head"><div className="block-title">📊 Receita vs Despesa · Visual</div></div>
+              <div className="block-body">
+                {(() => {
+                  const max = Math.max(recTotal, custTotal, 1);
+                  return (
+                    <div>
+                      <div style={{marginBottom:16}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13}}>
+                          <span>Receitas</span>
+                          <span style={{fontFamily:'JetBrains Mono,monospace',color:'var(--accent)'}}>{fmtBR(recTotal)}</span>
+                        </div>
+                        <div style={{height:28,background:'var(--bg-3)',borderRadius:6,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:(recTotal/max*100)+'%',background:'linear-gradient(90deg,var(--accent),var(--accent-2))',borderRadius:6,transition:'width .4s'}}></div>
+                        </div>
+                      </div>
+                      <div style={{marginBottom:16}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13}}>
+                          <span>Despesas</span>
+                          <span style={{fontFamily:'JetBrains Mono,monospace',color:'var(--danger)'}}>{fmtBR(custTotal)}</span>
+                        </div>
+                        <div style={{height:28,background:'var(--bg-3)',borderRadius:6,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:(custTotal/max*100)+'%',background:'linear-gradient(90deg,var(--danger),var(--warn))',borderRadius:6,transition:'width .4s',opacity:.8}}></div>
+                        </div>
+                      </div>
+                      <div style={{display:'flex',justifyContent:'space-between',paddingTop:12,borderTop:'2px solid var(--line)',fontSize:15}}>
+                        <span style={{fontWeight:600}}>Resultado</span>
+                        <span style={{fontFamily:'Fraunces,serif',fontSize:22,fontWeight:600,color:resultado>=0?'var(--accent)':'var(--danger)'}}>{fmtBR(resultado)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* GRAFICOS */}
+            <div className="two-col">
+              <div className="block">
+                <div className="block-head"><div className="block-title">\ud83c\udfaf Concentra\u00e7\u00e3o de Receita</div></div>
+                <div className="block-body">
+                  {(() => {
+                    const clientes = (m['rec-pj'] || []).filter((r: any) => r.valor > 0 && r.status === 'Ativo');
+                    if (!clientes.length) return <div style={{textAlign:'center',color:'var(--text-dim)',padding:20,fontSize:13}}>Preencha os valores dos clientes.</div>;
+                    const total = clientes.reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const sorted = [...clientes].sort((a: any, b: any) => (b.valor || 0) - (a.valor || 0));
+                    const colors = ['var(--accent)', 'var(--accent-2)', 'var(--info)', 'var(--warn)', '#c084fc', '#f472b6'];
+                    return (<div>
+                      <div style={{display:'flex',height:32,borderRadius:8,overflow:'hidden',marginBottom:16}}>
+                        {sorted.map((cl: any, idx: number) => {
+                          const pct = total > 0 ? (cl.valor / total) * 100 : 0;
+                          return <div key={idx} style={{width:pct+'%',background:colors[idx % colors.length],minWidth:2}} title={cl.cliente+': '+pct.toFixed(1)+'%'}></div>;
+                        })}
+                      </div>
+                      {sorted.map((cl: any, idx: number) => {
+                        const pct = total > 0 ? (cl.valor / total) * 100 : 0;
+                        const isRisk = pct > 30;
+                        return (<div key={idx} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--line-soft)',fontSize:13}}>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                            <span style={{width:10,height:10,borderRadius:2,background:colors[idx % colors.length],display:'inline-block'}}></span>
+                            <span>{cl.cliente}</span>
+                          </div>
+                          <div style={{fontFamily:'JetBrains Mono,monospace',display:'flex',gap:12,alignItems:'center'}}>
+                            <span>{fmtBR(cl.valor)}</span>
+                            <span style={{color: isRisk ? 'var(--danger)' : 'var(--text-dim)',fontWeight: isRisk ? 600 : 400}}>{pct.toFixed(1)}%{isRisk ? ' \u26a0' : ''}</span>
+                          </div>
+                        </div>);
+                      })}
+                    </div>);
+                  })()}
+                </div>
+              </div>
+
+              <div className="block">
+                <div className="block-head"><div className="block-title">\ud83d\udcc8 Tend\u00eancia vs M\u00eas Anterior</div></div>
+                <div className="block-body">
+                  {(() => {
+                    const [y2, mo2] = currentMonth.split('-').map(Number);
+                    const prevDate2 = new Date(y2, mo2 - 2, 1);
+                    const prevKey2 = prevDate2.getFullYear() + '-' + String(prevDate2.getMonth() + 1).padStart(2, '0');
+                    const prev = db[prevKey2];
+                    if (!prev) return <div style={{textAlign:'center',color:'var(--text-dim)',padding:20,fontSize:13}}>Sem dados do m\u00eas anterior.</div>;
+                    const pRecPJ = (prev['rec-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const pRecPF = (prev['rec-pf'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const pCustPJ = (prev['cust-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0) + (prev['var-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const pCustPF = (prev['cust-pf'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
+                    const pTotal = pRecPJ + pRecPF;
+                    const pCust = pCustPJ + pCustPF;
+                    const pRes = pTotal - pCust;
+                    const items = [
+                      { label: 'Receita PJ', atual: recPJ, anterior: pRecPJ },
+                      { label: 'Receita PF', atual: recPF, anterior: pRecPF },
+                      { label: 'Despesas', atual: custTotal, anterior: pCust },
+                      { label: 'Resultado', atual: resultado, anterior: pRes },
+                    ];
+                    return (<div>
+                      {items.map((item, idx) => {
+                        const diff = item.anterior > 0 ? ((item.atual - item.anterior) / item.anterior) * 100 : (item.atual > 0 ? 100 : 0);
+                        const isUp = diff > 0;
+                        const isDespesa = item.label === 'Despesas';
+                        const good = isDespesa ? !isUp : isUp;
+                        return (<div key={idx} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--line-soft)'}}>
+                          <div>
+                            <div style={{fontSize:13,marginBottom:4}}>{item.label}</div>
+                            <div style={{fontSize:11,color:'var(--text-dim)',fontFamily:'JetBrains Mono,monospace'}}>ant: {fmtBR(item.anterior)}</div>
+                          </div>
+                          <div style={{textAlign:'right'}}>
+                            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:15,fontWeight:600}}>{fmtBR(item.atual)}</div>
+                            <div style={{fontSize:13,fontFamily:'JetBrains Mono,monospace',color: good ? 'var(--accent)' : 'var(--danger)',fontWeight:600}}>
+                              {isUp ? '\u2191' : '\u2193'} {Math.abs(diff).toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>);
+                      })}
+                    </div>);
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            <div className="block" style={{marginTop:24}}>
+              <div className="block-head"><div className="block-title">\ud83d\udcca Receita vs Despesa</div></div>
+              <div className="block-body">
+                {(() => {
+                  const max = Math.max(recTotal, custTotal, 1);
+                  return (<div>
+                    <div style={{marginBottom:16}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13}}><span>Receitas</span><span style={{fontFamily:'JetBrains Mono,monospace',color:'var(--accent)'}}>{fmtBR(recTotal)}</span></div>
+                      <div style={{height:28,background:'var(--bg-3)',borderRadius:6,overflow:'hidden'}}><div style={{height:'100%',width:(recTotal/max*100)+'%',background:'linear-gradient(90deg,var(--accent),var(--accent-2))',borderRadius:6}}></div></div>
+                    </div>
+                    <div style={{marginBottom:16}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13}}><span>Despesas</span><span style={{fontFamily:'JetBrains Mono,monospace',color:'var(--danger)'}}>{fmtBR(custTotal)}</span></div>
+                      <div style={{height:28,background:'var(--bg-3)',borderRadius:6,overflow:'hidden'}}><div style={{height:'100%',width:(custTotal/max*100)+'%',background:'linear-gradient(90deg,var(--danger),var(--warn))',borderRadius:6,opacity:.8}}></div></div>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',paddingTop:12,borderTop:'2px solid var(--line)',fontSize:15}}>
+                      <span style={{fontWeight:600}}>Resultado</span>
+                      <span style={{fontFamily:'Fraunces,serif',fontSize:22,fontWeight:600,color:resultado>=0?'var(--accent)':'var(--danger)'}}>{fmtBR(resultado)}</span>
+                    </div>
+                  </div>);
+                })()}
+              </div>
+            </div>
+\n          </section>
         )}
 
         {/* PJ */}
