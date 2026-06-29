@@ -599,7 +599,7 @@ export default function FinanceiroPage() {
             {/* GRAFICOS */}
             <div className="two-col">
               <div className="block">
-                <div className="block-head"><div className="block-title">\ud83c\udfaf Concentra\u00e7\u00e3o de Receita</div></div>
+                <div className="block-head"><div className="block-title">🎯 Concentração de Receita</div></div>
                 <div className="block-body">
                   {(() => {
                     const clientes = (m['rec-pj'] || []).filter((r: any) => r.valor > 0 && r.status === 'Ativo');
@@ -624,7 +624,7 @@ export default function FinanceiroPage() {
                           </div>
                           <div style={{fontFamily:'JetBrains Mono,monospace',display:'flex',gap:12,alignItems:'center'}}>
                             <span>{fmtBR(cl.valor)}</span>
-                            <span style={{color: isRisk ? 'var(--danger)' : 'var(--text-dim)',fontWeight: isRisk ? 600 : 400}}>{pct.toFixed(1)}%{isRisk ? ' \u26a0' : ''}</span>
+                            <span style={{color: isRisk ? 'var(--danger)' : 'var(--text-dim)',fontWeight: isRisk ? 600 : 400}}>{pct.toFixed(1)}%{isRisk ? ' ⚠' : ''}</span>
                           </div>
                         </div>);
                       })}
@@ -634,14 +634,14 @@ export default function FinanceiroPage() {
               </div>
 
               <div className="block">
-                <div className="block-head"><div className="block-title">\ud83d\udcc8 Tend\u00eancia vs M\u00eas Anterior</div></div>
+                <div className="block-head"><div className="block-title">📈 Tendência vs Mês Anterior</div></div>
                 <div className="block-body">
                   {(() => {
                     const [y2, mo2] = currentMonth.split('-').map(Number);
                     const prevDate2 = new Date(y2, mo2 - 2, 1);
                     const prevKey2 = prevDate2.getFullYear() + '-' + String(prevDate2.getMonth() + 1).padStart(2, '0');
                     const prev = db[prevKey2];
-                    if (!prev) return <div style={{textAlign:'center',color:'var(--text-dim)',padding:20,fontSize:13}}>Sem dados do m\u00eas anterior.</div>;
+                    if (!prev) return <div style={{textAlign:'center',color:'var(--text-dim)',padding:20,fontSize:13}}>Sem dados do mês anterior.</div>;
                     const pRecPJ = (prev['rec-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
                     const pRecPF = (prev['rec-pf'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
                     const pCustPJ = (prev['cust-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0) + (prev['var-pj'] || []).reduce((s: number, r: any) => s + (+r.valor || 0), 0);
@@ -669,7 +669,7 @@ export default function FinanceiroPage() {
                           <div style={{textAlign:'right'}}>
                             <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:15,fontWeight:600}}>{fmtBR(item.atual)}</div>
                             <div style={{fontSize:13,fontFamily:'JetBrains Mono,monospace',color: good ? 'var(--accent)' : 'var(--danger)',fontWeight:600}}>
-                              {isUp ? '\u2191' : '\u2193'} {Math.abs(diff).toFixed(1)}%
+                              {isUp ? '↑' : '↓'} {Math.abs(diff).toFixed(1)}%
                             </div>
                           </div>
                         </div>);
@@ -681,7 +681,7 @@ export default function FinanceiroPage() {
             </div>
 
             <div className="block" style={{marginTop:24}}>
-              <div className="block-head"><div className="block-title">\ud83d\udcca Receita vs Despesa</div></div>
+              <div className="block-head"><div className="block-title">📊 Receita vs Despesa</div></div>
               <div className="block-body">
                 {(() => {
                   const max = Math.max(recTotal, custTotal, 1);
@@ -702,7 +702,8 @@ export default function FinanceiroPage() {
                 })()}
               </div>
             </div>
-\n          </section>
+
+          </section>
         )}
 
         {/* PJ */}
