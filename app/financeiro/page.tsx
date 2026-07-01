@@ -180,7 +180,7 @@ export default function FinanceiroPage() {
   const delRow = (key: string, idx: number) => {
     if (!confirm('Remover este item?')) return;
     updateMonth(month => {
-      month[key].splice(idx, 1);
+      month[key] = month[key].filter((_: any, i: number) => i !== idx);
       return month;
     });
   };
