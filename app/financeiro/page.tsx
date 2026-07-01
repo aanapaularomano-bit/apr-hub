@@ -15,11 +15,11 @@ const MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julh
 function makeEmptyMonth() {
   return {
     'rec-pj': [
-      { cliente: 'Renata Cappai (PEDS)', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', valor: 0, recebido: false },
-      { cliente: 'Renata Bacha (CBDS)', squad: 'Perpétuo', tipo: 'Recorrente', status: 'Ativo', valor: 0, recebido: false },
-      { cliente: 'Babi Rezende (Yoga)', squad: 'Lançamentos', tipo: 'Projeto', status: 'Ativo', valor: 0, recebido: false },
-      { cliente: 'Franciele Maftum (PNP)', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', valor: 0, recebido: false },
-      { cliente: 'Bruna Araújo (C2PRO)', squad: 'Perpétuo', tipo: 'Recorrente', status: 'Ativo', valor: 0, recebido: false },
+      { cliente: 'Renata Cappai (PEDS)', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', dia: '', valor: 0, recebido: false },
+      { cliente: 'Renata Bacha (CBDS)', squad: 'Perpétuo', tipo: 'Recorrente', status: 'Ativo', dia: '', valor: 0, recebido: false },
+      { cliente: 'Babi Rezende (Yoga)', squad: 'Lançamentos', tipo: 'Projeto', status: 'Ativo', dia: '', valor: 0, recebido: false },
+      { cliente: 'Franciele Maftum (PNP)', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', dia: '', valor: 0, recebido: false },
+      { cliente: 'Bruna Araújo (C2PRO)', squad: 'Perpétuo', tipo: 'Recorrente', status: 'Ativo', dia: '', valor: 0, recebido: false },
     ],
     'cust-pj': [
       { desc: 'Salário/Pró-labore', cat: 'Equipe', venc: '05', valor: 0, pago: false },
@@ -186,7 +186,7 @@ export default function FinanceiroPage() {
   };
   const addRow = (key: string) => {
     const templates: any = {
-      'rec-pj': { cliente: '', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', valor: 0, recebido: false },
+      'rec-pj': { cliente: '', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', dia: '', valor: 0, recebido: false },
       'cust-pj': { desc: '', cat: 'Ferramentas', venc: '', valor: 0, pago: false },
       'var-pj': { desc: '', cliente: '', data: '', valor: 0 },
       'rec-pf': { origem: '', tipo: 'Salário', data: '', valor: 0, recebido: false },
@@ -718,11 +718,12 @@ export default function FinanceiroPage() {
                 { k: 'squad', type: 'select', opts: ['Lançamentos', 'Perpétuo', 'Negócios Locais', 'Outros'] },
                 { k: 'tipo', type: 'select', opts: ['Recorrente', 'Projeto', 'Comissão', 'Outros'] },
                 { k: 'status', type: 'select', opts: ['Ativo', 'Negociação', 'Pausado', 'Finalizado'] },
+                { k: 'dia', type: 'text', ph: 'dia' },
                 { k: 'valor', type: 'number', right: true },
                 { k: 'recebido', type: 'check', right: true },
-              ]} headers={['Cliente', 'Squad', 'Tipo', 'Status', 'Valor (R$)', 'Recebido?']}
+              ]} headers={['Cliente', 'Squad', 'Tipo', 'Status', 'Dia pgto', 'Valor (R$)', 'Recebido?']}
               onUpd={(i, f, v) => updRow('rec-pj', i, f, v)} onDel={i => delRow('rec-pj', i)} onAdd={() => addRow('rec-pj')}
-              totalLabel="TOTAL RECEITAS PJ" totalSpan={4} totalValue={fmtBR(recPJ)} />
+              totalLabel="TOTAL RECEITAS PJ" totalSpan={5} totalValue={fmtBR(recPJ)} />
 
             <TableBlock title="📉 Custos Fixos · Agência" badge="mensal" badgeClass="pj"
               data={m['cust-pj'] || []} fields={[
