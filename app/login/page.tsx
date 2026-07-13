@@ -40,7 +40,7 @@ function LoginForm() {
       <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 20% 30%, rgba(200,255,90,.08), transparent 40%), radial-gradient(circle at 80% 70%, rgba(122,252,184,.05), transparent 50%)',pointerEvents:'none'}}/>
       <div style={{background:'rgba(16,16,21,0.85)',backdropFilter:'blur(20px)',border:'1px solid #2a2a3a',borderRadius:20,padding:'48px 40px',maxWidth:420,width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(200,255,90,.05)',position:'relative',zIndex:1}}>
         <div style={{width:64,height:64,borderRadius:16,background:'linear-gradient(135deg,#c8ff5a 0%,#7afcb8 100%)',display:'flex',alignItems:'center',justifyContent:'center',color:'#0a0a0d',fontFamily:'Georgia,serif',fontWeight:700,fontSize:28,marginBottom:24,boxShadow:'0 0 40px rgba(200,255,90,.3)'}}>A</div>
-        <h1 style={{fontFamily:'Georgia,serif',fontSize:28,fontWeight:600,letterSpacing:'-0.02em',margin:'0 0 8px'}}>APR Hub</h1>
+        <h1 style={{fontFamily:'Georgia,serif',fontSize:28,fontWeight:600,letterSpacing:'-0.02em',margin:'0 0 8px'}}>Ana Paula Romano</h1>
         <div style={{color:'#6a6a80',fontSize:13,textTransform:'uppercase',letterSpacing:'0.15em',fontFamily:'monospace',marginBottom:32}}>Acesso Restrito</div>
         <form onSubmit={handleSubmit}>
           <label style={{display:'block',fontSize:11,textTransform:'uppercase',letterSpacing:'0.12em',color:'#6a6a80',marginBottom:8,fontFamily:'monospace'}}>Senha de acesso</label>

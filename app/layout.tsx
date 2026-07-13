@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'APR Hub — Sistema de Gestão',
+  title: 'Ana Paula Romano — Sistema de Gestão',
   description: 'APR Digital — Hub de Gestão de Agência',
 };
 

@@ -297,7 +297,7 @@ export default function HubApp({ user }: { user: any }) {
     navigator.clipboard.writeText(txt).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };
 
-  if (loading) return (<div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', fontFamily: T.fn }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div><span style={{ fontWeight: 600, fontSize: 18 }}>Carregando APR Hub...</span></div></div>);
+  if (loading) return (<div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', fontFamily: T.fn }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div><span style={{ fontWeight: 600, fontSize: 18 }}>Carregando Ana Paula Romano...</span></div></div>);
 
   // ═══ SIDEBAR ═══
   const navBtn = (p: string, i: string, l: string, badge?: number) => (
@@ -314,7 +314,7 @@ export default function HubApp({ user }: { user: any }) {
     <aside style={{ width: 240, minHeight: '100vh', background: 'rgba(255,255,255,0.015)', borderRight: '1px solid ' + T.bdr, padding: '18px 14px', display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 8px', marginBottom: 12 }}>
         <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff' }}>A</div>
-        <div><div style={{ fontSize: 16, fontWeight: 800 }}>APR Hub</div><div style={{ fontSize: 11, color: T.mt2, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{user.email}</div></div>
+        <div><div style={{ fontSize: 16, fontWeight: 800 }}>Ana Paula Romano</div><div style={{ fontSize: 11, color: T.mt2, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{user.email}</div></div>
       </div>
 
       {navBtn('alice', '🤖', 'Alice', allAlerts.length + overdueTasks.length)}
