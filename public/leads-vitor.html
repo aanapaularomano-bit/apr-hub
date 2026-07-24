@@ -226,7 +226,26 @@
   @media(max-width:900px){
     .kpi-grid{grid-template-columns:repeat(2,1fr);}
     .grid-2,.grid-3,.method-grid{grid-template-columns:1fr;}
+  }  .media-kpi-grid{grid-template-columns:repeat(5,1fr);margin-bottom:16px;}
+
+  .creative-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .creative-table th{
+    text-align:left;font-family:'JetBrains Mono',monospace;font-size:10.5px;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--text-faint);padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;
   }
+  .creative-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text-dim);white-space:nowrap;}
+  .creative-table tr:last-child td{border-bottom:none;}
+  .creative-table td.name{color:var(--text);font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;}
+  .creative-table td.num{font-family:'JetBrains Mono',monospace;}
+  .ig-link{
+    display:inline-flex;align-items:center;gap:5px;color:var(--gold);text-decoration:none;
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;
+  }
+  .ig-link:hover{text-decoration:underline;}
+  .ig-none{color:var(--text-faint);font-size:11.5px;}
+
+  .media-kpi-grid{margin-bottom:16px;}
+  @media(max-width:900px){ .media-kpi-grid{grid-template-columns:repeat(2,1fr);} }
 </style>
 </head>
 <body>
@@ -314,7 +333,9 @@
 
   <section id="mediaSection">
     <div class="sec-head"><h2>Desempenho de mídia (Meta Ads)</h2><span class="hint">aba "Página2" · atualiza a cada 2h</span></div>
+    <div class="kpi-grid media-kpi-grid" id="mediaKpiGrid"></div>
     <div class="card" id="mediaCard"><h3>Investimento e leads gerados por anúncio</h3><div class="chart-box tall"><canvas id="chartMedia"></canvas></div></div>
+    <div class="card" id="mediaTableCard" style="margin-top:16px;"></div>
   </section>
 
   <section>
@@ -729,30 +750,60 @@ function bandChart(canvasId, field, order){
 function renderMediaChart(){
   const section = document.getElementById('mediaSection');
   const card = document.getElementById('mediaCard');
+  const kpiGrid = document.getElementById('mediaKpiGrid');
+  const tableCard = document.getElementById('mediaTableCard');
   section.style.display='block';
 
   if(STATE.mediaError){
+    kpiGrid.innerHTML = '';
+    tableCard.innerHTML = '';
     card.innerHTML = `<div class="media-status"><b>Não consegui ler a aba "Página2" da planilha.</b><br>Confira se essa aba também está com o compartilhamento "Qualquer pessoa com o link → Leitor".<div class="details">Detalhe técnico: ${escapeHtml(STATE.mediaError)}</div></div>`;
     return;
   }
   if(!STATE.media || !STATE.media.length){
+    kpiGrid.innerHTML = '';
+    tableCard.innerHTML = '';
     card.innerHTML = `<div class="media-status">Nenhum dado de mídia encontrado nessa aba para o período selecionado.</div>`;
     return;
   }
+
+  const num = v => parseFloat((v||'0').toString().replace(',','.'))||0;
+
+  // Totais gerais (aba inteira, no período filtrado)
+  let totalSpend=0, totalImpr=0, totalClicks=0, totalLeads=0;
   const byAd={};
   STATE.media.forEach(r=>{
+    const spend=num(r['Spend (Cost, Amount Spent)']);
+    const impr=num(r['Impressions']);
+    const clicks=num(r['Action Link Clicks']);
+    const leads=num(r['Action Leads']);
+    totalSpend+=spend; totalImpr+=impr; totalClicks+=clicks; totalLeads+=leads;
+
     const name = r['Ad Name']; if(!name) return;
-    const spend = parseFloat((r['Spend (Cost, Amount Spent)']||'0').replace(',','.'))||0;
-    const leads = parseFloat(r['Action Leads']||'0')||0;
-    if(!byAd[name]) byAd[name]={spend:0,leads:0};
-    byAd[name].spend+=spend; byAd[name].leads+=leads;
+    if(!byAd[name]) byAd[name]={spend:0,impr:0,clicks:0,leads:0,ig:null};
+    byAd[name].spend+=spend; byAd[name].impr+=impr; byAd[name].clicks+=clicks; byAd[name].leads+=leads;
+    if(r['Instagram Permalink URL']) byAd[name].ig = r['Instagram Permalink URL'];
   });
+
+  const cpl = totalLeads>0 ? (totalSpend/totalLeads) : 0;
+  const ctr = totalImpr>0 ? (totalClicks/totalImpr*100) : 0;
+
+  kpiGrid.innerHTML = `
+    <div class="kpi"><div class="label">Investido</div><div class="value">R$ ${totalSpend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+    <div class="kpi"><div class="label">Impressões</div><div class="value">${Math.round(totalImpr).toLocaleString('pt-BR')}</div></div>
+    <div class="kpi"><div class="label">Cliques</div><div class="value">${Math.round(totalClicks).toLocaleString('pt-BR')}</div></div>
+    <div class="kpi"><div class="label">Leads gerados</div><div class="value">${Math.round(totalLeads).toLocaleString('pt-BR')}</div></div>
+    <div class="kpi"><div class="label">CPL médio · CTR</div><div class="value">R$ ${cpl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}<small> · ${ctr.toFixed(2)}%</small></div></div>
+  `;
+
   const entries=Object.entries(byAd).sort((a,b)=>b[1].spend-a[1].spend).slice(0,10);
   if(!entries.length){
     const cols = Object.keys(STATE.media[0]||{}).join(', ');
     card.innerHTML = `<div class="media-status"><b>A aba foi lida, mas a coluna "Ad Name" não foi encontrada.</b><div class="details">Colunas encontradas: ${escapeHtml(cols)}</div></div>`;
+    tableCard.innerHTML = '';
     return;
   }
+
   card.innerHTML = `<h3>Investimento e leads gerados por anúncio</h3><div class="chart-box tall"><canvas id="chartMedia"></canvas></div>`;
   destroyChart('media');
   const ctx=document.getElementById('chartMedia');
@@ -771,6 +822,31 @@ function renderMediaChart(){
       }
     })
   });
+
+  // Tabela de criativos com link pro Instagram
+  tableCard.innerHTML = `
+    <h3>Criativos</h3>
+    <div style="overflow-x:auto;">
+    <table class="creative-table">
+      <thead><tr><th>Anúncio</th><th>Investido</th><th>Leads</th><th>CPL</th><th>Criativo</th></tr></thead>
+      <tbody>
+        ${entries.map(([name,d])=>{
+          const adCpl = d.leads>0 ? (d.spend/d.leads) : 0;
+          const igCell = d.ig
+            ? `<a class="ig-link" href="${escapeHtml(d.ig)}" target="_blank" rel="noopener">📷 Ver no Instagram</a>`
+            : `<span class="ig-none">sem link</span>`;
+          return `<tr>
+            <td class="name">${escapeHtml(name)}</td>
+            <td class="num">R$ ${d.spend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+            <td class="num">${Math.round(d.leads)}</td>
+            <td class="num">${d.leads>0?'R$ '+adCpl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+            <td>${igCell}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
 }
 
 function initials(name){
