@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#0b0d10;
@@ -68,6 +68,40 @@
   }
   #refreshBtn:hover{border-color:var(--gold);color:var(--gold);}
   #refreshBtn:disabled{opacity:.5;cursor:default;}
+
+  .daterange-wrap{position:relative;display:inline-block;margin-bottom:22px;}
+  .daterange-btn{
+    display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);
+    color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:9px 14px;
+    border-radius:9px;cursor:pointer;transition:.15s;
+  }
+  .daterange-btn:hover{border-color:var(--gold);}
+  .daterange-btn svg{color:var(--gold);flex-shrink:0;}
+  .daterange-panel{
+    display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:10;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px;
+    box-shadow:0 12px 32px rgba(0,0,0,.5);min-width:400px;
+  }
+  .daterange-panel.open{display:block;}
+  .dr-presets{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+  .dr-pill{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:7px 13px;border-radius:20px;
+    border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:.15s;
+  }
+  .dr-pill:hover{border-color:var(--gold);color:var(--gold);}
+  .dr-pill.active{background:var(--gold-soft);border-color:var(--gold);color:var(--gold);}
+  .dr-custom{display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:14px;flex-wrap:wrap;}
+  .dr-custom-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-right:2px;}
+  .dr-sep{color:var(--text-faint);}
+  .daterange-panel input[type="date"]{
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;border-radius:6px;
+    color-scheme:dark;
+  }
+  .dr-apply{
+    background:var(--gold);border:none;color:#1a1204;font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    font-weight:600;padding:7px 14px;border-radius:6px;cursor:pointer;margin-left:auto;
+  }
 
   .banner{
     display:none;align-items:center;gap:12px;background:var(--morno-soft);
@@ -168,8 +202,8 @@
   <header>
     <div>
       <p class="eyebrow">Mentoria de Importação · Ana Paula Romano</p>
-      <h1>Lead Scoring — Vitor Mazzini</h1>
-      <p class="subtitle">Qualificação automática dos leads captados para a sessão estratégica do produto de R$ 6.000, direto da planilha em tempo real.</p>
+      <h1>Dashboard — Vitor Mazzini</h1>
+      <p class="subtitle">Captação de leads e qualificação automática (Lead Scoring) para a sessão estratégica do produto de R$ 6.000, direto da planilha em tempo real.</p>
     </div>
     <div class="sync-box">
       <div><span class="dot live" id="syncDot"></span><span id="syncText">conectando…</span></div>
@@ -177,28 +211,55 @@
     </div>
   </header>
 
+  <div class="daterange-wrap">
+    <button class="daterange-btn" id="dateRangeBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span id="dateRangeLabel">Todo período</span>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="daterange-panel" id="dateRangePanel">
+      <div class="dr-presets">
+        <button class="dr-pill" data-preset="ontem">Ontem</button>
+        <button class="dr-pill" data-preset="hoje">Hoje</button>
+        <button class="dr-pill" data-preset="7d">Últimos 7d</button>
+        <button class="dr-pill" data-preset="15d">Últimos 15d</button>
+        <button class="dr-pill" data-preset="30d">Últimos 30d</button>
+        <button class="dr-pill" data-preset="mes">Este mês</button>
+        <button class="dr-pill active" data-preset="todo">Todo período</button>
+      </div>
+      <div class="dr-custom">
+        <span class="dr-custom-label">Personalizado</span>
+        <input type="date" id="drStart"> <span class="dr-sep">→</span> <input type="date" id="drEnd">
+        <button class="dr-apply" id="drApply">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="banner" id="banner"></div>
 
-  <div class="kpi-grid" id="kpiGrid"></div>
+  <section>
+    <div class="sec-head"><h2>Lead Scoring</h2><span class="hint" id="periodHint">qualificação automática de todos os leads captados</span></div>
+    <div class="kpi-grid" id="kpiGrid"></div>
 
-  <details class="method">
-    <summary>Como o score é calculado (0–100)</summary>
-    <div class="method-grid">
-      <div class="method-item"><div class="w">+20 · Marketplace ativo</div><div class="d">Já vende em pelo menos um marketplace (ML, Shopee, Amazon, ecommerce próprio etc).</div></div>
-      <div class="method-item"><div class="w">+30 · Faturamento</div><div class="d">Ouro (≥R$100k) pontua cheio; entre R$30k–100k pontua parcial; abaixo do mínimo pontua baixo.</div></div>
-      <div class="method-item"><div class="w">+25 · Investimento disponível</div><div class="d">Ouro (≥R$15k) pontua cheio; "Até R$10.000" pontua parcial (mínimo do critério).</div></div>
-      <div class="method-item"><div class="w">+10 · Margem baixa</div><div class="d">Margem declarada ≤20% indica a dor real do ICP (fornecedor nacional espremendo o lucro).</div></div>
-      <div class="method-item"><div class="w">+10 · Dor real no gargalo</div><div class="d">Menciona fornecedor, produto, margem, preço ou custo como travamento do negócio.</div></div>
-      <div class="method-item"><div class="w">+5 · Intenção de decisão</div><div class="d">"Sim, é o que eu preciso!" pontua cheio; "Preciso avaliar" pontua parcial.</div></div>
-    </div>
-    <div class="method-flags">
-      <b>Descarte automático</b> (score zerado, fora do funil), independente da pontuação acima, quando: só vende em loja física ou ainda não vende · resposta de travamento menciona "quero começar" · ou marcou "não tenho interesse" na decisão.<br>
-      <b>Faixas:</b> Quente ≥70 · Morno 40–69 · Frio 1–39 · Descartado (fora do ICP).
-    </div>
-  </details>
+    <details class="method">
+      <summary>Como o score é calculado (0–100)</summary>
+      <div class="method-grid">
+        <div class="method-item"><div class="w">+20 · Marketplace ativo</div><div class="d">Já vende em pelo menos um marketplace (ML, Shopee, Amazon, ecommerce próprio etc).</div></div>
+        <div class="method-item"><div class="w">+30 · Faturamento</div><div class="d">Ouro (≥R$100k) pontua cheio; entre R$30k–100k pontua parcial; abaixo do mínimo pontua baixo.</div></div>
+        <div class="method-item"><div class="w">+25 · Investimento disponível</div><div class="d">Ouro (≥R$15k) pontua cheio; "Até R$10.000" pontua parcial (mínimo do critério).</div></div>
+        <div class="method-item"><div class="w">+10 · Margem baixa</div><div class="d">Margem declarada ≤20% indica a dor real do ICP (fornecedor nacional espremendo o lucro).</div></div>
+        <div class="method-item"><div class="w">+10 · Dor real no gargalo</div><div class="d">Menciona fornecedor, produto, margem, preço ou custo como travamento do negócio.</div></div>
+        <div class="method-item"><div class="w">+5 · Intenção de decisão</div><div class="d">"Sim, é o que eu preciso!" pontua cheio; "Preciso avaliar" pontua parcial.</div></div>
+      </div>
+      <div class="method-flags">
+        <b>Descarte automático</b> (score zerado, fora do funil), independente da pontuação acima, quando: só vende em loja física ou ainda não vende · resposta de travamento menciona "quero começar" · ou marcou "não tenho interesse" na decisão.<br>
+        <b>Faixas:</b> Quente ≥70 · Morno 40–69 · Frio 1–39 · Descartado (fora do ICP).
+      </div>
+    </details>
+  </section>
 
   <section>
-    <div class="sec-head"><h2>Distribuição da qualidade dos leads</h2><span class="hint">todos os leads recebidos</span></div>
+    <div class="sec-head"><h2>Visão geral do score</h2><span class="hint">distribuição por tier e por origem</span></div>
     <div class="grid-2">
       <div class="card"><h3>Leads por Tier</h3><div class="chart-box"><canvas id="chartTier"></canvas></div></div>
       <div class="card"><h3>Score médio por origem (UTM Source)</h3><div class="chart-box"><canvas id="chartSource"></canvas></div></div>
@@ -359,7 +420,101 @@ function isJunkCampaign(name){
   return n.includes('{{') || n==='teste' || n==='desconhecido';
 }
 
-let STATE = { leads: [], media: null, activeTier:'Todos', sortKey:'s', sortDir:-1 };
+let STATE = { leads: [], media: null, allLeads: [], allMedia: null, activeTier:'Todos', sortKey:'s', sortDir:-1, preset:'todo', customStart:null, customEnd:null };
+
+function parseInicio(str){
+  const m = (str||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(!m) return null;
+  return new Date(parseInt(m[3],10), parseInt(m[2],10)-1, parseInt(m[1],10));
+}
+function parseMediaDate(str){
+  if(!str) return null;
+  const d = new Date(str+'T00:00:00');
+  return isNaN(d.getTime()) ? null : d;
+}
+function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
+
+function computeRange(preset){
+  const now = new Date();
+  const today0 = startOfDay(now);
+  switch(preset){
+    case 'hoje': return { start: today0, end: endOfDay(now) };
+    case 'ontem': { const y=new Date(today0); y.setDate(y.getDate()-1); return { start:y, end:endOfDay(y) }; }
+    case '7d': { const s=new Date(today0); s.setDate(s.getDate()-6); return { start:s, end:endOfDay(now) }; }
+    case '15d': { const s=new Date(today0); s.setDate(s.getDate()-14); return { start:s, end:endOfDay(now) }; }
+    case '30d': { const s=new Date(today0); s.setDate(s.getDate()-29); return { start:s, end:endOfDay(now) }; }
+    case 'mes': { const s=new Date(now.getFullYear(), now.getMonth(), 1); return { start:s, end:endOfDay(now) }; }
+    case 'custom': return { start: STATE.customStart?startOfDay(STATE.customStart):null, end: STATE.customEnd?endOfDay(STATE.customEnd):null };
+    default: return { start:null, end:null }; // todo período
+  }
+}
+
+const PRESET_LABELS = {ontem:'Ontem', hoje:'Hoje', '7d':'Últimos 7 dias', '15d':'Últimos 15 dias', '30d':'Últimos 30 dias', mes:'Este mês', todo:'Todo período', custom:'Personalizado'};
+const BR_FMT = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+
+function applyDateFilter(){
+  const range = computeRange(STATE.preset);
+  if(!range.start && !range.end){
+    STATE.leads = STATE.allLeads.slice();
+    STATE.media = STATE.allMedia;
+  } else {
+    STATE.leads = STATE.allLeads.filter(l=>{
+      const d = parseInicio(l.inicio);
+      if(!d) return false;
+      if(range.start && d < range.start) return false;
+      if(range.end && d > range.end) return false;
+      return true;
+    });
+    if(STATE.allMedia){
+      STATE.media = STATE.allMedia.filter(r=>{
+        const d = parseMediaDate(r['Date']);
+        if(!d) return true;
+        if(range.start && d < range.start) return false;
+        if(range.end && d > range.end) return false;
+        return true;
+      });
+    } else STATE.media = null;
+  }
+
+  let label = PRESET_LABELS[STATE.preset] || 'Todo período';
+  if(STATE.preset==='custom' && range.start && range.end){
+    label = BR_FMT(range.start)+' – '+BR_FMT(range.end);
+  }
+  document.getElementById('dateRangeLabel').textContent = label;
+  document.getElementById('periodHint').textContent = `${STATE.leads.length} leads · ${label.toLowerCase()}`;
+
+  render();
+}
+
+function initDateRangeControls(){
+  const btn = document.getElementById('dateRangeBtn');
+  const panel = document.getElementById('dateRangePanel');
+  btn.addEventListener('click', e=>{ e.stopPropagation(); panel.classList.toggle('open'); });
+  document.addEventListener('click', e=>{ if(!panel.contains(e.target) && e.target!==btn) panel.classList.remove('open'); });
+
+  document.querySelectorAll('.dr-pill').forEach(pill=>{
+    pill.addEventListener('click', ()=>{
+      document.querySelectorAll('.dr-pill').forEach(p=>p.classList.remove('active'));
+      pill.classList.add('active');
+      STATE.preset = pill.dataset.preset;
+      panel.classList.remove('open');
+      applyDateFilter();
+    });
+  });
+
+  document.getElementById('drApply').addEventListener('click', ()=>{
+    const s = document.getElementById('drStart').value;
+    const e = document.getElementById('drEnd').value;
+    if(!s || !e) return;
+    STATE.customStart = new Date(s+'T00:00:00');
+    STATE.customEnd = new Date(e+'T00:00:00');
+    STATE.preset = 'custom';
+    document.querySelectorAll('.dr-pill').forEach(p=>p.classList.remove('active'));
+    panel.classList.remove('open');
+    applyDateFilter();
+  });
+}
 let CHARTS = {};
 
 async function fetchSheetRows(gid){
@@ -411,16 +566,16 @@ async function refreshAll(){
   btn.disabled=true; btn.textContent='Sincronizando…';
   try{
     const [leads, media] = await Promise.all([loadLive(), loadMedia()]);
-    STATE.leads = leads;
-    STATE.media = media;
+    STATE.allLeads = leads;
+    STATE.allMedia = media;
     hideBanner();
     setSync('live');
   }catch(err){
-    STATE.leads = STATE.leads.length ? STATE.leads : loadFallback();
+    STATE.allLeads = STATE.allLeads.length ? STATE.allLeads : loadFallback();
     setSync('stale');
     showBanner('<b>Não consegui conectar à planilha agora</b> — mostrando o último snapshot salvo. Confirme que o compartilhamento está como "Qualquer pessoa com o link → Leitor" e clique em atualizar. Detalhe técnico: '+err.message);
   }
-  render();
+  applyDateFilter();
   btn.disabled=false; btn.textContent='↻ Atualizar agora';
 }
 
@@ -600,16 +755,23 @@ function renderTable(){
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+function safe(name, fn){
+  try{ fn(); }catch(err){ console.error('Falha ao renderizar '+name+':', err); }
+}
+
 function render(){
-  renderKPIs();
-  renderTierChart();
-  renderSourceChart();
-  renderCampaignChart();
-  bandChart('chartFat', 'faturamento', ['Abaixo de R$ 10 mil','De R$ 10 mil a R$ 30 mil','Até R$20.000','Entre R$20.000 e R$50.000','De R$ 30 mil a R$ 60 mil','Entre R$50.000 e R$100.000','De R$ 60 mil a R$ 100 mil','Entre R$100.000 e R$200.000','De R$ 100 mil a R$ 200 mil','Acima de R$200.000','Não respondeu']);
-  bandChart('chartInv', 'investimento', ['Até R$10.000','De R$10.000 até R$30.000','De R$30.000 até R$50.000','De R$50.000 até R$100.000','Acima de R$100.000','Não respondeu']);
-  bandChart('chartMk', 'marketplace', null);
-  renderMediaChart();
-  renderTable();
+  if(typeof Chart === 'undefined'){
+    showBanner('<b>Os gráficos não carregaram</b> — a biblioteca de gráficos (Chart.js) não foi carregada pelo navegador. Tente recarregar a página; se persistir, pode ser um bloqueador de scripts/anúncios impedindo o carregamento do CDN.');
+  }
+  safe('KPIs', renderKPIs);
+  safe('chart de tier', renderTierChart);
+  safe('chart de origem', renderSourceChart);
+  safe('chart de campanha', renderCampaignChart);
+  safe('chart de faturamento', ()=>bandChart('chartFat', 'faturamento', ['Abaixo de R$ 10 mil','De R$ 10 mil a R$ 30 mil','Até R$20.000','Entre R$20.000 e R$50.000','De R$ 30 mil a R$ 60 mil','Entre R$50.000 e R$100.000','De R$ 60 mil a R$ 100 mil','Entre R$100.000 e R$200.000','De R$ 100 mil a R$ 200 mil','Acima de R$200.000','Não respondeu']));
+  safe('chart de investimento', ()=>bandChart('chartInv', 'investimento', ['Até R$10.000','De R$10.000 até R$30.000','De R$30.000 até R$50.000','De R$50.000 até R$100.000','Acima de R$100.000','Não respondeu']));
+  safe('chart de marketplace', ()=>bandChart('chartMk', 'marketplace', null));
+  safe('chart de mídia', renderMediaChart);
+  safe('tabela de leads', renderTable);
 }
 
 document.getElementById('tabs').addEventListener('click', e=>{
@@ -627,6 +789,7 @@ document.querySelector('thead').addEventListener('click', e=>{
 });
 document.getElementById('refreshBtn').addEventListener('click', refreshAll);
 
+initDateRangeControls();
 refreshAll();
 setInterval(refreshAll, 5*60*1000); // auto-refresh a cada 5 min
 </script>
