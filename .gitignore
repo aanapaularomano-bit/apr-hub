@@ -6,3 +6,7 @@ node_modules/
 apr-financeiro-update.zip
 apr-financeiro-update/
 *.zip
+
+# Dados locais sensíveis
+backups/
+extratos/
