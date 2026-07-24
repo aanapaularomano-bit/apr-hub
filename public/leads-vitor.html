@@ -5,42 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Vitor Mazzini</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:#F7F5F0;
+    --bg:#F5F6FA;
     --surface:#FFFFFF;
-    --surface-2:#F0EDE6;
-    --border:#E4E0D5;
-    --text:#1E2430;
-    --text-dim:#5B6270;
-    --text-faint:#93989F;
-    --gold:#AD7B2E;
-    --gold-soft:rgba(173,123,46,.11);
-    --quente:#C94A38;
-    --quente-soft:rgba(201,74,56,.09);
-    --morno:#B5811E;
-    --morno-soft:rgba(181,129,30,.10);
-    --frio:#3457B2;
-    --frio-soft:rgba(52,87,178,.09);
-    --descartado:#868C97;
-    --descartado-soft:rgba(134,140,151,.10);
-    --shadow:0 1px 2px rgba(30,25,10,.04), 0 4px 16px rgba(30,25,10,.05);
-    --shadow-lift:0 4px 10px rgba(30,25,10,.06), 0 12px 32px rgba(30,25,10,.08);
+    --surface-2:#F1F2F8;
+    --border:#EBECF2;
+    --text:#171A22;
+    --text-dim:#6B7080;
+    --text-faint:#9498A3;
+    --gold:#6C5CE7;
+    --gold-soft:rgba(108,92,231,.10);
+    --quente:#E0483E;
+    --quente-soft:rgba(224,72,62,.09);
+    --morno:#D69A1F;
+    --morno-soft:rgba(214,154,31,.11);
+    --frio:#3D7CF4;
+    --frio-soft:rgba(61,124,244,.10);
+    --descartado:#8A8F99;
+    --descartado-soft:rgba(138,143,153,.11);
+    --good:#1FAA6D;
+    --shadow:0 1px 2px rgba(20,20,40,.03), 0 2px 10px rgba(20,20,40,.04);
+    --shadow-lift:0 6px 16px rgba(20,20,40,.07), 0 16px 40px rgba(20,20,40,.09);
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
-    background:
-      radial-gradient(1000px 500px at 88% -8%, rgba(173,123,46,.06), transparent 60%),
-      var(--bg);
+    background: var(--bg);
     color:var(--text);
-    font-family:'Space Grotesk',sans-serif;
+    font-family:'Inter',sans-serif;
     -webkit-font-smoothing:antialiased;
   }
-  .mono{font-family:'JetBrains Mono',monospace;}
+  .mono{font-family:'Inter',sans-serif;}
   .wrap{max-width:1240px;margin:0 auto;padding:36px 28px 80px;}
 
   /* HEADER */
@@ -50,18 +49,18 @@
     padding-bottom:26px;border-bottom:1px solid var(--border);margin-bottom:28px;
   }
   h1{
-    font-family:'Fraunces',serif;font-weight:500;font-size:38px;line-height:1.05;
-    margin:0 0 8px;letter-spacing:-.01em;color:var(--text);
+    font-family:'Inter',sans-serif;font-weight:700;font-size:30px;line-height:1.15;
+    margin:0 0 6px;letter-spacing:-.02em;color:var(--text);
   }
-  .subtitle{color:var(--text-dim);font-size:14.5px;max-width:560px;line-height:1.5;margin:0;}
-  .sync-box{text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-faint);}
+  .subtitle{color:var(--text-dim);font-size:14px;max-width:560px;line-height:1.5;margin:0;}
+  .sync-box{text-align:right;font-family:'Inter',sans-serif;font-size:12px;color:var(--text-faint);}
   .sync-box .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;position:relative;top:-1px;}
   .dot.live{background:#3f9d5c;box-shadow:0 0 0 3px rgba(63,157,92,.16);}
   .dot.stale{background:var(--morno);box-shadow:0 0 0 3px rgba(181,129,30,.16);}
   .dot.err{background:var(--quente);box-shadow:0 0 0 3px rgba(201,74,56,.16);}
   #refreshBtn{
     margin-top:10px;background:var(--surface);border:1px solid var(--border);color:var(--text);
-    font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:8px 14px;border-radius:7px;
+    font-family:'Inter',sans-serif;font-size:11.5px;padding:8px 14px;border-radius:7px;
     cursor:pointer;letter-spacing:.03em;transition:.15s;box-shadow:var(--shadow);
   }
   #refreshBtn:hover{border-color:var(--gold);color:var(--gold);}
@@ -70,7 +69,7 @@
   .daterange-wrap{position:relative;display:inline-block;margin-bottom:22px;}
   .daterange-btn{
     display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);
-    color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:9px 14px;
+    color:var(--text);font-family:'Inter',sans-serif;font-size:12.5px;padding:9px 14px;
     border-radius:9px;cursor:pointer;transition:.15s;box-shadow:var(--shadow);
   }
   .daterange-btn:hover{border-color:var(--gold);}
@@ -83,7 +82,7 @@
   .daterange-panel.open{display:block;}
   .dr-presets{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
   .dr-pill{
-    font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:7px 13px;border-radius:20px;
+    font-family:'Inter',sans-serif;font-size:11.5px;padding:7px 13px;border-radius:20px;
     border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:.15s;
   }
   .dr-pill:hover{border-color:var(--gold);color:var(--gold);}
@@ -93,11 +92,11 @@
   .dr-sep{color:var(--text-faint);}
   .daterange-panel input[type="date"]{
     background:var(--bg);border:1px solid var(--border);color:var(--text);
-    font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;border-radius:6px;
+    font-family:'Inter',sans-serif;font-size:12px;padding:6px 8px;border-radius:6px;
     color-scheme:light;
   }
   .dr-apply{
-    background:var(--gold);border:none;color:#FFF9EF;font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    background:var(--gold);border:none;color:#FFFFFF;font-family:'Inter',sans-serif;font-size:11.5px;
     font-weight:600;padding:7px 14px;border-radius:6px;cursor:pointer;margin-left:auto;
   }
 
@@ -112,17 +111,33 @@
   /* KPI GRID */
   .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:36px;}
   .kpi{
-    background:var(--surface);border:1px solid var(--border);border-radius:12px;
-    padding:18px 16px;position:relative;overflow:hidden;box-shadow:var(--shadow);
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:18px 18px;position:relative;overflow:hidden;box-shadow:var(--shadow);
   }
-  .kpi::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:var(--accent,var(--gold));}
-  .kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);margin-bottom:10px;}
-  .kpi .value{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--text);}
+  .kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:10px;font-weight:600;}
+  .kpi .value{font-family:'Inter',sans-serif;font-size:25px;font-weight:700;color:var(--text);letter-spacing:-.01em;}
   .kpi .value small{font-size:13px;color:var(--text-faint);font-weight:400;margin-left:3px;}
-  .kpi.quente{--accent:var(--quente);} .kpi.quente .value{color:var(--quente);}
-  .kpi.morno{--accent:var(--morno);} .kpi.morno .value{color:var(--morno);}
-  .kpi.frio{--accent:var(--frio);} .kpi.frio .value{color:var(--frio);}
-  .kpi.descartado{--accent:var(--descartado);} .kpi.descartado .value{color:var(--text-dim);}
+  .kpi .caption{font-size:10.5px;color:var(--text-faint);margin-top:6px;}
+  .kpi.quente .value{color:var(--quente);}
+  .kpi.morno .value{color:var(--morno);}
+  .kpi.frio .value{color:var(--frio);}
+  .kpi.descartado .value{color:var(--text-dim);}
+
+  .funnel-box{display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 0 4px;}
+  .funnel-seg{
+    width:100%;border-radius:10px;padding:14px 20px;color:#fff;text-align:center;
+    transition:.2s;
+  }
+  .funnel-seg .fs-label{font-size:11px;opacity:.88;text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+  .funnel-seg .fs-value{font-size:22px;font-weight:700;margin-top:3px;}
+  .funnel-seg .fs-pct{font-size:11.5px;opacity:.85;margin-top:1px;}
+
+  .funnel-rates{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .rate-card{background:var(--surface-2);border-radius:12px;padding:16px;}
+  .rate-card .rc-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+  .rate-card .rc-value{font-size:21px;font-weight:700;color:var(--gold);margin-top:6px;}
+  .rate-card .rc-value.neutral{color:var(--text);}
+  .rate-card .rc-caption{font-size:11px;color:var(--text-faint);margin-top:3px;}
 
   /* SECTIONS */
   section{margin-bottom:40px;}
@@ -145,7 +160,7 @@
   details.method[open] summary::before{transform:rotate(90deg);}
   .method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:4px 0 22px;}
   .method-item{border-left:2px solid var(--border);padding-left:12px;}
-  .method-item .w{font-family:'JetBrains Mono',monospace;color:var(--gold);font-size:12px;}
+  .method-item .w{font-family:'Inter',sans-serif;color:var(--gold);font-size:12px;}
   .method-item .d{font-size:12.5px;color:var(--text-dim);margin-top:3px;line-height:1.4;}
   .method-flags{font-size:12px;color:var(--text-dim);line-height:1.7;padding-bottom:20px;border-top:1px solid var(--border);margin-top:6px;padding-top:16px;}
   .method-flags b{color:var(--quente);}
@@ -153,7 +168,7 @@
   /* LEADS LIST */
   .tabs{display:flex;gap:6px;flex-wrap:wrap;}
   .tab{
-    font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:7px 13px;border-radius:20px;
+    font-family:'Inter',sans-serif;font-size:11.5px;padding:7px 13px;border-radius:20px;
     border:1px solid var(--border);background:var(--surface);color:var(--text-dim);cursor:pointer;transition:.15s;
   }
   .tab.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
@@ -165,12 +180,18 @@
 
   .leads-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
   .sort-select{
-    font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:8px 12px;border-radius:8px;
+    font-family:'Inter',sans-serif;font-size:11.5px;padding:8px 12px;border-radius:8px;
     border:1px solid var(--border);background:var(--surface);color:var(--text-dim);cursor:pointer;
   }
+  .search-input{
+    font-family:'Inter',sans-serif;font-size:12.5px;padding:8px 12px;border-radius:8px;
+    border:1px solid var(--border);background:var(--surface);color:var(--text);min-width:220px;
+  }
+  .search-input:focus{outline:none;border-color:var(--gold);}
+  .search-input::placeholder{color:var(--text-faint);}
 
   .tier-pill{
-    display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-family:'JetBrains Mono',monospace;white-space:nowrap;
+    display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-family:'Inter',sans-serif;white-space:nowrap;
   }
   .tier-pill.Quente{background:var(--quente-soft);color:var(--quente);}
   .tier-pill.Morno{background:var(--morno-soft);color:var(--morno);}
@@ -188,7 +209,7 @@
   .lead-card:hover{box-shadow:var(--shadow-lift);transform:translateY(-1px);}
   .lead-avatar{
     width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;
+    font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
     background:var(--tier-soft,var(--surface-2));color:var(--tier-c,var(--text-dim));flex-shrink:0;
   }
   .lead-main{min-width:0;}
@@ -197,23 +218,23 @@
   .lead-score{display:flex;flex-direction:column;gap:4px;}
   .score-bar-track{width:100%;height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden;}
   .score-bar-fill{height:100%;border-radius:3px;}
-  .score-num{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--tier-c,var(--text));}
+  .score-num{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--tier-c,var(--text));}
   .lead-tags{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .lead-tags .tag-fat::before{content:'💰 ';}
   .lead-tags .tag-inv::before{content:'📦 ';}
   .lead-whats{
     display:flex;align-items:center;justify-content:center;gap:6px;
     background:var(--gold-soft);color:var(--gold);border-radius:8px;padding:7px 10px;
-    font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;white-space:nowrap;
+    font-family:'Inter',sans-serif;font-size:11px;text-decoration:none;white-space:nowrap;
   }
-  .lead-whats:hover{background:var(--gold);color:#FFF9EF;}
+  .lead-whats:hover{background:var(--gold);color:#FFFFFF;}
   .lead-whats.disabled{opacity:.35;pointer-events:none;}
-  .lead-date{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-faint);text-align:right;white-space:nowrap;}
+  .lead-date{font-family:'Inter',sans-serif;font-size:10.5px;color:var(--text-faint);text-align:right;white-space:nowrap;}
   .lead-empty{text-align:center;color:var(--text-faint);padding:40px;font-size:13px;}
 
   .media-status{padding:26px;text-align:center;color:var(--text-dim);font-size:13px;line-height:1.6;}
   .media-status b{color:var(--quente);}
-  .media-status .details{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);margin-top:8px;}
+  .media-status .details{font-family:'Inter',sans-serif;font-size:11px;color:var(--text-faint);margin-top:8px;}
 
   @media(max-width:900px){
     .lead-card{grid-template-columns:32px 1fr;grid-template-areas:"avatar main" "score score" "tags tags" "whats date"; row-gap:8px;}
@@ -221,7 +242,7 @@
     .lead-tags{grid-area:tags;flex-direction:row;gap:10px;} .lead-whats{grid-area:whats;} .lead-date{grid-area:date;text-align:left;}
   }
 
-  footer{text-align:center;color:var(--text-faint);font-size:11.5px;padding-top:20px;font-family:'JetBrains Mono',monospace;}
+  footer{text-align:center;color:var(--text-faint);font-size:11.5px;padding-top:20px;font-family:'Inter',sans-serif;}
 
   @media(max-width:900px){
     .kpi-grid{grid-template-columns:repeat(2,1fr);}
@@ -230,16 +251,16 @@
 
   .creative-table{width:100%;border-collapse:collapse;font-size:12.5px;}
   .creative-table th{
-    text-align:left;font-family:'JetBrains Mono',monospace;font-size:10.5px;text-transform:uppercase;
+    text-align:left;font-family:'Inter',sans-serif;font-size:10.5px;text-transform:uppercase;
     letter-spacing:.05em;color:var(--text-faint);padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;
   }
   .creative-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text-dim);white-space:nowrap;}
   .creative-table tr:last-child td{border-bottom:none;}
   .creative-table td.name{color:var(--text);font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;}
-  .creative-table td.num{font-family:'JetBrains Mono',monospace;}
+  .creative-table td.num{font-family:'Inter',sans-serif;}
   .ig-link{
     display:inline-flex;align-items:center;gap:5px;color:var(--gold);text-decoration:none;
-    font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    font-family:'Inter',sans-serif;font-size:11.5px;
   }
   .ig-link:hover{text-decoration:underline;}
   .ig-none{color:var(--text-faint);font-size:11.5px;}
@@ -310,6 +331,14 @@
   </section>
 
   <section>
+    <div class="sec-head"><h2>Funil de qualificação</h2><span class="hint">da captação ao lead quente</span></div>
+    <div class="grid-2">
+      <div class="card"><h3>Funil de leads</h3><div id="funnelBox" class="funnel-box"></div></div>
+      <div class="card"><h3>Taxas de qualificação</h3><div id="funnelRates" class="funnel-rates"></div></div>
+    </div>
+  </section>
+
+  <section>
     <div class="sec-head"><h2>Visão geral do score</h2><span class="hint">distribuição por tier e por origem</span></div>
     <div class="grid-2">
       <div class="card"><h3>Leads por Tier</h3><div class="chart-box"><canvas id="chartTier"></canvas></div></div>
@@ -334,6 +363,8 @@
   <section id="mediaSection">
     <div class="sec-head"><h2>Desempenho de mídia (Meta Ads)</h2><span class="hint">aba "Página2" · atualiza a cada 2h</span></div>
     <div class="kpi-grid media-kpi-grid" id="mediaKpiGrid"></div>
+    <div class="grid-2" id="mediaTrendGrid1" style="margin-bottom:16px;"></div>
+    <div class="grid-2" id="mediaTrendGrid2" style="margin-bottom:16px;"></div>
     <div class="card" id="mediaCard"><h3>Investimento e leads gerados por anúncio</h3><div class="chart-box tall"><canvas id="chartMedia"></canvas></div></div>
     <div class="card" id="mediaTableCard" style="margin-top:16px;"></div>
   </section>
@@ -348,13 +379,16 @@
         <button class="tab" data-tier="Frio">Frio</button>
         <button class="tab" data-tier="Descartado">Descartado</button>
       </div>
-      <select id="sortSelect" class="sort-select">
-        <option value="score_desc">Maior score</option>
-        <option value="score_asc">Menor score</option>
-        <option value="date_desc">Mais recente</option>
-        <option value="date_asc">Mais antigo</option>
-        <option value="name_asc">Nome A–Z</option>
-      </select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="leadSearch" class="search-input" placeholder="🔎 Pesquisar por nome…">
+        <select id="sortSelect" class="sort-select">
+          <option value="score_desc">Maior score</option>
+          <option value="score_asc">Menor score</option>
+          <option value="date_desc">Mais recente</option>
+          <option value="date_asc">Mais antigo</option>
+          <option value="name_asc">Nome A–Z</option>
+        </select>
+      </div>
     </div>
     <div class="leads-list" id="leadsList"></div>
   </section>
@@ -635,16 +669,16 @@ async function refreshAll(){
 
 function destroyChart(id){ if(CHARTS[id]){ CHARTS[id].destroy(); delete CHARTS[id]; } }
 
-const TIER_COLORS = {Quente:'#C94A38', Morno:'#B5811E', Frio:'#3457B2', Descartado:'#868C97'};
-const CHART_FONT = "'JetBrains Mono', monospace";
+const TIER_COLORS = {Quente:'#E0483E', Morno:'#D69A1F', Frio:'#3D7CF4', Descartado:'#8A8F99'};
+const CHART_FONT = "'Inter', sans-serif";
 
 function baseOpts(overrides){
   return Object.assign({
     responsive:true, maintainAspectRatio:false,
     plugins:{ legend:{display:false}, tooltip:{titleFont:{family:CHART_FONT}, bodyFont:{family:CHART_FONT}} },
     scales:{
-      x:{ ticks:{color:'#5B6270', font:{family:CHART_FONT, size:10.5}}, grid:{color:'#EAE6DB'} },
-      y:{ ticks:{color:'#5B6270', font:{family:CHART_FONT, size:10.5}}, grid:{color:'#EAE6DB'} },
+      x:{ ticks:{color:'#6B7080', font:{family:CHART_FONT, size:10.5}}, grid:{color:'#EBECF2'} },
+      y:{ ticks:{color:'#6B7080', font:{family:CHART_FONT, size:10.5}}, grid:{color:'#EBECF2'} },
     }
   }, overrides||{});
 }
@@ -658,19 +692,59 @@ function renderKPIs(){
   const pctIdeal = total? (((byTier.Quente+byTier.Morno)/total)*100).toFixed(0) : '0';
 
   const kpis = [
-    {label:'Total de leads', value:total, cls:''},
-    {label:'🔥 Quentes', value:byTier.Quente, cls:'quente'},
-    {label:'Mornos', value:byTier.Morno, cls:'morno'},
-    {label:'Frios', value:byTier.Frio, cls:'frio'},
-    {label:'Descartados', value:byTier.Descartado, cls:'descartado'},
-    {label:'Score médio (válidos)', value:avgScore, cls:''},
+    {label:'Total de leads', value:total, cls:'', caption:`${pctIdeal}% no perfil ideal`},
+    {label:'🔥 Quentes', value:byTier.Quente, cls:'quente', caption:'score ≥ 70'},
+    {label:'Mornos', value:byTier.Morno, cls:'morno', caption:'score 40–69'},
+    {label:'Frios', value:byTier.Frio, cls:'frio', caption:'score 1–39'},
+    {label:'Descartados', value:byTier.Descartado, cls:'descartado', caption:'fora do ICP'},
+    {label:'Score médio', value:avgScore, cls:'', caption:'entre os leads válidos'},
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
     <div class="kpi ${k.cls}">
       <div class="label">${k.label}</div>
-      <div class="value">${k.value}${k.label==='Total de leads'?`<small>· ${pctIdeal}% no perfil</small>`:''}</div>
+      <div class="value">${k.value}</div>
+      <div class="caption">${k.caption}</div>
     </div>
   `).join('');
+}
+
+function renderFunnel(){
+  const box = document.getElementById('funnelBox');
+  const rates = document.getElementById('funnelRates');
+  const total = STATE.leads.length;
+  const qualificados = STATE.leads.filter(l=>l.tier!=='Descartado').length;
+  const quentesMornos = STATE.leads.filter(l=>l.tier==='Quente'||l.tier==='Morno').length;
+  const quentes = STATE.leads.filter(l=>l.tier==='Quente').length;
+
+  const stages = [
+    {label:'Total de leads', value:total, color:'#6C5CE7'},
+    {label:'Qualificados (não descartados)', value:qualificados, color:'#3D7CF4'},
+    {label:'Mornos + Quentes', value:quentesMornos, color:'#D69A1F'},
+    {label:'Quentes', value:quentes, color:'#E0483E'},
+  ];
+  const maxV = total||1;
+  box.innerHTML = stages.map(s=>{
+    const pct = maxV? (s.value/maxV*100) : 0;
+    const widthPct = Math.max(pct, 14); // largura mínima pra não sumir a etiqueta
+    const pctOfTotal = total? (s.value/total*100).toFixed(1) : '0.0';
+    return `<div class="funnel-seg" style="width:${widthPct}%;background:${s.color};">
+      <div class="fs-label">${s.label}</div>
+      <div class="fs-value">${s.value}</div>
+      <div class="fs-pct">${pctOfTotal}% do total</div>
+    </div>`;
+  }).join('');
+
+  const pctQualificados = total? (qualificados/total*100).toFixed(1) : '0.0';
+  const pctQuentesEntreQualificados = qualificados? (quentes/qualificados*100).toFixed(1) : '0.0';
+  const scoreValidos = (()=>{ const v=STATE.leads.filter(l=>l.tier!=='Descartado'); return v.length? (v.reduce((a,l)=>a+l.score,0)/v.length).toFixed(1) : '0.0'; })();
+  const pipeline = quentes*6000;
+
+  rates.innerHTML = `
+    <div class="rate-card"><div class="rc-label">% Qualificados</div><div class="rc-value">${pctQualificados}%</div><div class="rc-caption">do total de leads captados</div></div>
+    <div class="rate-card"><div class="rc-label">% Quentes / Qualificados</div><div class="rc-value">${pctQuentesEntreQualificados}%</div><div class="rc-caption">dos leads dentro do ICP</div></div>
+    <div class="rate-card"><div class="rc-label">Score médio (qualificados)</div><div class="rc-value neutral">${scoreValidos}</div><div class="rc-caption">de 0 a 100</div></div>
+    <div class="rate-card"><div class="rc-label">Pipeline potencial</div><div class="rc-value neutral">R$ ${pipeline.toLocaleString('pt-BR')}</div><div class="rc-caption">${quentes} quentes × R$ 6.000</div></div>
+  `;
 }
 
 function renderTierChart(){
@@ -682,7 +756,7 @@ function renderTierChart(){
     type:'doughnut',
     data:{ labels:order, datasets:[{data:counts, backgroundColor:order.map(t=>TIER_COLORS[t]), borderColor:'#FFFFFF', borderWidth:3}] },
     options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
-      plugins:{ legend:{position:'bottom', labels:{color:'#5B6270', font:{family:CHART_FONT,size:11}, boxWidth:10, padding:14}} } }
+      plugins:{ legend:{position:'bottom', labels:{color:'#6B7080', font:{family:CHART_FONT,size:11}, boxWidth:10, padding:14}} } }
   });
 }
 
@@ -694,7 +768,7 @@ function renderSourceChart(){
   const ctx=document.getElementById('chartSource');
   CHARTS.source = new Chart(ctx,{
     type:'bar',
-    data:{ labels:entries.map(e=>e[0]+' (n='+e[2]+')'), datasets:[{ data:entries.map(e=>e[1].toFixed(1)), backgroundColor:'#AD7B2E', borderRadius:5, maxBarThickness:26 }] },
+    data:{ labels:entries.map(e=>e[0]+' (n='+e[2]+')'), datasets:[{ data:entries.map(e=>e[1].toFixed(1)), backgroundColor:'#6C5CE7', borderRadius:5, maxBarThickness:26 }] },
     options: baseOpts({ indexAxis:'y', plugins:{legend:{display:false}} })
   });
 }
@@ -716,7 +790,7 @@ function renderCampaignChart(){
     type:'bar',
     data:{ labels:entries.map(e=>e.name.length>42?e.name.slice(0,42)+'…':e.name),
       datasets:[
-        { label:'Score médio', data:entries.map(e=>e.avg.toFixed(1)), backgroundColor:'#AD7B2E', borderRadius:5, maxBarThickness:22, yAxisID:'y' },
+        { label:'Score médio', data:entries.map(e=>e.avg.toFixed(1)), backgroundColor:'#6C5CE7', borderRadius:5, maxBarThickness:22, yAxisID:'y' },
       ]},
     options: baseOpts({
       indexAxis:'y',
@@ -742,8 +816,8 @@ function bandChart(canvasId, field, order){
   const ctx=document.getElementById(canvasId);
   CHARTS[field] = new Chart(ctx,{
     type:'bar',
-    data:{ labels, datasets:[{ data, backgroundColor:'#3457B2', borderRadius:5, maxBarThickness:30 }] },
-    options: baseOpts({ plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#5B6270',font:{family:CHART_FONT,size:9.5}, maxRotation:35, minRotation:0}, grid:{display:false}}, y:{ticks:{color:'#5B6270',font:{family:CHART_FONT,size:10.5}}, grid:{color:'#EAE6DB'}} } })
+    data:{ labels, datasets:[{ data, backgroundColor:'#3D7CF4', borderRadius:5, maxBarThickness:30 }] },
+    options: baseOpts({ plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#6B7080',font:{family:CHART_FONT,size:9.5}, maxRotation:35, minRotation:0}, grid:{display:false}}, y:{ticks:{color:'#6B7080',font:{family:CHART_FONT,size:10.5}}, grid:{color:'#EBECF2'}} } })
   });
 }
 
@@ -752,17 +826,17 @@ function renderMediaChart(){
   const card = document.getElementById('mediaCard');
   const kpiGrid = document.getElementById('mediaKpiGrid');
   const tableCard = document.getElementById('mediaTableCard');
+  const trend1 = document.getElementById('mediaTrendGrid1');
+  const trend2 = document.getElementById('mediaTrendGrid2');
   section.style.display='block';
 
   if(STATE.mediaError){
-    kpiGrid.innerHTML = '';
-    tableCard.innerHTML = '';
+    kpiGrid.innerHTML = ''; tableCard.innerHTML = ''; trend1.innerHTML=''; trend2.innerHTML='';
     card.innerHTML = `<div class="media-status"><b>Não consegui ler a aba "Página2" da planilha.</b><br>Confira se essa aba também está com o compartilhamento "Qualquer pessoa com o link → Leitor".<div class="details">Detalhe técnico: ${escapeHtml(STATE.mediaError)}</div></div>`;
     return;
   }
   if(!STATE.media || !STATE.media.length){
-    kpiGrid.innerHTML = '';
-    tableCard.innerHTML = '';
+    kpiGrid.innerHTML = ''; tableCard.innerHTML = ''; trend1.innerHTML=''; trend2.innerHTML='';
     card.innerHTML = `<div class="media-status">Nenhum dado de mídia encontrado nessa aba para o período selecionado.</div>`;
     return;
   }
@@ -772,12 +846,19 @@ function renderMediaChart(){
   // Totais gerais (aba inteira, no período filtrado)
   let totalSpend=0, totalImpr=0, totalClicks=0, totalLeads=0;
   const byAd={};
+  const byDate={};
   STATE.media.forEach(r=>{
     const spend=num(r['Spend (Cost, Amount Spent)']);
     const impr=num(r['Impressions']);
     const clicks=num(r['Action Link Clicks']);
     const leads=num(r['Action Leads']);
     totalSpend+=spend; totalImpr+=impr; totalClicks+=clicks; totalLeads+=leads;
+
+    const date = r['Date'];
+    if(date){
+      if(!byDate[date]) byDate[date]={spend:0,impr:0,clicks:0,leads:0};
+      byDate[date].spend+=spend; byDate[date].impr+=impr; byDate[date].clicks+=clicks; byDate[date].leads+=leads;
+    }
 
     const name = r['Ad Name']; if(!name) return;
     if(!byAd[name]) byAd[name]={spend:0,impr:0,clicks:0,leads:0,ig:null};
@@ -787,14 +868,47 @@ function renderMediaChart(){
 
   const cpl = totalLeads>0 ? (totalSpend/totalLeads) : 0;
   const ctr = totalImpr>0 ? (totalClicks/totalImpr*100) : 0;
+  const cpm = totalImpr>0 ? (totalSpend/totalImpr*1000) : 0;
 
   kpiGrid.innerHTML = `
-    <div class="kpi"><div class="label">Investido</div><div class="value">R$ ${totalSpend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
-    <div class="kpi"><div class="label">Impressões</div><div class="value">${Math.round(totalImpr).toLocaleString('pt-BR')}</div></div>
-    <div class="kpi"><div class="label">Cliques</div><div class="value">${Math.round(totalClicks).toLocaleString('pt-BR')}</div></div>
-    <div class="kpi"><div class="label">Leads gerados</div><div class="value">${Math.round(totalLeads).toLocaleString('pt-BR')}</div></div>
-    <div class="kpi"><div class="label">CPL médio · CTR</div><div class="value">R$ ${cpl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}<small> · ${ctr.toFixed(2)}%</small></div></div>
+    <div class="kpi"><div class="label">Investido</div><div class="value">R$ ${totalSpend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="caption">total do período</div></div>
+    <div class="kpi"><div class="label">Impressões</div><div class="value">${Math.round(totalImpr).toLocaleString('pt-BR')}</div><div class="caption">alcance de exibições</div></div>
+    <div class="kpi"><div class="label">Cliques</div><div class="value">${Math.round(totalClicks).toLocaleString('pt-BR')}</div><div class="caption">no link do anúncio</div></div>
+    <div class="kpi"><div class="label">Leads gerados</div><div class="value">${Math.round(totalLeads).toLocaleString('pt-BR')}</div><div class="caption">reportados pelo Meta</div></div>
+    <div class="kpi"><div class="label">CPL médio</div><div class="value" style="color:var(--gold)">R$ ${cpl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="caption">investido / leads</div></div>
+    <div class="kpi"><div class="label">CTR · CPM</div><div class="value" style="color:var(--gold)">${ctr.toFixed(2)}%<small> · R$${cpm.toFixed(2)}</small></div><div class="caption">cliques/impressões · custo/1k</div></div>
   `;
+
+  // Tendências diárias
+  const dateKeys = Object.keys(byDate).sort();
+  const dLabels = dateKeys.map(d=>{ const p=d.split('-'); return p.length===3? p[1]+'/'+p[2] : d; });
+  const dInvest = dateKeys.map(d=>byDate[d].spend.toFixed(2));
+  const dLeads = dateKeys.map(d=>byDate[d].leads);
+  const dCPL = dateKeys.map(d=>byDate[d].leads>0? (byDate[d].spend/byDate[d].leads).toFixed(2) : 0);
+  const dCTR = dateKeys.map(d=>byDate[d].impr>0? (byDate[d].clicks/byDate[d].impr*100).toFixed(2) : 0);
+
+  function trendCard(title, caption, labels, data, color){
+    return `<div class="card"><h3>${title}<span style="float:right;font-weight:400;text-transform:none;font-size:11px;color:var(--text-faint);">${caption}</span></h3><div class="chart-box" style="height:200px;"><canvas id="trend_${title.replace(/\s/g,'')}"></canvas></div></div>`;
+  }
+  trend1.innerHTML = trendCard('Investimento diário','soma por dia') + trendCard('Leads diário','soma por dia');
+  trend2.innerHTML = trendCard('CPL diário','investido / leads') + trendCard('CTR diário','cliques / impressões');
+
+  const trendOpts = baseOpts({
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ ticks:{color:'#6B7080', font:{family:CHART_FONT,size:9.5}, maxRotation:0}, grid:{display:false} },
+      y:{ ticks:{color:'#6B7080', font:{family:CHART_FONT,size:10}}, grid:{color:'#EBECF2'} },
+    }
+  });
+  ['trend_Investimentodiário','trend_Leadsdiário','trend_CPLdiário','trend_CTRdiário'].forEach(id=>destroyChart(id));
+  const mk = (id,label,color)=>{
+    const el = document.getElementById(id); if(!el) return null;
+    return new Chart(el, { type:'line', data:{ labels:dLabels, datasets:[{ label, data:label==='Investimento'?dInvest:label==='Leads'?dLeads:label==='CPL'?dCPL:dCTR, borderColor:color, backgroundColor:color, tension:.3, pointRadius:2 }] }, options: trendOpts });
+  };
+  CHARTS['trend_Investimentodiário'] = mk('trend_Investimentodiário','Investimento','#6C5CE7');
+  CHARTS['trend_Leadsdiário'] = mk('trend_Leadsdiário','Leads','#1FAA6D');
+  CHARTS['trend_CPLdiário'] = mk('trend_CPLdiário','CPL','#E0483E');
+  CHARTS['trend_CTRdiário'] = mk('trend_CTRdiário','CTR','#3D7CF4');
 
   const entries=Object.entries(byAd).sort((a,b)=>b[1].spend-a[1].spend).slice(0,10);
   if(!entries.length){
@@ -810,43 +924,62 @@ function renderMediaChart(){
   CHARTS.media = new Chart(ctx,{
     data:{ labels:entries.map(e=>e[0]),
       datasets:[
-        {type:'bar', label:'Investimento (R$)', data:entries.map(e=>e[1].spend.toFixed(2)), backgroundColor:'#AD7B2E', borderRadius:5, yAxisID:'y'},
-        {type:'line', label:'Leads gerados', data:entries.map(e=>e[1].leads), borderColor:'#3457B2', backgroundColor:'#3457B2', yAxisID:'y1', tension:.3},
+        {type:'bar', label:'Investimento (R$)', data:entries.map(e=>e[1].spend.toFixed(2)), backgroundColor:'#6C5CE7', borderRadius:5, yAxisID:'y'},
+        {type:'line', label:'Leads gerados', data:entries.map(e=>e[1].leads), borderColor:'#3D7CF4', backgroundColor:'#3D7CF4', yAxisID:'y1', tension:.3},
       ]},
     options: baseOpts({
-      plugins:{ legend:{display:true, position:'bottom', labels:{color:'#5B6270', font:{family:CHART_FONT,size:11}}} },
+      plugins:{ legend:{display:true, position:'bottom', labels:{color:'#6B7080', font:{family:CHART_FONT,size:11}}} },
       scales:{
-        x:{ ticks:{color:'#5B6270', font:{family:CHART_FONT,size:9}, maxRotation:35}, grid:{display:false} },
-        y:{ position:'left', ticks:{color:'#5B6270', font:{family:CHART_FONT,size:10}}, grid:{color:'#EAE6DB'} },
-        y1:{ position:'right', ticks:{color:'#5B6270', font:{family:CHART_FONT,size:10}}, grid:{display:false} },
+        x:{ ticks:{color:'#6B7080', font:{family:CHART_FONT,size:9}, maxRotation:35}, grid:{display:false} },
+        y:{ position:'left', ticks:{color:'#6B7080', font:{family:CHART_FONT,size:10}}, grid:{color:'#EBECF2'} },
+        y1:{ position:'right', ticks:{color:'#6B7080', font:{family:CHART_FONT,size:10}}, grid:{display:false} },
       }
     })
   });
 
   // Tabela de criativos com link pro Instagram
+  window.__creativeEntries = entries; // usado pela busca
   tableCard.innerHTML = `
-    <h3>Criativos</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <h3 style="margin:0;">Criativos</h3>
+      <input type="text" id="creativeSearch" class="search-input" placeholder="🔎 Pesquisar criativo…">
+    </div>
     <div style="overflow-x:auto;">
     <table class="creative-table">
-      <thead><tr><th>Anúncio</th><th>Investido</th><th>Leads</th><th>CPL</th><th>Criativo</th></tr></thead>
-      <tbody>
-        ${entries.map(([name,d])=>{
-          const adCpl = d.leads>0 ? (d.spend/d.leads) : 0;
-          const igCell = d.ig
-            ? `<a class="ig-link" href="${escapeHtml(d.ig)}" target="_blank" rel="noopener">📷 Ver no Instagram</a>`
-            : `<span class="ig-none">sem link</span>`;
-          return `<tr>
-            <td class="name">${escapeHtml(name)}</td>
-            <td class="num">R$ ${d.spend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-            <td class="num">${Math.round(d.leads)}</td>
-            <td class="num">${d.leads>0?'R$ '+adCpl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
-            <td>${igCell}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
+      <thead><tr><th>Anúncio</th><th>Investido</th><th>Leads</th><th>CPL</th><th>CPM</th><th>CTR</th><th>Criativo</th></tr></thead>
+      <tbody id="creativeTbody"></tbody>
     </table>
     </div>
   `;
+  renderCreativeRows(entries, '');
+  document.getElementById('creativeSearch').addEventListener('input', e=>{
+    renderCreativeRows(window.__creativeEntries, e.target.value);
+  });
+}
+
+function renderCreativeRows(entries, query){
+  const q = (query||'').trim().toLowerCase();
+  const filtered = q ? entries.filter(([name])=>name.toLowerCase().includes(q)) : entries;
+  const tbody = document.getElementById('creativeTbody');
+  if(!tbody) return;
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:20px;">Nenhum criativo encontrado.</td></tr>'; return; }
+  tbody.innerHTML = filtered.map(([name,d])=>{
+    const adCpl = d.leads>0 ? (d.spend/d.leads) : 0;
+    const adCpm = d.impr>0 ? (d.spend/d.impr*1000) : 0;
+    const adCtr = d.impr>0 ? (d.clicks/d.impr*100) : 0;
+    const igCell = d.ig
+      ? `<a class="ig-link" href="${escapeHtml(d.ig)}" target="_blank" rel="noopener">📷 Ver</a>`
+      : `<span class="ig-none">sem link</span>`;
+    return `<tr>
+      <td class="name">${escapeHtml(name)}</td>
+      <td class="num">R$ ${d.spend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td class="num">${Math.round(d.leads)}</td>
+      <td class="num">${d.leads>0?'R$ '+adCpl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+      <td class="num">R$ ${adCpm.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td class="num">${adCtr.toFixed(2)}%</td>
+      <td>${igCell}</td>
+    </tr>`;
+  }).join('');
 }
 
 function initials(name){
@@ -866,6 +999,9 @@ function shortFat(v){
 
 function renderTable(){
   let rows = STATE.activeTier==='Todos' ? STATE.leads.slice() : STATE.leads.filter(l=>l.tier===STATE.activeTier);
+
+  const query = (document.getElementById('leadSearch').value||'').trim().toLowerCase();
+  if(query){ rows = rows.filter(l=>(l.nome||'').toLowerCase().includes(query)); }
 
   const sortMode = document.getElementById('sortSelect').value;
   rows.sort((a,b)=>{
@@ -920,6 +1056,7 @@ function render(){
     showBanner('<b>Os gráficos não carregaram</b> — a biblioteca de gráficos (Chart.js) não foi carregada pelo navegador. Tente recarregar a página; se persistir, pode ser um bloqueador de scripts/anúncios impedindo o carregamento do CDN.');
   }
   safe('KPIs', renderKPIs);
+  safe('funil de qualificação', renderFunnel);
   safe('chart de tier', renderTierChart);
   safe('chart de origem', renderSourceChart);
   safe('chart de campanha', renderCampaignChart);
@@ -938,6 +1075,7 @@ document.getElementById('tabs').addEventListener('click', e=>{
   renderTable();
 });
 document.getElementById('sortSelect').addEventListener('change', renderTable);
+document.getElementById('leadSearch').addEventListener('input', renderTable);
 document.getElementById('refreshBtn').addEventListener('click', refreshAll);
 
 initDateRangeControls();
