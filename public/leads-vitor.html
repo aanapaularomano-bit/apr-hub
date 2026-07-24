@@ -918,17 +918,37 @@ function renderMediaChart(){
     return;
   }
 
-  card.innerHTML = `<h3>Investimento e leads gerados por anúncio</h3><div class="chart-box tall"><canvas id="chartMedia"></canvas></div>`;
+  card.innerHTML = `<h3>Investimento por anúncio <span style="float:right;font-weight:400;text-transform:none;font-size:11.5px;color:var(--text-faint);">cor = eficiência do CPL: 🟢 barato → 🔴 caro</span></h3><div class="chart-box tall"><canvas id="chartMedia"></canvas></div>`;
   destroyChart('media');
+
+  // Cor de cada barra pela eficiência do CPL (verde = barato, vermelho = caro)
+  const adCpls = entries.map(([,d]) => d.leads>0 ? d.spend/d.leads : Infinity);
+  const finiteCpls = adCpls.filter(v=>isFinite(v));
+  const minCpl = finiteCpls.length? Math.min(...finiteCpls) : 0;
+  const maxCpl = finiteCpls.length? Math.max(...finiteCpls) : 1;
+  function cplColor(v){
+    if(!isFinite(v)) return '#B9BEC7'; // sem leads = cinza neutro, não colore como "caro" nem "barato"
+    const t = maxCpl>minCpl ? (v-minCpl)/(maxCpl-minCpl) : 0;
+    const stops = [[0,[31,170,109]],[0.5,[214,154,31]],[1,[224,72,62]]]; // verde -> amber -> vermelho
+    let lo=stops[0], hi=stops[stops.length-1];
+    for(let i=0;i<stops.length-1;i++){ if(t>=stops[i][0] && t<=stops[i+1][0]){ lo=stops[i]; hi=stops[i+1]; break; } }
+    const span = hi[0]-lo[0] || 1;
+    const localT = (t-lo[0])/span;
+    const c = lo[1].map((c0,i)=>Math.round(c0 + (hi[1][i]-c0)*localT));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+  const barColors = adCpls.map(cplColor);
+
   const ctx=document.getElementById('chartMedia');
   CHARTS.media = new Chart(ctx,{
     data:{ labels:entries.map(e=>e[0]),
       datasets:[
-        {type:'bar', label:'Investimento (R$)', data:entries.map(e=>e[1].spend.toFixed(2)), backgroundColor:'#6C5CE7', borderRadius:5, yAxisID:'y'},
-        {type:'line', label:'Leads gerados', data:entries.map(e=>e[1].leads), borderColor:'#3D7CF4', backgroundColor:'#3D7CF4', yAxisID:'y1', tension:.3},
+        {type:'bar', label:'Investimento (R$)', data:entries.map(e=>e[1].spend.toFixed(2)), backgroundColor:barColors, borderRadius:5, yAxisID:'y'},
+        {type:'line', label:'Leads gerados', data:entries.map(e=>e[1].leads), borderColor:'#6C5CE7', backgroundColor:'#6C5CE7', yAxisID:'y1', tension:.3, borderDash:[4,3]},
       ]},
     options: baseOpts({
-      plugins:{ legend:{display:true, position:'bottom', labels:{color:'#6B7080', font:{family:CHART_FONT,size:11}}} },
+      plugins:{ legend:{display:true, position:'bottom', labels:{color:'#6B7080', font:{family:CHART_FONT,size:11}}},
+        tooltip:{ callbacks:{ afterLabel:(c)=>{ const cpl=adCpls[c.dataIndex]; return isFinite(cpl)? 'CPL: R$ '+cpl.toFixed(2) : 'CPL: sem leads'; } } } },
       scales:{
         x:{ ticks:{color:'#6B7080', font:{family:CHART_FONT,size:9}, maxRotation:35}, grid:{display:false} },
         y:{ position:'left', ticks:{color:'#6B7080', font:{family:CHART_FONT,size:10}}, grid:{color:'#EBECF2'} },
