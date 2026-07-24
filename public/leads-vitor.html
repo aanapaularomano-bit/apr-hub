@@ -100,6 +100,15 @@
     font-weight:600;padding:7px 14px;border-radius:6px;cursor:pointer;margin-left:auto;
   }
 
+  .page-tabs{display:flex;gap:8px;margin-bottom:28px;border-bottom:1px solid var(--border);padding-bottom:0;}
+  .page-tab{
+    font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;padding:10px 18px;
+    border:none;background:transparent;color:var(--text-faint);cursor:pointer;
+    border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:.15s;
+  }
+  .page-tab:hover{color:var(--text-dim);}
+  .page-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
   .banner{
     display:none;align-items:center;gap:12px;background:var(--morno-soft);
     border:1px solid rgba(181,129,30,.3);color:#8A5F14;
@@ -309,89 +318,100 @@
 
   <div class="banner" id="banner"></div>
 
-  <section>
-    <div class="sec-head"><h2>Lead Scoring</h2><span class="hint" id="periodHint">qualificação automática de todos os leads captados</span></div>
-    <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="page-tabs">
+    <button class="page-tab active" data-page="media">📊 Desempenho de Mídia</button>
+    <button class="page-tab" data-page="leadscoring">🎯 Lead Scoring</button>
+  </div>
 
-    <details class="method">
-      <summary>Como o score é calculado (0–100)</summary>
-      <div class="method-grid">
-        <div class="method-item"><div class="w">+20 · Marketplace ativo</div><div class="d">Já vende em pelo menos um marketplace (ML, Shopee, Amazon, ecommerce próprio etc).</div></div>
-        <div class="method-item"><div class="w">+30 · Faturamento</div><div class="d">Ouro (≥R$100k) pontua cheio; entre R$30k–100k pontua parcial; abaixo do mínimo pontua baixo.</div></div>
-        <div class="method-item"><div class="w">+25 · Investimento disponível</div><div class="d">Ouro (≥R$15k) pontua cheio; "Até R$10.000" pontua parcial (mínimo do critério).</div></div>
-        <div class="method-item"><div class="w">+10 · Margem baixa</div><div class="d">Margem declarada ≤20% indica a dor real do ICP (fornecedor nacional espremendo o lucro).</div></div>
-        <div class="method-item"><div class="w">+10 · Dor real no gargalo</div><div class="d">Menciona fornecedor, produto, margem, preço ou custo como travamento do negócio.</div></div>
-        <div class="method-item"><div class="w">+5 · Intenção de decisão</div><div class="d">"Sim, é o que eu preciso!" pontua cheio; "Preciso avaliar" pontua parcial.</div></div>
+  <div id="pageMedia" class="page-group">
+    <section id="mediaSection">
+      <div class="sec-head"><h2>Desempenho de mídia (Meta Ads)</h2><span class="hint">aba "Página2" · atualiza a cada 2h</span></div>
+      <div class="kpi-grid media-kpi-grid" id="mediaKpiGrid"></div>
+      <div class="grid-2" id="mediaTrendGrid1" style="margin-bottom:16px;"></div>
+      <div class="grid-2" id="mediaTrendGrid2" style="margin-bottom:16px;"></div>
+      <div class="card" id="mediaCard" style="display:none;"></div>
+      <div class="card" id="campaignTableCard" style="margin-bottom:16px;"></div>
+      <div class="card" id="mediaTableCard"></div>
+    </section>
+  </div>
+
+  <div id="pageLeadScoring" class="page-group" style="display:none;">
+    <section>
+      <div class="sec-head"><h2>Lead Scoring</h2><span class="hint" id="periodHint">qualificação automática de todos os leads captados</span></div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <details class="method">
+        <summary>Como o score é calculado (0–100)</summary>
+        <div class="method-grid">
+          <div class="method-item"><div class="w">+20 · Marketplace ativo</div><div class="d">Já vende em pelo menos um marketplace (ML, Shopee, Amazon, ecommerce próprio etc).</div></div>
+          <div class="method-item"><div class="w">+30 · Faturamento</div><div class="d">Ouro (≥R$100k) pontua cheio; entre R$30k–100k pontua parcial; abaixo do mínimo pontua baixo.</div></div>
+          <div class="method-item"><div class="w">+25 · Investimento disponível</div><div class="d">Ouro (≥R$15k) pontua cheio; "Até R$10.000" pontua parcial (mínimo do critério).</div></div>
+          <div class="method-item"><div class="w">+10 · Margem baixa</div><div class="d">Margem declarada ≤20% indica a dor real do ICP (fornecedor nacional espremendo o lucro).</div></div>
+          <div class="method-item"><div class="w">+10 · Dor real no gargalo</div><div class="d">Menciona fornecedor, produto, margem, preço ou custo como travamento do negócio.</div></div>
+          <div class="method-item"><div class="w">+5 · Intenção de decisão</div><div class="d">"Sim, é o que eu preciso!" pontua cheio; "Preciso avaliar" pontua parcial.</div></div>
+        </div>
+        <div class="method-flags">
+          <b>Descarte automático</b> (score zerado, fora do funil), independente da pontuação acima, quando: só vende em loja física ou ainda não vende · resposta de travamento menciona "quero começar" · ou marcou "não tenho interesse" na decisão.<br>
+          <b>Faixas:</b> Quente ≥70 · Morno 40–69 · Frio 1–39 · Descartado (fora do ICP).
+        </div>
+      </details>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Funil de qualificação</h2><span class="hint">da captação ao lead quente</span></div>
+      <div class="grid-2">
+        <div class="card"><h3>Funil de leads</h3><div id="funnelBox" class="funnel-box"></div></div>
+        <div class="card"><h3>Taxas de qualificação</h3><div id="funnelRates" class="funnel-rates"></div></div>
       </div>
-      <div class="method-flags">
-        <b>Descarte automático</b> (score zerado, fora do funil), independente da pontuação acima, quando: só vende em loja física ou ainda não vende · resposta de travamento menciona "quero começar" · ou marcou "não tenho interesse" na decisão.<br>
-        <b>Faixas:</b> Quente ≥70 · Morno 40–69 · Frio 1–39 · Descartado (fora do ICP).
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Visão geral do score</h2><span class="hint">distribuição por tier e por origem</span></div>
+      <div class="grid-2">
+        <div class="card"><h3>Leads por Tier</h3><div class="chart-box"><canvas id="chartTier"></canvas></div></div>
+        <div class="card"><h3>Score médio por origem (UTM Source)</h3><div class="chart-box"><canvas id="chartSource"></canvas></div></div>
       </div>
-    </details>
-  </section>
+    </section>
 
-  <section>
-    <div class="sec-head"><h2>Funil de qualificação</h2><span class="hint">da captação ao lead quente</span></div>
-    <div class="grid-2">
-      <div class="card"><h3>Funil de leads</h3><div id="funnelBox" class="funnel-box"></div></div>
-      <div class="card"><h3>Taxas de qualificação</h3><div id="funnelRates" class="funnel-rates"></div></div>
-    </div>
-  </section>
+    <section>
+      <div class="sec-head"><h2>Qualidade por campanha</h2><span class="hint">quais campanhas trazem os leads mais perto do ICP</span></div>
+      <div class="card"><div class="chart-box tall"><canvas id="chartCampaign"></canvas></div></div>
+    </section>
 
-  <section>
-    <div class="sec-head"><h2>Visão geral do score</h2><span class="hint">distribuição por tier e por origem</span></div>
-    <div class="grid-2">
-      <div class="card"><h3>Leads por Tier</h3><div class="chart-box"><canvas id="chartTier"></canvas></div></div>
-      <div class="card"><h3>Score médio por origem (UTM Source)</h3><div class="chart-box"><canvas id="chartSource"></canvas></div></div>
-    </div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Qualidade por campanha</h2><span class="hint">quais campanhas trazem os leads mais perto do ICP</span></div>
-    <div class="card"><div class="chart-box tall"><canvas id="chartCampaign"></canvas></div></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Perfil dos leads</h2><span class="hint">faturamento, investimento e marketplace</span></div>
-    <div class="grid-3">
-      <div class="card"><h3>Faturamento (30 dias)</h3><div class="chart-box"><canvas id="chartFat"></canvas></div></div>
-      <div class="card"><h3>Investimento disponível</h3><div class="chart-box"><canvas id="chartInv"></canvas></div></div>
-      <div class="card"><h3>Marketplace</h3><div class="chart-box"><canvas id="chartMk"></canvas></div></div>
-    </div>
-  </section>
-
-  <section id="mediaSection">
-    <div class="sec-head"><h2>Desempenho de mídia (Meta Ads)</h2><span class="hint">aba "Página2" · atualiza a cada 2h</span></div>
-    <div class="kpi-grid media-kpi-grid" id="mediaKpiGrid"></div>
-    <div class="grid-2" id="mediaTrendGrid1" style="margin-bottom:16px;"></div>
-    <div class="grid-2" id="mediaTrendGrid2" style="margin-bottom:16px;"></div>
-    <div class="card" id="mediaCard"><h3>Investimento e leads gerados por anúncio</h3><div class="chart-box tall"><canvas id="chartMedia"></canvas></div></div>
-    <div class="card" id="mediaTableCard" style="margin-top:16px;"></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Lista de leads</h2><span class="hint" id="tableCount"></span></div>
-    <div class="leads-toolbar">
-      <div class="tabs" id="tabs">
-        <button class="tab active" data-tier="Todos">Todos</button>
-        <button class="tab" data-tier="Quente">🔥 Quente</button>
-        <button class="tab" data-tier="Morno">Morno</button>
-        <button class="tab" data-tier="Frio">Frio</button>
-        <button class="tab" data-tier="Descartado">Descartado</button>
+    <section>
+      <div class="sec-head"><h2>Perfil dos leads</h2><span class="hint">faturamento, investimento e marketplace</span></div>
+      <div class="grid-3">
+        <div class="card"><h3>Faturamento (30 dias)</h3><div class="chart-box"><canvas id="chartFat"></canvas></div></div>
+        <div class="card"><h3>Investimento disponível</h3><div class="chart-box"><canvas id="chartInv"></canvas></div></div>
+        <div class="card"><h3>Marketplace</h3><div class="chart-box"><canvas id="chartMk"></canvas></div></div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <input type="text" id="leadSearch" class="search-input" placeholder="🔎 Pesquisar por nome…">
-        <select id="sortSelect" class="sort-select">
-          <option value="score_desc">Maior score</option>
-          <option value="score_asc">Menor score</option>
-          <option value="date_desc">Mais recente</option>
-          <option value="date_asc">Mais antigo</option>
-          <option value="name_asc">Nome A–Z</option>
-        </select>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Lista de leads</h2><span class="hint" id="tableCount"></span></div>
+      <div class="leads-toolbar">
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-tier="Todos">Todos</button>
+          <button class="tab" data-tier="Quente">🔥 Quente</button>
+          <button class="tab" data-tier="Morno">Morno</button>
+          <button class="tab" data-tier="Frio">Frio</button>
+          <button class="tab" data-tier="Descartado">Descartado</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="leadSearch" class="search-input" placeholder="🔎 Pesquisar por nome…">
+          <select id="sortSelect" class="sort-select">
+            <option value="score_desc">Maior score</option>
+            <option value="score_asc">Menor score</option>
+            <option value="date_desc">Mais recente</option>
+            <option value="date_asc">Mais antigo</option>
+            <option value="name_asc">Nome A–Z</option>
+          </select>
+        </div>
       </div>
-    </div>
-    <div class="leads-list" id="leadsList"></div>
-  </section>
+      <div class="leads-list" id="leadsList"></div>
+    </section>
+  </div>
+
 
   <footer>Dashboard alimentado automaticamente pela planilha do Google Sheets · APR Digital</footer>
 </div>
@@ -832,11 +852,15 @@ function renderMediaChart(){
 
   if(STATE.mediaError){
     kpiGrid.innerHTML = ''; tableCard.innerHTML = ''; trend1.innerHTML=''; trend2.innerHTML='';
+    document.getElementById('campaignTableCard').innerHTML = '';
+    card.style.display='block';
     card.innerHTML = `<div class="media-status"><b>Não consegui ler a aba "Página2" da planilha.</b><br>Confira se essa aba também está com o compartilhamento "Qualquer pessoa com o link → Leitor".<div class="details">Detalhe técnico: ${escapeHtml(STATE.mediaError)}</div></div>`;
     return;
   }
   if(!STATE.media || !STATE.media.length){
     kpiGrid.innerHTML = ''; tableCard.innerHTML = ''; trend1.innerHTML=''; trend2.innerHTML='';
+    document.getElementById('campaignTableCard').innerHTML = '';
+    card.style.display='block';
     card.innerHTML = `<div class="media-status">Nenhum dado de mídia encontrado nessa aba para o período selecionado.</div>`;
     return;
   }
@@ -847,6 +871,7 @@ function renderMediaChart(){
   let totalSpend=0, totalImpr=0, totalClicks=0, totalLeads=0;
   const byAd={};
   const byDate={};
+  const byCampaign={};
   STATE.media.forEach(r=>{
     const spend=num(r['Spend (Cost, Amount Spent)']);
     const impr=num(r['Impressions']);
@@ -858,6 +883,12 @@ function renderMediaChart(){
     if(date){
       if(!byDate[date]) byDate[date]={spend:0,impr:0,clicks:0,leads:0};
       byDate[date].spend+=spend; byDate[date].impr+=impr; byDate[date].clicks+=clicks; byDate[date].leads+=leads;
+    }
+
+    const campaign = r['Campaign Name'];
+    if(campaign){
+      if(!byCampaign[campaign]) byCampaign[campaign]={spend:0,impr:0,clicks:0,leads:0};
+      byCampaign[campaign].spend+=spend; byCampaign[campaign].impr+=impr; byCampaign[campaign].clicks+=clicks; byCampaign[campaign].leads+=leads;
     }
 
     const name = r['Ad Name']; if(!name) return;
@@ -911,50 +942,36 @@ function renderMediaChart(){
   CHARTS['trend_CTRdiário'] = mk('trend_CTRdiário','CTR','#3D7CF4');
 
   const entries=Object.entries(byAd).sort((a,b)=>b[1].spend-a[1].spend).slice(0,10);
-  if(!entries.length){
+  const campaignEntries=Object.entries(byCampaign).sort((a,b)=>b[1].spend-a[1].spend).slice(0,15);
+
+  if(!entries.length && !campaignEntries.length){
     const cols = Object.keys(STATE.media[0]||{}).join(', ');
-    card.innerHTML = `<div class="media-status"><b>A aba foi lida, mas a coluna "Ad Name" não foi encontrada.</b><div class="details">Colunas encontradas: ${escapeHtml(cols)}</div></div>`;
-    tableCard.innerHTML = '';
+    card.style.display='block';
+    card.innerHTML = `<div class="media-status"><b>A aba foi lida, mas as colunas esperadas não foram encontradas.</b><div class="details">Colunas encontradas: ${escapeHtml(cols)}</div></div>`;
+    tableCard.innerHTML = ''; document.getElementById('campaignTableCard').innerHTML = '';
     return;
   }
+  card.innerHTML = '';
+  card.style.display = 'none';
 
-  card.innerHTML = `<h3>Investimento por anúncio <span style="float:right;font-weight:400;text-transform:none;font-size:11.5px;color:var(--text-faint);">cor = eficiência do CPL: 🟢 barato → 🔴 caro</span></h3><div class="chart-box tall"><canvas id="chartMedia"></canvas></div>`;
-  destroyChart('media');
-
-  // Cor de cada barra pela eficiência do CPL (verde = barato, vermelho = caro)
-  const adCpls = entries.map(([,d]) => d.leads>0 ? d.spend/d.leads : Infinity);
-  const finiteCpls = adCpls.filter(v=>isFinite(v));
-  const minCpl = finiteCpls.length? Math.min(...finiteCpls) : 0;
-  const maxCpl = finiteCpls.length? Math.max(...finiteCpls) : 1;
-  function cplColor(v){
-    if(!isFinite(v)) return '#B9BEC7'; // sem leads = cinza neutro, não colore como "caro" nem "barato"
-    const t = maxCpl>minCpl ? (v-minCpl)/(maxCpl-minCpl) : 0;
-    const stops = [[0,[31,170,109]],[0.5,[214,154,31]],[1,[224,72,62]]]; // verde -> amber -> vermelho
-    let lo=stops[0], hi=stops[stops.length-1];
-    for(let i=0;i<stops.length-1;i++){ if(t>=stops[i][0] && t<=stops[i+1][0]){ lo=stops[i]; hi=stops[i+1]; break; } }
-    const span = hi[0]-lo[0] || 1;
-    const localT = (t-lo[0])/span;
-    const c = lo[1].map((c0,i)=>Math.round(c0 + (hi[1][i]-c0)*localT));
-    return `rgb(${c[0]},${c[1]},${c[2]})`;
-  }
-  const barColors = adCpls.map(cplColor);
-
-  const ctx=document.getElementById('chartMedia');
-  CHARTS.media = new Chart(ctx,{
-    data:{ labels:entries.map(e=>e[0]),
-      datasets:[
-        {type:'bar', label:'Investimento (R$)', data:entries.map(e=>e[1].spend.toFixed(2)), backgroundColor:barColors, borderRadius:5, yAxisID:'y'},
-        {type:'line', label:'Leads gerados', data:entries.map(e=>e[1].leads), borderColor:'#6C5CE7', backgroundColor:'#6C5CE7', yAxisID:'y1', tension:.3, borderDash:[4,3]},
-      ]},
-    options: baseOpts({
-      plugins:{ legend:{display:true, position:'bottom', labels:{color:'#6B7080', font:{family:CHART_FONT,size:11}}},
-        tooltip:{ callbacks:{ afterLabel:(c)=>{ const cpl=adCpls[c.dataIndex]; return isFinite(cpl)? 'CPL: R$ '+cpl.toFixed(2) : 'CPL: sem leads'; } } } },
-      scales:{
-        x:{ ticks:{color:'#6B7080', font:{family:CHART_FONT,size:9}, maxRotation:35}, grid:{display:false} },
-        y:{ position:'left', ticks:{color:'#6B7080', font:{family:CHART_FONT,size:10}}, grid:{color:'#EBECF2'} },
-        y1:{ position:'right', ticks:{color:'#6B7080', font:{family:CHART_FONT,size:10}}, grid:{display:false} },
-      }
-    })
+  // Tabela de campanhas
+  window.__campaignEntries = campaignEntries;
+  const campaignCard = document.getElementById('campaignTableCard');
+  campaignCard.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <h3 style="margin:0;">Campanhas</h3>
+      <input type="text" id="campaignSearch" class="search-input" placeholder="🔎 Pesquisar campanha…">
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="creative-table">
+      <thead><tr><th>Campanha</th><th>Investido</th><th>Leads</th><th>CPL</th><th>CPM</th><th>CTR</th></tr></thead>
+      <tbody id="campaignTbody"></tbody>
+    </table>
+    </div>
+  `;
+  renderCampaignRows(campaignEntries, '');
+  document.getElementById('campaignSearch').addEventListener('input', e=>{
+    renderCampaignRows(window.__campaignEntries, e.target.value);
   });
 
   // Tabela de criativos com link pro Instagram
@@ -975,6 +992,27 @@ function renderMediaChart(){
   document.getElementById('creativeSearch').addEventListener('input', e=>{
     renderCreativeRows(window.__creativeEntries, e.target.value);
   });
+}
+
+function renderCampaignRows(entries, query){
+  const q = (query||'').trim().toLowerCase();
+  const filtered = q ? entries.filter(([name])=>name.toLowerCase().includes(q)) : entries;
+  const tbody = document.getElementById('campaignTbody');
+  if(!tbody) return;
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:20px;">Nenhuma campanha encontrada.</td></tr>'; return; }
+  tbody.innerHTML = filtered.map(([name,d])=>{
+    const cCpl = d.leads>0 ? (d.spend/d.leads) : 0;
+    const cCpm = d.impr>0 ? (d.spend/d.impr*1000) : 0;
+    const cCtr = d.impr>0 ? (d.clicks/d.impr*100) : 0;
+    return `<tr>
+      <td class="name">${escapeHtml(name.length>50?name.slice(0,50)+'…':name)}</td>
+      <td class="num">R$ ${d.spend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td class="num">${Math.round(d.leads)}</td>
+      <td class="num">${d.leads>0?'R$ '+cCpl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+      <td class="num">R$ ${cCpm.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td class="num">${cCtr.toFixed(2)}%</td>
+    </tr>`;
+  }).join('');
 }
 
 function renderCreativeRows(entries, query){
@@ -1097,6 +1135,16 @@ document.getElementById('tabs').addEventListener('click', e=>{
 document.getElementById('sortSelect').addEventListener('change', renderTable);
 document.getElementById('leadSearch').addEventListener('input', renderTable);
 document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+
+document.querySelectorAll('.page-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.page-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const page = btn.dataset.page;
+    document.getElementById('pageMedia').style.display = page==='media' ? 'block' : 'none';
+    document.getElementById('pageLeadScoring').style.display = page==='leadscoring' ? 'block' : 'none';
+  });
+});
 
 initDateRangeControls();
 refreshAll();
