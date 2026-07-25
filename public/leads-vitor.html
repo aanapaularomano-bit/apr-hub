@@ -858,10 +858,19 @@ function renderMediaChart(){
     return;
   }
   if(!STATE.media || !STATE.media.length){
-    kpiGrid.innerHTML = ''; tableCard.innerHTML = ''; trend1.innerHTML=''; trend2.innerHTML='';
+    kpiGrid.innerHTML = `
+      <div class="kpi"><div class="label">Investido</div><div class="value">R$ 0,00</div><div class="caption">sem dados no período</div></div>
+      <div class="kpi"><div class="label">Impressões</div><div class="value">0</div><div class="caption">sem dados no período</div></div>
+      <div class="kpi"><div class="label">Cliques</div><div class="value">0</div><div class="caption">sem dados no período</div></div>
+      <div class="kpi"><div class="label">Leads gerados</div><div class="value">0</div><div class="caption">sem dados no período</div></div>
+      <div class="kpi"><div class="label">CPL médio</div><div class="value">—</div><div class="caption">sem dados no período</div></div>
+      <div class="kpi"><div class="label">CTR · CPM</div><div class="value">—</div><div class="caption">sem dados no período</div></div>
+    `;
+    trend1.innerHTML=''; trend2.innerHTML='';
+    tableCard.innerHTML = '';
     document.getElementById('campaignTableCard').innerHTML = '';
     card.style.display='block';
-    card.innerHTML = `<div class="media-status">Nenhum dado de mídia encontrado nessa aba para o período selecionado.</div>`;
+    card.innerHTML = `<div class="media-status">Nenhum dado de mídia encontrado nessa aba para o período selecionado (o "Página2" pode ainda não ter sincronizado hoje, ou nenhuma campanha rodou nesse recorte). Tente "Últimos 7d" pra ver o histórico recente.</div>`;
     return;
   }
 
