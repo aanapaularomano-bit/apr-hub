@@ -421,7 +421,7 @@
 const SHEET_ID = '1ocG-5HLGxjlp7tjQV5-TQOtKApEBuBMDH2k_LYZZzMo';
 const LEADS_GID = '0';
 const MEDIA_GID = '1363384740';
-const csvUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+const csvUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}&_cb=${Date.now()}`;
 
 const COLS = {
   inicio:'Início', campaign:'utm_campaign', medium:'utm_medium', source:'utm_source',
