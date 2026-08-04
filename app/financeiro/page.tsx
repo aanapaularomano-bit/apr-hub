@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { statusRecebimento, ResumoRecebimentos, PillStatus, SeletorStatusCliente, agruparPorTipo, CabecalhoGrupo } from '@/components/ResumoRecebimentosPJ';
-import { ValorMoeda, SeletorSquad } from '@/components/SquadValorPJ';
+import { SeletorSquad } from '@/components/SquadValorPJ';
+import { EditorValorMoeda, BotaoNovaReceita } from '@/components/ValorEditavelPJ';
 import { DiaPagamento } from '@/components/DiaPagamentoPJ';
 import { ClienteCelula } from '@/components/ClienteAvatarPJ';
 // Acesso via API server-side (/api/financeiro)
@@ -731,7 +732,7 @@ export default function FinanceiroPage() {
                   if (allRecs.length === 0) return (
                     <>
                       <div style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum lançamento.</div>
-                      <div className="add-row"><button className="btn btn-primary" onClick={() => addRow('rec-pj')}>+ Adicionar</button></div>
+                      <BotaoNovaReceita onClick={() => addRow('rec-pj')} />
                     </>
                   );
                   return (
@@ -767,7 +768,7 @@ export default function FinanceiroPage() {
                                         <SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} />
                                       </td>
                                       <td><DiaPagamento dia={row.dia} /></td>
-                                      <td className="right"><ValorMoeda valor={row.valor} destaque /></td>
+                                      <td className="right"><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></td>
                                       <td className="right">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                                           <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
@@ -786,7 +787,7 @@ export default function FinanceiroPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
                         <span>TOTAL RECEITAS PJ</span><span>{fmtBR(recPJ)}</span>
                       </div>
-                      <div className="add-row"><button className="btn btn-primary" onClick={() => addRow('rec-pj')}>+ Adicionar</button></div>
+                      <BotaoNovaReceita onClick={() => addRow('rec-pj')} />
                     </>
                   );
                 })()}
