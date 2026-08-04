@@ -27,7 +27,7 @@ export const ESTILO_TABELA = {
     display: 'grid',
     gridTemplateColumns: GRID_COLUNAS,
     alignItems: 'center',
-    columnGap: 12,
+    columnGap: 24,
   } as React.CSSProperties,
   cabecalho: {
     fontSize: 12,

@@ -756,7 +756,7 @@ export default function FinanceiroPage() {
                                     <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></div>
                                     <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                                        <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
+                                        <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E', marginLeft: 6 }} />
                                         <PillStatus recebido={!!row.recebido} dia={row.dia || ''} mesRef={mesRef} />
                                       </div>
                                     </div>
