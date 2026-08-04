@@ -748,21 +748,19 @@ export default function FinanceiroPage() {
                                 const origIdx = allRecs.indexOf(row);
                                 const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef);
                                 return (
-                                  <div key={origIdx} style={{ display: 'flex', alignItems: 'center', borderLeft: `3px solid ${st.cor}` }}>
-                                    <div style={{ ...ESTILO_TABELA.linhaGrid, flex: 1 }}>
-                                      <div style={ESTILO_TABELA.celula}><ClienteEditavel nome={row.cliente || ''} onChange={v => updRow('rec-pj', origIdx, 'cliente', v)} /></div>
-                                      <div style={ESTILO_TABELA.celula}><SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} /></div>
-                                      <div style={ESTILO_TABELA.celula}><SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} /></div>
-                                      <div style={ESTILO_TABELA.celula}><SeletorDiaPagamento dia={row.dia} onChange={v => updRow('rec-pj', origIdx, 'dia', v)} /></div>
-                                      <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></div>
-                                      <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                                          <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
-                                          <PillStatus recebido={!!row.recebido} dia={row.dia || ''} mesRef={mesRef} />
-                                        </div>
+                                  <div key={origIdx} style={{ ...ESTILO_TABELA.linhaGrid, borderLeft: `3px solid ${st.cor}` }}>
+                                    <div style={ESTILO_TABELA.celula}><ClienteEditavel nome={row.cliente || ''} onChange={v => updRow('rec-pj', origIdx, 'cliente', v)} /></div>
+                                    <div style={ESTILO_TABELA.celula}><SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} /></div>
+                                    <div style={ESTILO_TABELA.celula}><SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} /></div>
+                                    <div style={ESTILO_TABELA.celula}><SeletorDiaPagamento dia={row.dia} onChange={v => updRow('rec-pj', origIdx, 'dia', v)} /></div>
+                                    <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></div>
+                                    <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                                        <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
+                                        <PillStatus recebido={!!row.recebido} dia={row.dia || ''} mesRef={mesRef} />
                                       </div>
                                     </div>
-                                    <div style={{ width: 36, flexShrink: 0, textAlign: 'right', borderBottom: '1px solid #2C251E', padding: '16px 4px' }}>
+                                    <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
                                       <button className="btn-del" onClick={() => delRow('rec-pj', origIdx)} title="Remover">✕</button>
                                     </div>
                                   </div>

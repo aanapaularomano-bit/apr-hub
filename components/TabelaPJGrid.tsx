@@ -20,7 +20,7 @@ const T = {
    Larguras das colunas — a MESMA constante usada no cabeçalho e em
    cada linha, senão elas descolam uma da outra.
    ------------------------------------------------------------------ */
-export const GRID_COLUNAS = 'minmax(160px, 2.2fr) 150px 160px 150px 130px 110px';
+export const GRID_COLUNAS = 'minmax(160px, 2.2fr) 150px 160px 150px 130px 110px 36px';
 
 export const ESTILO_TABELA = {
   linhaGrid: {
@@ -50,11 +50,11 @@ export const ESTILO_TABELA = {
    Cabeçalho da tabela — usar uma vez acima das linhas de cada grupo.
    ------------------------------------------------------------------ */
 export function CabecalhoTabela() {
-  const cols = ['Cliente', 'Squad', 'Status', 'Dia pgto', 'Valor (R$)', 'Recebido?'];
+  const cols = ['Cliente', 'Squad', 'Status', 'Dia pgto', 'Valor (R$)', 'Recebido?', ''];
   return (
-    <div style={{ ...ESTILO_TABELA.linhaGrid, paddingRight: 36 }}>
-      {cols.map(c => (
-        <div key={c} style={ESTILO_TABELA.cabecalho}>{c}</div>
+    <div style={ESTILO_TABELA.linhaGrid}>
+      {cols.map((c, i) => (
+        <div key={i} style={ESTILO_TABELA.cabecalho}>{c}</div>
       ))}
     </div>
   );
