@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { statusRecebimento, ResumoRecebimentos, PillStatus } from '@/components/ResumoRecebimentosPJ';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -69,6 +70,7 @@ function fmtBR(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
 }
 function fmtPct(n: number) { return (Math.round(n * 10) / 10).toFixed(1) + '%'; }
+
 
 export default function FinanceiroPage() {
   const [currentMonth, setCurrentMonth] = useState(getInitialMonth());
@@ -217,6 +219,7 @@ export default function FinanceiroPage() {
 
   const [yy, mm] = currentMonth.split('-');
   const currentMonthLabel = `${MESES_NOMES[+mm - 1]} / ${yy}`;
+  const mesRef = new Date(+yy, +mm - 1, 1);
 
   if (loading) {
     return <div style={{ minHeight: '100vh', background: '#0a0a0d', color: '#e9e9f2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>Carregando APR Financeiro...</div>;
@@ -712,6 +715,11 @@ export default function FinanceiroPage() {
             <h2 className="section-title">PJ · APR Digital</h2>
             <p className="section-sub">Receitas dos clientes e custos fixos da agência</p>
 
+            <ResumoRecebimentos
+              receitas={(m['rec-pj'] || []).map((r: any) => ({ cliente: r.cliente, valor: r.valor, recebido: !!r.recebido, diaPgto: r.dia }))}
+              mesRef={mesRef}
+            />
+
             <TableBlock title="💰 Receitas · Clientes" badge="recorrente + projeto" badgeClass="pj"
               data={m['rec-pj'] || []} fields={[
                 { k: 'cliente', type: 'text', ph: 'Nome do cliente' },
@@ -720,10 +728,11 @@ export default function FinanceiroPage() {
                 { k: 'status', type: 'select', opts: ['Ativo', 'Negociação', 'Pausado', 'Finalizado'] },
                 { k: 'dia', type: 'text', ph: 'dia' },
                 { k: 'valor', type: 'number', right: true },
-                { k: 'recebido', type: 'check', right: true },
+                { k: 'recebido', type: 'check-pill', diaPgtoKey: 'dia', mesRef, right: true },
               ]} headers={['Cliente', 'Squad', 'Tipo', 'Status', 'Dia pgto', 'Valor (R$)', 'Recebido?']}
               onUpd={(i, f, v) => updRow('rec-pj', i, f, v)} onDel={i => delRow('rec-pj', i)} onAdd={() => addRow('rec-pj')}
-              totalLabel="TOTAL RECEITAS PJ" totalSpan={5} totalValue={fmtBR(recPJ)} />
+              totalLabel="TOTAL RECEITAS PJ" totalSpan={5} totalValue={fmtBR(recPJ)}
+              getRowStyle={(row: any) => { const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef); return { borderLeft: `3px solid ${st.cor}` }; }} />
 
             <TableBlock title="📉 Custos Fixos · Agência" badge="mensal" badgeClass="pj"
               data={m['cust-pj'] || []} fields={[
@@ -900,14 +909,14 @@ function TableBlock(props: any) {
   );
 }
 
-function TableInner({ data, fields, headers, onUpd, onDel }: any) {
+function TableInner({ data, fields, headers, onUpd, onDel, getRowStyle }: any) {
   return (
     <table>
       <thead><tr>{headers.map((h: string, i: number) => <th key={i} style={{ textAlign: fields[i]?.right ? 'right' : 'left' }}>{h}</th>)}<th></th></tr></thead>
       <tbody>
         {data.length === 0 ? <tr><td colSpan={headers.length + 1} style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum lançamento.</td></tr> :
           data.map((row: any, i: number) => (
-            <tr key={i}>
+            <tr key={i} style={getRowStyle ? getRowStyle(row) : undefined}>
               {fields.map((f: any, j: number) => (
                 <td key={j} className={f.right ? 'right' : ''}>
                   {renderField(f, row, i, onUpd)}
@@ -931,6 +940,14 @@ function renderField(f: any, row: any, i: number, onUpd: any) {
     return <select value={row[f.k] || f.opts[0]} onChange={e => onUpd(i, f.k, e.target.value)}>{f.opts.map((o: string) => <option key={o} value={o}>{o}</option>)}</select>;
   if (f.type === 'check')
     return <input type="checkbox" checked={!!row[f.k]} onChange={e => onUpd(i, f.k, e.target.checked)} style={{ width: 'auto' }} />;
+  if (f.type === 'check-pill') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+        <input type="checkbox" checked={!!row[f.k]} onChange={e => onUpd(i, f.k, e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
+        <PillStatus recebido={!!row[f.k]} diaPgto={row[f.diaPgtoKey] || ''} mesRef={f.mesRef} />
+      </div>
+    );
+  }
   if (f.type === 'cardSelect')
     return <select value={row[f.k] || ''} onChange={e => onUpd(i, f.k, e.target.value)}><option value="">—</option>{(f.cards || []).map((c: any, k: number) => <option key={k}>{c.nome}</option>)}</select>;
   if (f.type === 'progress') {
