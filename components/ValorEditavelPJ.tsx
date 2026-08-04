@@ -76,7 +76,7 @@ export function EditorValorMoeda({
   return (
     <button
       onClick={() => { setTemp(String(valor ?? '')); setEditando(true); }}
-      style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, background: 'transparent', border: '1px solid transparent', borderRadius: 7, padding: '3px 8px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums' }}
+      style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, background: 'transparent', border: '1px solid transparent', borderRadius: 7, padding: '3px 8px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}
       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,.05)'; e.currentTarget.style.borderColor = T.lineSoft; }}
       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
       title="Clique para editar"

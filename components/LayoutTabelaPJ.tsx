@@ -38,12 +38,12 @@ export function SeletorDiaPagamento({ dia, onChange }: { dia: string | number | 
   const valor = semData ? '' : String(Number(dia));
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, overflow: 'hidden', maxWidth: '100%' }}>
       {!semData && <span style={{ fontSize: 14, color: T.muted }}>todo dia</span>}
       <select
         value={valor}
         onChange={e => onChange(e.target.value ? Number(e.target.value) : null)}
-        style={{ background: 'transparent', border: '1px solid transparent', color: semData ? T.muted : T.sand, fontFamily: semData ? 'inherit' : "'JetBrains Mono', monospace", fontWeight: 600, fontSize: 14, padding: '4px 22px 4px 7px', borderRadius: 7, cursor: 'pointer', appearance: 'none', backgroundImage: setaSvg, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 5px center', transition: 'background .15s ease, border-color .15s ease' }}
+        style={{ background: 'transparent', border: '1px solid transparent', color: semData ? T.muted : T.sand, fontFamily: semData ? 'inherit' : "'JetBrains Mono', monospace", fontWeight: 600, fontSize: 14, padding: '4px 22px 4px 7px', borderRadius: 7, cursor: 'pointer', appearance: 'none', backgroundImage: setaSvg, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 5px center', transition: 'background .15s ease, border-color .15s ease', maxWidth: '100%', minWidth: 0 }}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
         onFocus={e => (e.currentTarget.style.borderColor = `${T.agua}55`)}
