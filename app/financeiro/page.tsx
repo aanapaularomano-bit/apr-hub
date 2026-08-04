@@ -763,6 +763,7 @@ export default function FinanceiroPage() {
                                     <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
                                       <button className="btn-del" onClick={() => delRow('rec-pj', origIdx)} title="Remover">✕</button>
                                     </div>
+                                    <div />
                                   </div>
                                 );
                               })}
