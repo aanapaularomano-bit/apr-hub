@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { statusRecebimento, ResumoRecebimentos, PillStatus, SeletorStatusCliente, agruparPorTipo, CabecalhoGrupo } from '@/components/ResumoRecebimentosPJ';
+import { ValorMoeda, SeletorSquad } from '@/components/SquadValorPJ';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -758,15 +759,13 @@ export default function FinanceiroPage() {
                                     <tr key={origIdx} style={{ borderLeft: `3px solid ${st.cor}` }}>
                                       <td><input type="text" defaultValue={row.cliente ?? ''} placeholder="Nome do cliente" onBlur={e => updRow('rec-pj', origIdx, 'cliente', e.target.value)} /></td>
                                       <td>
-                                        <select value={row.squad || 'Lançamentos'} onChange={e => updRow('rec-pj', origIdx, 'squad', e.target.value)}>
-                                          {['Lançamentos', 'Perpétuo', 'Negócios Locais', 'Outros'].map(o => <option key={o} value={o}>{o}</option>)}
-                                        </select>
+                                        <SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} />
                                       </td>
                                       <td>
                                         <SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} />
                                       </td>
                                       <td><input type="text" defaultValue={row.dia ?? ''} placeholder="dia" onBlur={e => updRow('rec-pj', origIdx, 'dia', e.target.value)} /></td>
-                                      <td className="right"><input type="number" step="0.01" defaultValue={row.valor || ''} onBlur={e => updRow('rec-pj', origIdx, 'valor', parseFloat(e.target.value) || 0)} /></td>
+                                      <td className="right"><ValorMoeda valor={row.valor} destaque /></td>
                                       <td className="right">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                                           <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
