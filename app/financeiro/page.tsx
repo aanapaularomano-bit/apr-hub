@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { statusRecebimento, ResumoRecebimentos, PillStatus, SeletorStatusCliente, agruparPorTipo, CabecalhoGrupo } from '@/components/ResumoRecebimentosPJ';
 import { ValorMoeda, SeletorSquad } from '@/components/SquadValorPJ';
+import { DiaPagamento } from '@/components/DiaPagamentoPJ';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -764,7 +765,7 @@ export default function FinanceiroPage() {
                                       <td>
                                         <SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} />
                                       </td>
-                                      <td><input type="text" defaultValue={row.dia ?? ''} placeholder="dia" onBlur={e => updRow('rec-pj', origIdx, 'dia', e.target.value)} /></td>
+                                      <td><DiaPagamento dia={row.dia} /></td>
                                       <td className="right"><ValorMoeda valor={row.valor} destaque /></td>
                                       <td className="right">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
