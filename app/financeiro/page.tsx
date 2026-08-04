@@ -1002,7 +1002,7 @@ function renderField(f: any, row: any, i: number, onUpd: any) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
         <input type="checkbox" checked={!!row[f.k]} onChange={e => onUpd(i, f.k, e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
-        <PillStatus recebido={!!row[f.k]} diaPgto={row[f.diaPgtoKey] || ''} mesRef={f.mesRef} />
+        <PillStatus recebido={!!row[f.k]} dia={row[f.diaPgtoKey] || ''} mesRef={f.mesRef} />
       </div>
     );
   }
