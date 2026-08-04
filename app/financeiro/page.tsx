@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { statusRecebimento, ResumoRecebimentos, PillStatus } from '@/components/ResumoRecebimentosPJ';
+import { statusRecebimento, ResumoRecebimentos, PillStatus, SeletorStatusCliente, agruparPorTipo, CabecalhoGrupo } from '@/components/ResumoRecebimentosPJ';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -715,24 +715,82 @@ export default function FinanceiroPage() {
             <h2 className="section-title">PJ · APR Digital</h2>
             <p className="section-sub">Receitas dos clientes e custos fixos da agência</p>
 
-            <ResumoRecebimentos
-              receitas={(m['rec-pj'] || []).map((r: any) => ({ cliente: r.cliente, valor: r.valor, recebido: !!r.recebido, diaPgto: r.dia }))}
-              mesRef={mesRef}
-            />
+            <ResumoRecebimentos receitas={m['rec-pj'] || []} mesRef={mesRef} />
 
-            <TableBlock title="💰 Receitas · Clientes" badge="recorrente + projeto" badgeClass="pj"
-              data={m['rec-pj'] || []} fields={[
-                { k: 'cliente', type: 'text', ph: 'Nome do cliente' },
-                { k: 'squad', type: 'select', opts: ['Lançamentos', 'Perpétuo', 'Negócios Locais', 'Outros'] },
-                { k: 'tipo', type: 'select', opts: ['Recorrente', 'Projeto', 'Comissão', 'Outros'] },
-                { k: 'status', type: 'select', opts: ['Ativo', 'Negociação', 'Pausado', 'Finalizado'] },
-                { k: 'dia', type: 'text', ph: 'dia' },
-                { k: 'valor', type: 'number', right: true },
-                { k: 'recebido', type: 'check-pill', diaPgtoKey: 'dia', mesRef, right: true },
-              ]} headers={['Cliente', 'Squad', 'Tipo', 'Status', 'Dia pgto', 'Valor (R$)', 'Recebido?']}
-              onUpd={(i, f, v) => updRow('rec-pj', i, f, v)} onDel={i => delRow('rec-pj', i)} onAdd={() => addRow('rec-pj')}
-              totalLabel="TOTAL RECEITAS PJ" totalSpan={5} totalValue={fmtBR(recPJ)}
-              getRowStyle={(row: any) => { const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef); return { borderLeft: `3px solid ${st.cor}` }; }} />
+            <div className="block">
+              <div className="block-head">
+                <div className="block-title">💰 Receitas · Clientes <span className="badge pj">recorrente + projeto</span></div>
+              </div>
+              <div className="block-body">
+                {(() => {
+                  const allRecs: any[] = m['rec-pj'] || [];
+                  const grupos = agruparPorTipo(allRecs);
+                  if (allRecs.length === 0) return (
+                    <>
+                      <div style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum lançamento.</div>
+                      <div className="add-row"><button className="btn btn-primary" onClick={() => addRow('rec-pj')}>+ Adicionar</button></div>
+                    </>
+                  );
+                  return (
+                    <>
+                      {grupos.map((grupo) => {
+                        const totalGrupo = grupo.clientes.reduce((s: number, r: any) => s + (parseFloat(r.valor) || 0), 0);
+                        return (
+                          <div key={grupo.chave}>
+                            <CabecalhoGrupo titulo={grupo.titulo} subtitulo={grupo.subtitulo} total={totalGrupo} quantidade={grupo.clientes.length} />
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th>Cliente</th>
+                                  <th>Squad</th>
+                                  <th>Status</th>
+                                  <th>Dia pgto</th>
+                                  <th style={{ textAlign: 'right' }}>Valor (R$)</th>
+                                  <th style={{ textAlign: 'right' }}>Recebido?</th>
+                                  <th></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {grupo.clientes.map((row: any) => {
+                                  const origIdx = allRecs.indexOf(row);
+                                  const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef);
+                                  return (
+                                    <tr key={origIdx} style={{ borderLeft: `3px solid ${st.cor}` }}>
+                                      <td><input type="text" defaultValue={row.cliente ?? ''} placeholder="Nome do cliente" onBlur={e => updRow('rec-pj', origIdx, 'cliente', e.target.value)} /></td>
+                                      <td>
+                                        <select value={row.squad || 'Lançamentos'} onChange={e => updRow('rec-pj', origIdx, 'squad', e.target.value)}>
+                                          {['Lançamentos', 'Perpétuo', 'Negócios Locais', 'Outros'].map(o => <option key={o} value={o}>{o}</option>)}
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} />
+                                      </td>
+                                      <td><input type="text" defaultValue={row.dia ?? ''} placeholder="dia" onBlur={e => updRow('rec-pj', origIdx, 'dia', e.target.value)} /></td>
+                                      <td className="right"><input type="number" step="0.01" defaultValue={row.valor || ''} onBlur={e => updRow('rec-pj', origIdx, 'valor', parseFloat(e.target.value) || 0)} /></td>
+                                      <td className="right">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                                          <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
+                                          <PillStatus recebido={!!row.recebido} dia={row.dia || ''} mesRef={mesRef} />
+                                        </div>
+                                      </td>
+                                      <td style={{ width: 36, textAlign: 'right' }}><button className="btn-del" onClick={() => delRow('rec-pj', origIdx)} title="Remover">✕</button></td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
+                        <span>TOTAL RECEITAS PJ</span><span>{fmtBR(recPJ)}</span>
+                      </div>
+                      <div className="add-row"><button className="btn btn-primary" onClick={() => addRow('rec-pj')}>+ Adicionar</button></div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
 
             <TableBlock title="📉 Custos Fixos · Agência" badge="mensal" badgeClass="pj"
               data={m['cust-pj'] || []} fields={[
