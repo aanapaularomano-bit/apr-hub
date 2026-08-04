@@ -20,7 +20,7 @@ const T = {
    Larguras das colunas — a MESMA constante usada no cabeçalho e em
    cada linha, senão elas descolam uma da outra.
    ------------------------------------------------------------------ */
-export const GRID_COLUNAS = 'minmax(170px, 240px) 150px 160px 140px 150px minmax(190px, 230px) 36px 1fr';
+export const GRID_COLUNAS = 'minmax(170px, 240px) 150px 160px 140px 150px 140px 36px 1fr';
 
 export const ESTILO_TABELA = {
   linhaGrid: {
