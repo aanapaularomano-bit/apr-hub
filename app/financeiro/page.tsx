@@ -753,9 +753,9 @@ export default function FinanceiroPage() {
                                     <div style={ESTILO_TABELA.celula}><SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} /></div>
                                     <div style={ESTILO_TABELA.celula}><SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} /></div>
                                     <div style={ESTILO_TABELA.celula}><SeletorDiaPagamento dia={row.dia} onChange={v => updRow('rec-pj', origIdx, 'dia', v)} /></div>
-                                    <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></div>
+                                    <div style={ESTILO_TABELA.celula}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></div>
                                     <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start' }}>
                                         <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ appearance: 'none', WebkitAppearance: 'none', width: 18, height: 18, borderRadius: 5, border: '1.5px solid #3A3128', background: row.recebido ? '#22C55E' : '#1D1813', cursor: 'pointer', position: 'relative', flexShrink: 0, marginLeft: 6 }} />
                                         <PillStatus recebido={!!row.recebido} dia={row.dia || ''} mesRef={mesRef} />
                                       </div>
