@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { statusRecebimento, ResumoRecebimentos, PillStatus, SeletorStatusCliente, agruparPorTipo, CabecalhoGrupo } from '@/components/ResumoRecebimentosPJ';
 import { SeletorSquad } from '@/components/SquadValorPJ';
 import { EditorValorMoeda, BotaoNovaReceita } from '@/components/ValorEditavelPJ';
-import { DiaPagamento } from '@/components/DiaPagamentoPJ';
-import { ClienteCelula } from '@/components/ClienteAvatarPJ';
+import { ClienteCelula, SeletorDiaPagamento, ESTILO_TABELA } from '@/components/LayoutTabelaPJ';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -745,12 +744,12 @@ export default function FinanceiroPage() {
                             <table>
                               <thead>
                                 <tr>
-                                  <th>Cliente</th>
-                                  <th>Squad</th>
-                                  <th>Status</th>
-                                  <th>Dia pgto</th>
-                                  <th style={{ textAlign: 'right' }}>Valor (R$)</th>
-                                  <th style={{ textAlign: 'right' }}>Recebido?</th>
+                                  <th style={ESTILO_TABELA.cabecalho}>Cliente</th>
+                                  <th style={ESTILO_TABELA.cabecalho}>Squad</th>
+                                  <th style={ESTILO_TABELA.cabecalho}>Status</th>
+                                  <th style={ESTILO_TABELA.cabecalho}>Dia pgto</th>
+                                  <th style={{ ...ESTILO_TABELA.cabecalho, textAlign: 'right' }}>Valor (R$)</th>
+                                  <th style={{ ...ESTILO_TABELA.cabecalho, textAlign: 'right' }}>Recebido?</th>
                                   <th></th>
                                 </tr>
                               </thead>
@@ -759,23 +758,23 @@ export default function FinanceiroPage() {
                                   const origIdx = allRecs.indexOf(row);
                                   const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef);
                                   return (
-                                    <tr key={origIdx} style={{ borderLeft: `3px solid ${st.cor}` }}>
-                                      <td><ClienteCelula nome={row.cliente || ''} /></td>
-                                      <td>
+                                    <tr key={origIdx} style={{ borderLeft: `3px solid ${st.cor}`, ...ESTILO_TABELA.linha }}>
+                                      <td style={ESTILO_TABELA.celula}><ClienteCelula nome={row.cliente || ''} /></td>
+                                      <td style={ESTILO_TABELA.celula}>
                                         <SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} />
                                       </td>
-                                      <td>
+                                      <td style={ESTILO_TABELA.celula}>
                                         <SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} />
                                       </td>
-                                      <td><DiaPagamento dia={row.dia} /></td>
-                                      <td className="right"><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></td>
-                                      <td className="right">
+                                      <td style={ESTILO_TABELA.celula}><SeletorDiaPagamento dia={row.dia} onChange={v => updRow('rec-pj', origIdx, 'dia', v)} /></td>
+                                      <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></td>
+                                      <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                                           <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
                                           <PillStatus recebido={!!row.recebido} dia={row.dia || ''} mesRef={mesRef} />
                                         </div>
                                       </td>
-                                      <td style={{ width: 36, textAlign: 'right' }}><button className="btn-del" onClick={() => delRow('rec-pj', origIdx)} title="Remover">✕</button></td>
+                                      <td style={{ ...ESTILO_TABELA.celula, width: 36, textAlign: 'right' }}><button className="btn-del" onClick={() => delRow('rec-pj', origIdx)} title="Remover">✕</button></td>
                                     </tr>
                                   );
                                 })}
