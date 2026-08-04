@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { statusRecebimento, ResumoRecebimentos, PillStatus, SeletorStatusCliente, agruparPorTipo, CabecalhoGrupo } from '@/components/ResumoRecebimentosPJ';
 import { SeletorSquad } from '@/components/SquadValorPJ';
 import { EditorValorMoeda, BotaoNovaReceita } from '@/components/ValorEditavelPJ';
-import { ClienteCelula, SeletorDiaPagamento, ESTILO_TABELA } from '@/components/LayoutTabelaPJ';
+import { SeletorDiaPagamento } from '@/components/LayoutTabelaPJ';
+import { ClienteEditavel, CabecalhoTabela, ESTILO_TABELA } from '@/components/TabelaPJGrid';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -741,45 +742,33 @@ export default function FinanceiroPage() {
                         return (
                           <div key={grupo.chave}>
                             <CabecalhoGrupo titulo={grupo.titulo} subtitulo={grupo.subtitulo} total={totalGrupo} quantidade={grupo.clientes.length} />
-                            <table>
-                              <thead>
-                                <tr>
-                                  <th style={ESTILO_TABELA.cabecalho}>Cliente</th>
-                                  <th style={ESTILO_TABELA.cabecalho}>Squad</th>
-                                  <th style={ESTILO_TABELA.cabecalho}>Status</th>
-                                  <th style={ESTILO_TABELA.cabecalho}>Dia pgto</th>
-                                  <th style={{ ...ESTILO_TABELA.cabecalho, textAlign: 'right' }}>Valor (R$)</th>
-                                  <th style={{ ...ESTILO_TABELA.cabecalho, textAlign: 'right' }}>Recebido?</th>
-                                  <th></th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {grupo.clientes.map((row: any) => {
-                                  const origIdx = allRecs.indexOf(row);
-                                  const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef);
-                                  return (
-                                    <tr key={origIdx} style={{ borderLeft: `3px solid ${st.cor}`, ...ESTILO_TABELA.linha }}>
-                                      <td style={ESTILO_TABELA.celula}><ClienteCelula nome={row.cliente || ''} /></td>
-                                      <td style={ESTILO_TABELA.celula}>
-                                        <SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} />
-                                      </td>
-                                      <td style={ESTILO_TABELA.celula}>
-                                        <SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} />
-                                      </td>
-                                      <td style={ESTILO_TABELA.celula}><SeletorDiaPagamento dia={row.dia} onChange={v => updRow('rec-pj', origIdx, 'dia', v)} /></td>
-                                      <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></td>
-                                      <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
+                            <div>
+                              <CabecalhoTabela />
+                              {grupo.clientes.map((row: any) => {
+                                const origIdx = allRecs.indexOf(row);
+                                const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef);
+                                return (
+                                  <div key={origIdx} style={{ display: 'flex', alignItems: 'center', borderLeft: `3px solid ${st.cor}` }}>
+                                    <div style={{ ...ESTILO_TABELA.linhaGrid, flex: 1 }}>
+                                      <div style={ESTILO_TABELA.celula}><ClienteEditavel nome={row.cliente || ''} onChange={v => updRow('rec-pj', origIdx, 'cliente', v)} /></div>
+                                      <div style={ESTILO_TABELA.celula}><SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} /></div>
+                                      <div style={ESTILO_TABELA.celula}><SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} /></div>
+                                      <div style={ESTILO_TABELA.celula}><SeletorDiaPagamento dia={row.dia} onChange={v => updRow('rec-pj', origIdx, 'dia', v)} /></div>
+                                      <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></div>
+                                      <div style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                                           <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
                                           <PillStatus recebido={!!row.recebido} dia={row.dia || ''} mesRef={mesRef} />
                                         </div>
-                                      </td>
-                                      <td style={{ ...ESTILO_TABELA.celula, width: 36, textAlign: 'right' }}><button className="btn-del" onClick={() => delRow('rec-pj', origIdx)} title="Remover">✕</button></td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                                      </div>
+                                    </div>
+                                    <div style={{ width: 36, flexShrink: 0, textAlign: 'right', borderBottom: '1px solid #2C251E', padding: '16px 4px' }}>
+                                      <button className="btn-del" onClick={() => delRow('rec-pj', origIdx)} title="Remover">✕</button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         );
                       })}
