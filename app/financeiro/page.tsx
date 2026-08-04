@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { statusRecebimento, ResumoRecebimentos, PillStatus, SeletorStatusCliente, agruparPorTipo, CabecalhoGrupo } from '@/components/ResumoRecebimentosPJ';
 import { ValorMoeda, SeletorSquad } from '@/components/SquadValorPJ';
 import { DiaPagamento } from '@/components/DiaPagamentoPJ';
+import { ClienteCelula } from '@/components/ClienteAvatarPJ';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -758,7 +759,7 @@ export default function FinanceiroPage() {
                                   const st = statusRecebimento(!!row.recebido, row.dia || '', mesRef);
                                   return (
                                     <tr key={origIdx} style={{ borderLeft: `3px solid ${st.cor}` }}>
-                                      <td><input type="text" defaultValue={row.cliente ?? ''} placeholder="Nome do cliente" onBlur={e => updRow('rec-pj', origIdx, 'cliente', e.target.value)} /></td>
+                                      <td><ClienteCelula nome={row.cliente || ''} /></td>
                                       <td>
                                         <SeletorSquad squad={row.squad || 'Lançamentos'} onChange={v => updRow('rec-pj', origIdx, 'squad', v)} />
                                       </td>
