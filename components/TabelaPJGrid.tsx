@@ -94,7 +94,7 @@ export function ClienteEditavel({ nome, onChange }: { nome: string; onChange: (v
         onChange={e => setTemp(e.target.value)}
         onBlur={confirmar}
         onKeyDown={e => { if (e.key === 'Enter') confirmar(); if (e.key === 'Escape') cancelar(); }}
-        style={{ width: '100%', background: T.surface2, border: `1px solid ${T.agua}`, borderRadius: 7, padding: '6px 9px', color: T.sand, fontSize: 16, fontWeight: 600, fontFamily: 'inherit', outline: 'none' }}
+        style={{ width: '100%', background: T.surface2, border: `1px solid ${T.agua}`, borderRadius: 7, padding: '6px 9px', color: T.sand, fontSize: 15, fontWeight: 500, fontFamily: 'inherit', outline: 'none' }}
       />
     );
   }
@@ -103,7 +103,7 @@ export function ClienteEditavel({ nome, onChange }: { nome: string; onChange: (v
     <button
       onClick={() => { setTemp(nome || ''); setEditando(true); }}
       title="Clique para editar"
-      style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: '1px solid transparent', borderRadius: 7, padding: '6px 9px', margin: '-6px -9px', color: T.sand, fontSize: 16, fontWeight: 600, letterSpacing: '-.005em', fontFamily: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+      style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: '1px solid transparent', borderRadius: 7, padding: '6px 9px', margin: '-6px -9px', color: T.sand, fontSize: 15, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,.05)'; e.currentTarget.style.borderColor = T.lineSoft; }}
       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
     >
