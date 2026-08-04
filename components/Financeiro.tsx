@@ -71,11 +71,11 @@ export default function Financeiro({ clients, user }: { clients: any[], user: an
   const mPaid = (m: number) => mPays(m).filter(p => p.status === 'pago').reduce((s, p) => s + p.amount, 0);
   const mPending = (m: number) => mPays(m).filter(p => p.status === 'pendente').reduce((s, p) => s + p.amount, 0);
   const mOverdue = (m: number) => mPays(m).filter(p => p.status === 'atrasado').reduce((s, p) => s + p.amount, 0);
-  const totalPjExp = expenses.filter(e => e.recurrent).reduce((s, e) => s + (e.amount || 0), 0);
+  const totalPjExp = expenses.filter(e => e.month == null || e.month === selMonth).reduce((s, e) => s + (e.amount || 0), 0);
   const pjMargin = mRev(selMonth) - totalPjExp;
 
   // PF computed
-  const totalPfExp = pfExpenses.filter(e => e.recurrent).reduce((s, e) => s + (e.amount || 0), 0);
+  const totalPfExp = pfExpenses.filter(e => e.month == null || e.month === selMonth).reduce((s, e) => s + (e.amount || 0), 0);
   const mCardExp = cardExpenses.filter(c => c.month === selMonth).reduce((s, c) => s + (c.amount || 0), 0);
   const mIncome = income.filter(i => i.month === selMonth).reduce((s, i) => s + (i.amount || 0), 0);
   const pfBalance = mIncome - totalPfExp - mCardExp;
@@ -178,7 +178,7 @@ export default function Financeiro({ clients, user }: { clients: any[], user: an
               return <KPI key={k} l={v.l} v={fB(t)} c={v.c} icon={v.i} />;
             })}
           </div>
-          {expenses.map(e => { const cat = EXP_CATS[e.category] || EXP_CATS.fixo;
+          {expenses.filter(e => e.month == null || e.month === selMonth).map(e => { const cat = EXP_CATS[e.category] || EXP_CATS.fixo;
             return (<div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid ' + T.bdr }}><span style={{ fontSize: 16 }}>{cat.i}</span><div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{e.name}</div>{e.note && <div style={{ fontSize: 12, color: T.mt }}>{e.note}</div>}</div>{e.recurrent && <span style={{ fontSize: 10, color: T.mt }}>🔄</span>}<span style={{ fontSize: 14, fontWeight: 700, fontFamily: T.mo, color: '#ef4444' }}>{fB(e.amount)}</span><button onClick={() => del('expenses', e.id, setExpenses, expenses)} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer' }}>✕</button></div>);
           })}
         </div>)}
@@ -208,7 +208,7 @@ export default function Financeiro({ clients, user }: { clients: any[], user: an
 
         {subTab === 'despesas_pf' && (<div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}><button onClick={() => { setForm({ name: '', category: 'alimentacao', amount: '', recurrent: true, due_day: '', note: '' }); setShowModal('pf_expense'); }} style={btnS('#ef4444')}>+ Despesa Pessoal</button></div>
-          {pfExpenses.map(e => { const cat = PF_CATS[e.category] || PF_CATS.outro;
+          {pfExpenses.filter(e => e.month == null || e.month === selMonth).map(e => { const cat = PF_CATS[e.category] || PF_CATS.outro;
             return (<div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid ' + T.bdr }}><span style={{ fontSize: 16 }}>{cat.i}</span><div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{e.name}</div>{e.note && <div style={{ fontSize: 12, color: T.mt }}>{e.note}</div>}</div>{e.due_day && <span style={{ fontSize: 11, color: T.mt }}>Dia {e.due_day}</span>}{e.recurrent && <span style={{ fontSize: 10, color: T.mt }}>🔄</span>}<span style={{ fontSize: 14, fontWeight: 700, fontFamily: T.mo, color: '#ef4444' }}>{fB(e.amount)}</span><button onClick={() => del('personal_expenses', e.id, setPfExpenses, pfExpenses)} style={{ background: 'none', border: 'none', color: T.mt2, cursor: 'pointer' }}>✕</button></div>);
           })}
           {pfExpenses.length === 0 && <div style={{ textAlign: 'center', padding: 30, color: T.mt }}>Nenhuma despesa pessoal</div>}
@@ -319,8 +319,9 @@ export default function Financeiro({ clients, user }: { clients: any[], user: an
               <div style={{ marginBottom: 10 }}><label style={labelS}>Nome</label><input value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} style={inputS} /></div>
               <div style={{ marginBottom: 10 }}><label style={labelS}>Valor (R$)</label><input type="number" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value })} style={inputS} /></div>
               <div style={{ marginBottom: 10 }}><label style={labelS}>Categoria</label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(EXP_CATS).map(([k, v]: any) => <button key={k} onClick={() => setForm({ ...form, category: k })} style={{ flex: 1, padding: 7, borderRadius: 7, cursor: 'pointer', fontSize: 11, fontWeight: 600, background: form.category === k ? v.c + '20' : 'rgba(255,255,255,0.03)', border: form.category === k ? '1px solid ' + v.c + '40' : '1px solid ' + T.bdr, color: form.category === k ? v.c : T.mt }}>{v.i} {v.l}</button>)}</div></div>
+              <div style={{ marginBottom: 10 }}><label style={labelS}>Mês</label><select value={form.month ?? ''} onChange={e => setForm({ ...form, month: e.target.value === '' ? null : Number(e.target.value) })} style={inputS}><option value="">Todos os meses</option>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select></div>
               <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={form.recurrent !== false} onChange={e => setForm({ ...form, recurrent: e.target.checked })} /><label style={{ fontSize: 13, color: T.mt }}>Recorrente</label></div>
-              <button onClick={() => add('expenses', { ...form, amount: Number(form.amount) }, setExpenses, expenses)} disabled={!form.name} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: form.name ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Adicionar</button>
+              <button onClick={() => add('expenses', { ...form, amount: Number(form.amount), month: form.month ?? null }, setExpenses, expenses)} disabled={!form.name} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: form.name ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Adicionar</button>
             </>)}
 
             {showModal === 'pf_expense' && (<>
@@ -329,8 +330,9 @@ export default function Financeiro({ clients, user }: { clients: any[], user: an
               <div style={{ marginBottom: 10 }}><label style={labelS}>Valor (R$)</label><input type="number" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value })} style={inputS} /></div>
               <div style={{ marginBottom: 10 }}><label style={labelS}>Categoria</label><div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>{Object.entries(PF_CATS).map(([k, v]: any) => <button key={k} onClick={() => setForm({ ...form, category: k })} style={{ padding: '6px 10px', borderRadius: 7, cursor: 'pointer', fontSize: 11, fontWeight: 600, background: form.category === k ? v.c + '20' : 'rgba(255,255,255,0.03)', border: form.category === k ? '1px solid ' + v.c + '40' : '1px solid ' + T.bdr, color: form.category === k ? v.c : T.mt }}>{v.i} {v.l}</button>)}</div></div>
               <div style={{ marginBottom: 10 }}><label style={labelS}>Dia vencimento</label><input type="number" value={form.due_day || ''} onChange={e => setForm({ ...form, due_day: e.target.value })} placeholder="Ex: 10" style={inputS} /></div>
+              <div style={{ marginBottom: 10 }}><label style={labelS}>Mês</label><select value={form.month ?? ''} onChange={e => setForm({ ...form, month: e.target.value === '' ? null : Number(e.target.value) })} style={inputS}><option value="">Todos os meses</option>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select></div>
               <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={form.recurrent !== false} onChange={e => setForm({ ...form, recurrent: e.target.checked })} /><label style={{ fontSize: 13, color: T.mt }}>Recorrente</label></div>
-              <button onClick={() => add('personal_expenses', { ...form, amount: Number(form.amount), due_day: Number(form.due_day) || null }, setPfExpenses, pfExpenses)} disabled={!form.name} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: form.name ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Adicionar</button>
+              <button onClick={() => add('personal_expenses', { ...form, amount: Number(form.amount), due_day: Number(form.due_day) || null, month: form.month ?? null }, setPfExpenses, pfExpenses)} disabled={!form.name} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: form.name ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Adicionar</button>
             </>)}
 
             {showModal === 'card' && (<>
