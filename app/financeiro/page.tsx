@@ -83,7 +83,22 @@ export default function FinanceiroPage() {
   const [saveStatus, setSaveStatus] = useState('Carregando...');
   const [activeTab, setActiveTab] = useState('resumo');
   const [searchRec, setSearchRec] = useState('');
+  const [eurRate, setEurRate] = useState(6.0);
+  const [eurRateStatus, setEurRateStatus] = useState<'loading'|'ok'|'offline'>('loading');
   const saveTimerRef = useRef<any>(null);
+
+  // COTAÇÃO EUR/BRL (média 30 dias)
+  useEffect(() => {
+    fetch('https://economia.awesomeapi.com.br/json/daily/EUR-BRL/30')
+      .then(r => r.json())
+      .then((data: any[]) => {
+        if (!Array.isArray(data) || !data.length) throw new Error('no data');
+        const avg = data.reduce((s: number, d: any) => s + parseFloat(d.bid || '0'), 0) / data.length;
+        setEurRate(avg);
+        setEurRateStatus('ok');
+      })
+      .catch(() => setEurRateStatus('offline'));
+  }, []);
 
   // CARREGAR dados do Supabase
   useEffect(() => {
@@ -165,12 +180,13 @@ export default function FinanceiroPage() {
 
   // ===== CÁLCULOS =====
   const sumValor = (arr: any[]) => (arr || []).reduce((s, r) => s + (parseFloat(r.valor) || 0), 0);
-  const recPJ = sumValor(m['rec-pj']);
+  const toBRL = (r: any) => (parseFloat(r.valor) || 0) * (r.moeda === 'EUR' ? eurRate : 1);
+  const recPJ = (m['rec-pj'] || []).reduce((s: number, r: any) => s + toBRL(r), 0);
   const recPF = sumValor(m['rec-pf']);
   const custPJ = sumValor(m['cust-pj']) + sumValor(m['var-pj']);
   const custPF = sumValor(m['cust-pf']) + sumValor(m['var-pf']);
   const cardsFatura = (m['cards'] || []).reduce((s: number, r: any) => s + (parseFloat(r.fatura) || 0), 0);
-  const recPJReceived = (m['rec-pj'] || []).reduce((s: number, r: any) => s + (r.recebido ? (parseFloat(r.valor) || 0) : 0), 0);
+  const recPJReceived = (m['rec-pj'] || []).reduce((s: number, r: any) => s + (r.recebido ? toBRL(r) : 0), 0);
   const recTotal = recPJ + recPF;
   const custTotal = custPJ + custPF;
   const resultado = recTotal - custTotal;
@@ -193,7 +209,7 @@ export default function FinanceiroPage() {
   };
   const addRow = (key: string) => {
     const templates: any = {
-      'rec-pj': { cliente: '', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', dia: '', valor: 0, recebido: false },
+      'rec-pj': { cliente: '', squad: 'Lançamentos', tipo: 'Recorrente', status: 'Ativo', dia: '', valor: 0, recebido: false, moeda: 'BRL' },
       'cust-pj': { desc: '', cat: 'Ferramentas', venc: '', valor: 0, pago: false },
       'var-pj': { desc: '', cliente: '', data: '', valor: 0 },
       'rec-pf': { origem: '', tipo: 'Salário', data: '', valor: 0, recebido: false },
@@ -720,7 +736,13 @@ export default function FinanceiroPage() {
             <h2 className="section-title">PJ · APR Digital</h2>
             <p className="section-sub">Receitas dos clientes e custos fixos da agência</p>
 
-            <ResumoRecebimentos receitas={m['rec-pj'] || []} mesRef={mesRef} />
+            <ResumoRecebimentos receitas={(m['rec-pj'] || []).map((r: any) => r.moeda === 'EUR' ? { ...r, valor: (parseFloat(r.valor) || 0) * eurRate } : r)} mesRef={mesRef} />
+
+            <div style={{ marginBottom: 12 }}>
+              <span style={{ display: 'inline-block', background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5, padding: '3px 10px', fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: eurRateStatus === 'offline' ? 'var(--warn)' : 'var(--text-dim)' }}>
+                {eurRateStatus === 'offline' ? '⚠ cotação offline' : `€1 = R$ ${eurRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (média 30 dias)`}
+              </span>
+            </div>
 
             <div className="block">
               <div className="block-head">
@@ -749,7 +771,7 @@ export default function FinanceiroPage() {
                   return (
                     <>
                       {grupos.map((grupo) => {
-                        const totalGrupo = grupo.clientes.reduce((s: number, r: any) => s + (parseFloat(r.valor) || 0), 0);
+                        const totalGrupo = grupo.clientes.reduce((s: number, r: any) => s + toBRL(r), 0);
                         return (
                           <div key={grupo.chave}>
                             <CabecalhoGrupo titulo={grupo.titulo} subtitulo={grupo.subtitulo} total={totalGrupo} quantidade={grupo.clientes.length} />
@@ -760,7 +782,7 @@ export default function FinanceiroPage() {
                                   <th style={ESTILO_TABELA.cabecalho}>Squad</th>
                                   <th style={ESTILO_TABELA.cabecalho}>Status</th>
                                   <th style={ESTILO_TABELA.cabecalho}>Dia pgto</th>
-                                  <th style={{ ...ESTILO_TABELA.cabecalho, textAlign: 'right' }}>Valor (R$)</th>
+                                  <th style={{ ...ESTILO_TABELA.cabecalho, textAlign: 'right' }}>Valor</th>
                                   <th style={{ ...ESTILO_TABELA.cabecalho, textAlign: 'right' }}>Recebido?</th>
                                   <th></th>
                                 </tr>
@@ -779,7 +801,12 @@ export default function FinanceiroPage() {
                                         <SeletorStatusCliente status={row.status || 'Ativo'} onChange={v => updRow('rec-pj', origIdx, 'status', v)} />
                                       </td>
                                       <td style={ESTILO_TABELA.celula}><SeletorDiaPagamento dia={row.dia} onChange={v => updRow('rec-pj', origIdx, 'dia', v)} /></td>
-                                      <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque /></td>
+                                      <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                                          <button onClick={() => updRow('rec-pj', origIdx, 'moeda', row.moeda === 'EUR' ? 'BRL' : 'EUR')} title="Alternar moeda" style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--line)', background: row.moeda === 'EUR' ? 'rgba(124,183,255,.12)' : 'var(--bg-3)', color: row.moeda === 'EUR' ? 'var(--info)' : 'var(--text-dim)', cursor: 'pointer', fontFamily: 'JetBrains Mono,monospace', lineHeight: 1.4 }}>{row.moeda === 'EUR' ? '€' : 'R$'}</button>
+                                          <EditorValorMoeda valor={row.valor} onChange={v => updRow('rec-pj', origIdx, 'valor', v)} destaque />
+                                        </div>
+                                      </td>
                                       <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                                           <input type="checkbox" checked={!!row.recebido} onChange={e => updRow('rec-pj', origIdx, 'recebido', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#22C55E' }} />
@@ -795,9 +822,23 @@ export default function FinanceiroPage() {
                           </div>
                         );
                       })}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
-                        <span>TOTAL RECEITAS PJ</span><span>{fmtBR(recPJ)}</span>
-                      </div>
+                      {(() => {
+                        const allRecsAll = m['rec-pj'] || [];
+                        const hasEUR = allRecsAll.some((r: any) => r.moeda === 'EUR' && (parseFloat(r.valor) || 0) > 0);
+                        const totalBRLonly = allRecsAll.filter((r: any) => r.moeda !== 'EUR').reduce((s: number, r: any) => s + (parseFloat(r.valor) || 0), 0);
+                        const totalEURraw = allRecsAll.filter((r: any) => r.moeda === 'EUR').reduce((s: number, r: any) => s + (parseFloat(r.valor) || 0), 0);
+                        return (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
+                            <span>TOTAL RECEITAS PJ</span>
+                            {hasEUR ? (
+                              <span style={{ textAlign: 'right' }}>
+                                <span>{fmtBR(totalBRLonly)} + €{totalEURraw.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)', fontWeight: 400 }}>(= {fmtBR(recPJ)} convertido)</span>
+                              </span>
+                            ) : <span>{fmtBR(recPJ)}</span>}
+                          </div>
+                        );
+                      })()}
                       <BotaoNovaReceita onClick={() => addRow('rec-pj')} />
                     </>
                   );
