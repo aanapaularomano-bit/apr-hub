@@ -17,6 +17,20 @@ import { ClienteEditavel } from '@/components/TabelaPJGrid';
 
 const MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+const CATS_PF = ['🍔 Alimentação','🚗 Transporte','🏠 Moradia','💊 Saúde','🎉 Lazer','📚 Educação','👗 Vestuário','💳 Assinaturas','🐾 Pets','💰 Outros'];
+function guessCategoria(desc: string): string {
+  const d = desc.toLowerCase();
+  if (/uber|gasolina|combustivel|carro|estacionamento|mecanico/.test(d)) return '🚗 Transporte';
+  if (/mercado|supermercado|ifood|restaurante|lanche|padaria|delivery/.test(d)) return '🍔 Alimentação';
+  if (/aluguel|condominio|energia|agua|internet|gas/.test(d)) return '🏠 Moradia';
+  if (/farmacia|medico|consulta|exame|plano de saude|academia/.test(d)) return '💊 Saúde';
+  if (/netflix|spotify|amazon|disney|youtube|globo/.test(d)) return '💳 Assinaturas';
+  if (/curso|livro|escola|faculdade/.test(d)) return '📚 Educação';
+  if (/roupa|sapato|shopping/.test(d)) return '👗 Vestuário';
+  if (/vet|petshop|racao/.test(d)) return '🐾 Pets';
+  return '💰 Outros';
+}
+
 function makeEmptyMonth() {
   return {
     'rec-pj': [
@@ -60,6 +74,7 @@ function makeEmptyMonth() {
       { desc: 'Reserva de emergência', tipo: 'CDB liquidez diária', saldo: 0, aporte: 0 },
       { desc: 'Investimentos LP', tipo: 'Tesouro/CDI', saldo: 0, aporte: 0 },
     ],
+    'investimentos': [],
     notes: ''
   };
 }
@@ -85,7 +100,22 @@ export default function FinanceiroPage() {
   const [searchRec, setSearchRec] = useState('');
   const [eurRate, setEurRate] = useState(6.0);
   const [eurRateStatus, setEurRateStatus] = useState<'loading'|'ok'|'offline'>('loading');
+  const [usdRate, setUsdRate] = useState(5.5);
+  const [usdRateStatus, setUsdRateStatus] = useState<'loading'|'ok'|'offline'>('loading');
   const saveTimerRef = useRef<any>(null);
+
+  // COTAÇÃO USD/BRL (média 30 dias)
+  useEffect(() => {
+    fetch('https://economia.awesomeapi.com.br/json/daily/USD-BRL/30')
+      .then(r => r.json())
+      .then((data: any[]) => {
+        if (!Array.isArray(data) || !data.length) throw new Error('no data');
+        const avg = data.reduce((s: number, d: any) => s + parseFloat(d.bid || '0'), 0) / data.length;
+        setUsdRate(avg);
+        setUsdRateStatus('ok');
+      })
+      .catch(() => setUsdRateStatus('offline'));
+  }, []);
 
   // COTAÇÃO EUR/BRL (média 30 dias)
   useEffect(() => {
@@ -213,12 +243,13 @@ export default function FinanceiroPage() {
       'cust-pj': { desc: '', cat: 'Ferramentas', venc: '', valor: 0, pago: false },
       'var-pj': { desc: '', cliente: '', data: '', valor: 0 },
       'rec-pf': { origem: '', tipo: 'Salário', data: '', valor: 0, recebido: false },
-      'cust-pf': { desc: '', cat: 'Moradia', venc: '', valor: 0, pago: false },
+      'cust-pf': { desc: '', cat: 'Moradia', categoria: '🏠 Moradia', venc: '', valor: 0, pago: false },
       'var-pf': { desc: '', cat: 'Lazer', data: '', valor: 0 },
       'cards': { nome: '', bandeira: 'Mastercard', titular: 'PF', limite: 0, fatura: 0, venc: '' },
       'card-tx': { data: '', desc: '', cartao: '', cat: 'Outros', origem: 'PF', valor: 0, parcelas: '1x' },
       'metas': { meta: '', cat: 'Faturamento', alvo: 0, real: 0 },
       'reserva': { desc: '', tipo: '', saldo: 0, aporte: 0 },
+      'investimentos': { nome: '', tipo: 'Renda Fixa', moeda: 'BRL', saldo: 0, anotacao: '' },
     };
     updateMonth(month => {
       if (!month[key]) month[key] = [];
@@ -395,6 +426,7 @@ export default function FinanceiroPage() {
           ['cartoes', 'Cartões'],
           ['fluxo', 'Fluxo de Caixa'],
           ['metas', 'Metas'],
+          ['investimentos', '📈 Investimentos'],
           ['dre', 'DRE'],
           ['cenarios', 'Cenários'],
         ].map(([id, label]) => (
@@ -886,16 +918,90 @@ export default function FinanceiroPage() {
               onUpd={(i, f, v) => updRow('rec-pf', i, f, v)} onDel={i => delRow('rec-pf', i)} onAdd={() => addRow('rec-pf')}
               totalLabel="TOTAL ENTRADAS PF" totalSpan={3} totalValue={fmtBR(recPF)} />
 
-            <TableBlock title="🏠 Custos Fixos · Pessoal" badge="mensal" badgeClass="pf"
-              data={m['cust-pf'] || []} fields={[
-                { k: 'desc', type: 'text', ph: 'Descrição' },
-                { k: 'cat', type: 'select', opts: ['Moradia', 'Alimentação', 'Utilidades', 'Saúde', 'Bem-estar', 'Transporte', 'Lazer', 'Educação', 'Filhos', 'Pets', 'Outros'] },
-                { k: 'venc', type: 'text', ph: 'dia' },
-                { k: 'valor', type: 'number', right: true },
-                { k: 'pago', type: 'check', right: true },
-              ]} headers={['Descrição', 'Categoria', 'Vencimento', 'Valor (R$)', 'Pago?']}
-              onUpd={(i, f, v) => updRow('cust-pf', i, f, v)} onDel={i => delRow('cust-pf', i)} onAdd={() => addRow('cust-pf')}
-              totalLabel="TOTAL CUSTOS PF" totalSpan={3} totalValue={fmtBR(sumValor(m['cust-pf']))} />
+            <div className="block">
+              <div className="block-head">
+                <div className="block-title">🏠 Custos Fixos · Pessoal <span className="badge pf">mensal</span></div>
+              </div>
+              <div className="block-body">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Descrição</th>
+                      <th>Categoria</th>
+                      <th>Vencimento</th>
+                      <th style={{ textAlign: 'right' }}>Valor (R$)</th>
+                      <th style={{ textAlign: 'right' }}>Pago?</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(m['cust-pf'] || []).length === 0
+                      ? <tr><td colSpan={6} style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum lançamento.</td></tr>
+                      : (m['cust-pf'] || []).map((row: any, i: number) => (
+                        <tr key={i}>
+                          <td style={ESTILO_TABELA.celula}>
+                            <input type="text" defaultValue={row.desc || ''} placeholder="Descrição" onBlur={e => {
+                              const v = e.target.value;
+                              updRow('cust-pf', i, 'desc', v);
+                              if (!row.categoria || row.categoria === '💰 Outros') {
+                                const suggested = guessCategoria(v);
+                                if (suggested !== '💰 Outros') updRow('cust-pf', i, 'categoria', suggested);
+                              }
+                            }} />
+                          </td>
+                          <td style={ESTILO_TABELA.celula}>
+                            <select value={CATS_PF.includes(row.categoria) ? row.categoria : '💰 Outros'} onChange={e => updRow('cust-pf', i, 'categoria', e.target.value)}>
+                              {CATS_PF.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </td>
+                          <td style={ESTILO_TABELA.celula}>
+                            <input type="text" defaultValue={row.venc || ''} placeholder="dia" onBlur={e => updRow('cust-pf', i, 'venc', e.target.value)} />
+                          </td>
+                          <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
+                            <input type="number" step="0.01" defaultValue={row.valor || ''} onBlur={e => updRow('cust-pf', i, 'valor', parseFloat(e.target.value) || 0)} />
+                          </td>
+                          <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}>
+                            <input type="checkbox" checked={!!row.pago} onChange={e => updRow('cust-pf', i, 'pago', e.target.checked)} style={{ width: 'auto' }} />
+                          </td>
+                          <td style={{ ...ESTILO_TABELA.celula, width: 36, textAlign: 'right' }}><button className="btn-del" onClick={() => delRow('cust-pf', i)} title="Remover">✕</button></td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
+                  <span>TOTAL CUSTOS PF</span><span>{fmtBR(sumValor(m['cust-pf']))}</span>
+                </div>
+                <div className="add-row"><button className="btn btn-primary" onClick={() => addRow('cust-pf')}>+ Adicionar</button></div>
+                {(m['cust-pf'] || []).some((r: any) => (parseFloat(r.valor) || 0) > 0) && (() => {
+                  const totalCust = sumValor(m['cust-pf']);
+                  const byCat: Record<string, number> = {};
+                  (m['cust-pf'] || []).forEach((r: any) => {
+                    const cat = CATS_PF.includes(r.categoria) ? r.categoria : '💰 Outros';
+                    byCat[cat] = (byCat[cat] || 0) + (parseFloat(r.valor) || 0);
+                  });
+                  const sorted = Object.entries(byCat).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a);
+                  if (!sorted.length) return null;
+                  return (
+                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--line-soft)' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 12, fontFamily: 'JetBrains Mono,monospace' }}>Gastos por categoria</div>
+                      {sorted.map(([cat, val]) => {
+                        const pct = totalCust > 0 ? (val / totalCust) * 100 : 0;
+                        return (
+                          <div key={cat} style={{ marginBottom: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                              <span>{cat}</span>
+                              <span style={{ fontFamily: 'JetBrains Mono,monospace' }}>{fmtBR(val)} · {pct.toFixed(1)}%</span>
+                            </div>
+                            <div className="progress"><div className="progress-bar" style={{ width: `${pct}%` }}></div></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
 
 
           </section>
@@ -988,6 +1094,79 @@ export default function FinanceiroPage() {
               totalLabel="TOTAL RESERVA" totalSpan={2} totalValue={fmtBR((m['reserva'] || []).reduce((s: number, r: any) => s + (parseFloat(r.saldo) || 0), 0))} />
           </section>
         )}
+
+        {/* INVESTIMENTOS */}
+        {activeTab === 'investimentos' && (() => {
+          const invs: any[] = m['investimentos'] || [];
+          const toInvBRL = (inv: any) => (parseFloat(inv.saldo) || 0) * (inv.moeda === 'EUR' ? eurRate : inv.moeda === 'USD' ? usdRate : 1);
+          const totalPatrimonio = invs.reduce((s, inv) => s + toInvBRL(inv), 0);
+          return (
+            <section>
+              <h2 className="section-title">📈 Investimentos</h2>
+              <p className="section-sub">Portfólio de investimentos e patrimônio total convertido em BRL</p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-block', background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5, padding: '3px 10px', fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: eurRateStatus === 'offline' ? 'var(--warn)' : 'var(--text-dim)' }}>
+                  {eurRateStatus === 'offline' ? '⚠ EUR offline' : `€1 = R$ ${eurRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (média 30 dias)`}
+                </span>
+                <span style={{ display: 'inline-block', background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5, padding: '3px 10px', fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: usdRateStatus === 'offline' ? 'var(--warn)' : 'var(--text-dim)' }}>
+                  {usdRateStatus === 'offline' ? '⚠ USD offline' : `US$1 = R$ ${usdRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (média 30 dias)`}
+                </span>
+              </div>
+              <div className="kpi-grid">
+                <div className="kpi"><div className="kpi-label">Total Patrimônio</div><div className="kpi-value pos">{fmtBR(totalPatrimonio)}</div><div className="kpi-meta">{invs.length} investimento{invs.length !== 1 ? 's' : ''}</div></div>
+              </div>
+              <div className="block">
+                <div className="block-head"><div className="block-title">💼 Carteira de Investimentos</div></div>
+                <div className="block-body">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>Moeda</th>
+                        <th style={{ textAlign: 'right' }}>Saldo</th>
+                        <th style={{ textAlign: 'right' }}>Saldo em R$</th>
+                        <th>Anotação</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invs.length === 0
+                        ? <tr><td colSpan={7} style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum investimento cadastrado.</td></tr>
+                        : invs.map((inv: any, i: number) => {
+                          const saldoBRL = toInvBRL(inv);
+                          return (
+                            <tr key={i}>
+                              <td style={ESTILO_TABELA.celula}><input type="text" defaultValue={inv.nome || ''} placeholder="Nome" onBlur={e => updRow('investimentos', i, 'nome', e.target.value)} /></td>
+                              <td style={ESTILO_TABELA.celula}>
+                                <select value={inv.tipo || 'Renda Fixa'} onChange={e => updRow('investimentos', i, 'tipo', e.target.value)}>
+                                  {['Renda Fixa','Fundo de Investimento','Cripto','Internacional'].map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                              </td>
+                              <td style={ESTILO_TABELA.celula}>
+                                <select value={inv.moeda || 'BRL'} onChange={e => updRow('investimentos', i, 'moeda', e.target.value)}>
+                                  {['BRL','USD','EUR'].map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                              </td>
+                              <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right' }}><input type="number" step="0.01" defaultValue={inv.saldo || ''} onBlur={e => updRow('investimentos', i, 'saldo', parseFloat(e.target.value) || 0)} /></td>
+                              <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right', fontFamily: 'JetBrains Mono,monospace', color: 'var(--accent)' }}>{fmtBR(saldoBRL)}</td>
+                              <td style={ESTILO_TABELA.celula}><input type="text" defaultValue={inv.anotacao || ''} placeholder="Anotação" onBlur={e => updRow('investimentos', i, 'anotacao', e.target.value)} /></td>
+                              <td style={{ ...ESTILO_TABELA.celula, width: 36, textAlign: 'right' }}><button className="btn-del" onClick={() => delRow('investimentos', i)} title="Remover">✕</button></td>
+                            </tr>
+                          );
+                        })
+                      }
+                    </tbody>
+                  </table>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
+                    <span>TOTAL PATRIMÔNIO</span><span>{fmtBR(totalPatrimonio)}</span>
+                  </div>
+                  <div className="add-row"><button className="btn btn-primary" onClick={() => addRow('investimentos')}>＋ Adicionar Investimento</button></div>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* DRE */}
         {activeTab === 'dre' && <DreTab m={m} recPJ={recPJ} custPJ={custPJ} recPJReceived={recPJReceived} fmtBR={fmtBR} fmtPct={fmtPct} sumValor={sumValor} updateMonth={updateMonth} />}
