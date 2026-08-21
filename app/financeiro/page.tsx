@@ -82,6 +82,7 @@ export default function FinanceiroPage() {
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState('Carregando...');
   const [activeTab, setActiveTab] = useState('resumo');
+  const [searchRec, setSearchRec] = useState('');
   const saveTimerRef = useRef<any>(null);
 
   // CARREGAR dados do Supabase
@@ -726,9 +727,19 @@ export default function FinanceiroPage() {
                 <div className="block-title">💰 Receitas · Clientes <span className="badge pj">recorrente + projeto</span></div>
               </div>
               <div className="block-body">
+                <div style={{ marginBottom: 12 }}>
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente..."
+                    value={searchRec}
+                    onChange={e => setSearchRec(e.target.value)}
+                    style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 6, padding: '7px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
                 {(() => {
                   const allRecs: any[] = m['rec-pj'] || [];
-                  const grupos = agruparPorTipo(allRecs);
+                  const filtered = searchRec.trim() === '' ? allRecs : allRecs.filter((r: any) => (r.cliente || '').toLowerCase().includes(searchRec.toLowerCase()));
+                  const grupos = agruparPorTipo(filtered);
                   if (allRecs.length === 0) return (
                     <>
                       <div style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum lançamento.</div>
