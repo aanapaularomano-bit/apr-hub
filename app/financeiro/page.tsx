@@ -63,8 +63,110 @@ function makeEmptyMonth() {
     'cards': [
       { nome: 'Nubank', bandeira: 'Mastercard', titular: 'PF', limite: 0, fatura: 0, venc: '10' },
       { nome: 'Inter PJ', bandeira: 'Mastercard', titular: 'PJ', limite: 0, fatura: 0, venc: '15' },
+      { nome: 'Itaú Black · 1603', bandeira: 'Mastercard', titular: 'PF', limite: 0, fatura: 0, venc: '' },
+      { nome: 'Final 6153', bandeira: 'Mastercard', titular: 'PF', limite: 0, fatura: 0, venc: '' },
+      { nome: 'Final 6728', bandeira: 'Mastercard', titular: 'PJ', limite: 0, fatura: 0, venc: '' },
     ],
-    'card-tx': [],
+    'card-tx': [
+      { data: '2026-01-30', desc: 'TmOdontologia', cartao: 'Itaú Black · 1603', cat: 'Saúde', origem: 'PF', valor: 312.50, parcelas: '1x' },
+      { data: '2026-04-28', desc: 'PAYGO*G L VILELA', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 293.98, parcelas: '1x' },
+      { data: '2026-04-29', desc: 'PATRICIA QUEIROZ', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 434.95, parcelas: '1x' },
+      { data: '2026-05-09', desc: 'ZP*BAESS - BEACH', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 324.80, parcelas: '1x' },
+      { data: '2026-05-24', desc: 'DANKI FRQ IGUATEMI', cartao: 'Itaú Black · 1603', cat: 'Vestuário', origem: 'PF', valor: 259.80, parcelas: '1x' },
+      { data: '2026-05-25', desc: 'JIM.COM* ARX CONCE', cartao: 'Itaú Black · 1603', cat: 'Turismo/Entretenimento', origem: 'PF', valor: 159.90, parcelas: '1x' },
+      { data: '2026-05-26', desc: 'CasaCaiada', cartao: 'Itaú Black · 1603', cat: 'Vestuário', origem: 'PF', valor: 83.58, parcelas: '1x' },
+      { data: '2026-05-29', desc: 'TRACKFIELD', cartao: 'Itaú Black · 1603', cat: 'Vestuário', origem: 'PF', valor: 189.95, parcelas: '1x' },
+      { data: '2026-06-11', desc: 'VIVARA RPT', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 1246.68, parcelas: '1x' },
+      { data: '2026-06-11', desc: 'GLVilelaDe', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 229.50, parcelas: '1x' },
+      { data: '2026-06-11', desc: 'VIVARA RPT estorno', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: -0.04, parcelas: '1x' },
+      { data: '2026-06-12', desc: 'PAYGO*G L VILELA', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 202.97, parcelas: '1x' },
+      { data: '2026-06-13', desc: 'JIM.COM* 64257026', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 285.40, parcelas: '1x' },
+      { data: '2026-06-14', desc: 'HAVAN S J RIO PRETO', cartao: 'Itaú Black · 1603', cat: 'Vestuário', origem: 'PF', valor: 114.98, parcelas: '1x' },
+      { data: '2026-06-14', desc: 'HAVAN estorno', cartao: 'Itaú Black · 1603', cat: 'Vestuário', origem: 'PF', valor: -0.06, parcelas: '1x' },
+      { data: '2026-06-16', desc: 'JIM.COM* INSTITUTO', cartao: 'Itaú Black · 1603', cat: 'Saúde', origem: 'PF', valor: 833.37, parcelas: '1x' },
+      { data: '2026-06-16', desc: 'JIM.COM* INSTITUTO estorno', cartao: 'Itaú Black · 1603', cat: 'Saúde', origem: 'PF', valor: -0.44, parcelas: '1x' },
+      { data: '2026-06-27', desc: 'MP *BENI', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 22.99, parcelas: '1x' },
+      { data: '2026-06-28', desc: 'DM*Mailchimp', cartao: 'Itaú Black · 1603', cat: 'Assinaturas', origem: 'PF', valor: 42.50, parcelas: '1x' },
+      { data: '2026-06-28', desc: 'RAIA 3307', cartao: 'Itaú Black · 1603', cat: 'Saúde', origem: 'PF', valor: 336.40, parcelas: '1x' },
+      { data: '2026-06-28', desc: 'PRATIC LOJA DE CONVENI', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 46.49, parcelas: '1x' },
+      { data: '2026-06-29', desc: 'PostoVillageMall', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 271.80, parcelas: '1x' },
+      { data: '2026-06-29', desc: 'PRATIC LOJA DE CONVENI', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 25.01, parcelas: '1x' },
+      { data: '2026-06-30', desc: 'PROPARK', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 12.00, parcelas: '1x' },
+      { data: '2026-06-30', desc: 'VILLANOVA', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 53.90, parcelas: '1x' },
+      { data: '2026-07-01', desc: 'COMPLEXO FUNFARME', cartao: 'Itaú Black · 1603', cat: 'Saúde', origem: 'PF', valor: 15.00, parcelas: '1x' },
+      { data: '2026-07-01', desc: 'ZOOM.COM', cartao: 'Itaú Black · 1603', cat: 'Assinaturas', origem: 'PF', valor: 124.20, parcelas: '1x' },
+      { data: '2026-07-02', desc: 'ANDREA S FOOD COMERCIO', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 53.00, parcelas: '1x' },
+      { data: '2026-07-02', desc: 'SJRP DAHMA', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 161.16, parcelas: '1x' },
+      { data: '2026-07-02', desc: 'VICTOR HUGO LAZARO SIM', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 90.70, parcelas: '1x' },
+      { data: '2026-07-03', desc: 'Container', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 209.33, parcelas: '1x' },
+      { data: '2026-07-03', desc: 'VILLANOVA', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 100.10, parcelas: '1x' },
+      { data: '2026-07-05', desc: 'ASA*NA PRAIA RIO PRETO', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 229.00, parcelas: '1x' },
+      { data: '2026-07-05', desc: 'HBL*HBLMILAGREDIG', cartao: 'Itaú Black · 1603', cat: 'Produtos e Serviços', origem: 'PF', valor: 2000.00, parcelas: '1x' },
+      { data: '2026-07-07', desc: 'ANDREAS FOOD COMERCIO', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 71.00, parcelas: '1x' },
+      { data: '2026-07-08', desc: 'AnaCarolina', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 108.00, parcelas: '1x' },
+      { data: '2026-07-09', desc: 'SPACE HEALTH', cartao: 'Itaú Black · 1603', cat: 'Saúde', origem: 'PF', valor: 17.00, parcelas: '1x' },
+      { data: '2026-07-10', desc: 'LGEventosLtda', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 128.00, parcelas: '1x' },
+      { data: '2026-07-14', desc: 'AnaBeatriz', cartao: 'Itaú Black · 1603', cat: 'Vestuário', origem: 'PF', valor: 11.70, parcelas: '1x' },
+      { data: '2026-07-14', desc: 'PRATIC LOJA DE CONVENI', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 14.67, parcelas: '1x' },
+      { data: '2026-07-15', desc: 'NaPraiaRioPreto', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 81.00, parcelas: '1x' },
+      { data: '2026-07-17', desc: 'ARENA SUNSET', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 9.00, parcelas: '1x' },
+      { data: '2026-07-18', desc: 'VMT*LAVATERIA 1', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 39.90, parcelas: '1x' },
+      { data: '2026-07-18', desc: 'VMT*LAVATERIA 2', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 19.95, parcelas: '1x' },
+      { data: '2026-07-18', desc: 'VMT*LAVATERIA 3', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 39.90, parcelas: '1x' },
+      { data: '2026-07-18', desc: 'Villagequimica', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 62.70, parcelas: '1x' },
+      { data: '2026-07-18', desc: 'PRATIC LOJA DE CONVENI', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 75.88, parcelas: '1x' },
+      { data: '2026-07-18', desc: 'POSTO MONTE CARLO PARQ', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 39.90, parcelas: '1x' },
+      { data: '2026-07-18', desc: 'NAGOYATO SUSHI LTDA', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 559.90, parcelas: '1x' },
+      { data: '2026-07-20', desc: 'DOCE MEL', cartao: 'Itaú Black · 1603', cat: 'Vestuário', origem: 'PF', valor: 51.00, parcelas: '1x' },
+      { data: '2026-07-20', desc: 'VILLAGE PASTEIS', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 20.00, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'AUTO BAN 1', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 9.70, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'AUTO BAN 2', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 12.80, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'AUTO BAN 3', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 14.50, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'KRIKOR', cartao: 'Itaú Black · 1603', cat: 'Diversos', origem: 'PF', valor: 200.00, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'AutoPosto', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 200.80, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'P4', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 11.80, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'RODOSNACK SÃO CARLOS R', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 28.80, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'AUTO BAN 4', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 14.30, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'EixoSp', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 7.00, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'NINO ITAIM BUCA', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 212.44, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'AGULHA', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 13.80, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'ARARAQUARA', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 22.80, parcelas: '1x' },
+      { data: '2026-07-21', desc: 'CATIGUA', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 19.80, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'AUTO BAN 5', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 14.50, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'AUTO BAN 6', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 14.30, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'AUTO BAN 7', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 12.80, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'MP *HELLENRE', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 50.00, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'AUTO BAN 8', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 9.70, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'EixoSp 1', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 11.60, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'EixoSp 2', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 7.00, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'AUTO POSTO E S V RC', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 252.98, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'AGULHA', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 13.80, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'ARARAQUARA', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 22.80, parcelas: '1x' },
+      { data: '2026-07-22', desc: 'CATIGUA', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 19.80, parcelas: '1x' },
+      { data: '2026-07-25', desc: 'TLY PRODUTOS FARMA', cartao: 'Itaú Black · 1603', cat: 'Saúde', origem: 'PF', valor: 280.96, parcelas: '1x' },
+      { data: '2026-07-25', desc: 'PRATIC LOJA DE CONVENI', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 30.49, parcelas: '1x' },
+      { data: '2026-07-25', desc: 'KEBABA', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 107.90, parcelas: '1x' },
+      { data: '2026-07-25', desc: 'ASAEL', cartao: 'Itaú Black · 1603', cat: 'Veículos', origem: 'PF', valor: 8.00, parcelas: '1x' },
+      { data: '2026-07-25', desc: 'JAPA BEACH TENI 1', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 13.99, parcelas: '1x' },
+      { data: '2026-07-25', desc: 'JAPA BEACH TENI 2', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 21.99, parcelas: '1x' },
+      { data: '2026-07-25', desc: 'LOVABLE', cartao: 'Itaú Black · 1603', cat: 'Assinaturas', origem: 'PF', valor: 137.90, parcelas: '1x' },
+      { data: '2026-07-26', desc: 'SJRP DAHMA', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 177.16, parcelas: '1x' },
+      { data: '2026-07-26', desc: 'PRATIC LOJA DE CONVENI', cartao: 'Itaú Black · 1603', cat: 'Alimentação', origem: 'PF', valor: 66.00, parcelas: '1x' },
+      { data: '2026-07-27', desc: 'NaPraiaRioPreto', cartao: 'Itaú Black · 1603', cat: 'Hobby', origem: 'PF', valor: 57.00, parcelas: '1x' },
+      { data: '2026-02-24', desc: 'EBN*Canva04802', cartao: 'Final 6153', cat: 'Assinaturas', origem: 'PF', valor: 24.24, parcelas: '1x' },
+      { data: '2026-04-28', desc: 'CASASBAHIACOM', cartao: 'Final 6153', cat: 'Vestuário', origem: 'PF', valor: 243.54, parcelas: '1x' },
+      { data: '2026-06-04', desc: 'NUV*LOJAVESTECRIS', cartao: 'Final 6728', cat: 'Vestuário', origem: 'PF', valor: 79.02, parcelas: '1x' },
+      { data: '2026-06-04', desc: 'NUV*LOJAVESTECRIS estorno', cartao: 'Final 6728', cat: 'Vestuário', origem: 'PF', valor: -0.12, parcelas: '1x' },
+      { data: '2026-06-06', desc: 'EC *EMMAS', cartao: 'Final 6728', cat: 'Vestuário', origem: 'PF', valor: 310.58, parcelas: '1x' },
+      { data: '2026-06-06', desc: 'EC *EMMASLEEP estorno', cartao: 'Final 6728', cat: 'Vestuário', origem: 'PF', valor: -0.33, parcelas: '1x' },
+      { data: '2026-07-02', desc: 'FACEBK *FPJZ3W5XL2 - Facebook Ads', cartao: 'Final 6728', cat: 'Marketing PJ', origem: 'PJ', valor: 1127.84, parcelas: '1x' },
+      { data: '2026-07-03', desc: 'HUBLA *XFLOW - Hubla', cartao: 'Final 6728', cat: 'Marketing PJ', origem: 'PJ', valor: 3761.57, parcelas: '1x' },
+      { data: '2026-07-06', desc: 'NETFLIX.COM', cartao: 'Final 6728', cat: 'Assinaturas', origem: 'PF', valor: 44.90, parcelas: '1x' },
+      { data: '2026-07-13', desc: 'FACEBK *UREV7X5XL2 - Facebook Ads', cartao: 'Final 6728', cat: 'Marketing PJ', origem: 'PJ', valor: 358.43, parcelas: '1x' },
+      { data: '2026-07-17', desc: 'UNICA FARMACIA DE', cartao: 'Final 6728', cat: 'Saúde', origem: 'PF', valor: 425.68, parcelas: '1x' },
+      { data: '2026-07-26', desc: 'FACEBK *V6ZBDY9WL2 - Facebook Ads', cartao: 'Final 6728', cat: 'Marketing PJ', origem: 'PJ', valor: 1144.50, parcelas: '1x' },
+      { data: '2026-07-28', desc: 'HUBLA *ACACADEMY - Hubla', cartao: 'Final 6728', cat: 'Marketing PJ', origem: 'PJ', valor: 297.00, parcelas: '1x' },
+    ],
     'metas': [
       { meta: 'Reserva de emergência', cat: 'Reserva', alvo: 0, real: 0 },
       { meta: 'Investimentos do mês', cat: 'Investimento', alvo: 0, real: 0 },
@@ -1049,18 +1151,67 @@ export default function FinanceiroPage() {
               </div>
             </div>
 
-            <TableBlock title="📝 Lançamentos no Cartão"
-              data={m['card-tx'] || []} fields={[
-                { k: 'data', type: 'text', ph: 'dd' },
-                { k: 'desc', type: 'text', ph: 'Descrição' },
-                { k: 'cartao', type: 'cardSelect', cards: m['cards'] || [] },
-                { k: 'cat', type: 'select', opts: ['Ferramentas', 'Compras', 'Restaurante', 'Viagem', 'Equipe', 'Marketing', 'Saúde', 'Outros'] },
-                { k: 'origem', type: 'select', opts: ['PJ', 'PF'] },
-                { k: 'valor', type: 'number', right: true },
-                { k: 'parcelas', type: 'text', ph: '1x' },
-              ]} headers={['Data', 'Descrição', 'Cartão', 'Categoria', 'PJ/PF', 'Valor (R$)', 'Parcelas']}
-              onUpd={(i, f, v) => updRow('card-tx', i, f, v)} onDel={i => delRow('card-tx', i)} onAdd={() => addRow('card-tx')}
-              totalLabel="TOTAL LANÇADO NO MÊS" totalSpan={5} totalValue={fmtBR(sumValor(m['card-tx']))} />
+            {(() => {
+              const txs: any[] = m['card-tx'] || [];
+              const cardNames = (m['cards'] || []).map((c: any) => c.nome);
+              const grouped: Record<string, { tx: any; origIdx: number }[]> = {};
+              txs.forEach((tx: any, i: number) => {
+                const key = tx.cartao || 'Sem cartão';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push({ tx, origIdx: i });
+              });
+              const totalGeral = txs.reduce((s: number, tx: any) => s + (parseFloat(tx.valor) || 0), 0);
+              const groups = Object.entries(grouped);
+              return (
+                <div className="block">
+                  <div className="block-head"><div className="block-title">📝 Lançamentos por Cartão</div></div>
+                  <div className="block-body">
+                    {txs.length === 0 && <div style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum lançamento cadastrado.</div>}
+                    {groups.map(([cartao, rows]) => {
+                      const subtotal = rows.reduce((s, { tx }) => s + (parseFloat(tx.valor) || 0), 0);
+                      return (
+                        <div key={cartao} style={{ marginBottom: 28 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', padding: '8px 0 6px', borderBottom: '1px solid var(--line)', marginBottom: 6 }}>
+                            <span>💳 {cartao}</span>
+                            <span>{fmtBR(subtotal)}</span>
+                          </div>
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th style={{ textAlign: 'right' }}>Valor (R$)</th>
+                                <th></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rows.map(({ tx, origIdx }) => (
+                                <tr key={origIdx}>
+                                  <td style={{ ...ESTILO_TABELA.celula, fontFamily: 'JetBrains Mono,monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{tx.data}</td>
+                                  <td style={ESTILO_TABELA.celula}>{tx.desc}</td>
+                                  <td style={ESTILO_TABELA.celula}><span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'var(--bg-3)', color: 'var(--text-soft)' }}>{tx.cat}</span></td>
+                                  <td style={{ ...ESTILO_TABELA.celula, textAlign: 'right', fontFamily: 'JetBrains Mono,monospace', color: (parseFloat(tx.valor) || 0) < 0 ? 'var(--danger)' : undefined }}>{fmtBR(parseFloat(tx.valor) || 0)}</td>
+                                  <td style={{ width: 36, textAlign: 'right' }}><button className="btn-del" onClick={() => delRow('card-tx', origIdx)} title="Remover">✕</button></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })}
+                    {txs.length > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
+                        <span>TOTAL LANÇADO NO MÊS</span><span>{fmtBR(totalGeral)}</span>
+                      </div>
+                    )}
+                    <div className="add-row">
+                      <button className="btn btn-primary" onClick={() => addRow('card-tx')}>+ Adicionar lançamento</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </section>
         )}
 
