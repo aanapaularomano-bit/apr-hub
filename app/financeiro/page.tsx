@@ -178,6 +178,32 @@ function makeEmptyMonth() {
       { data: '2026-07-17', desc: 'UNICA FARMACIA DE', cartao: 'Itau Black', cat: 'Saúde', origem: 'PF', valor: 425.68, parcela_atual: 1, parcela_total: 3, valor_parcela: 425.68, data_termino: '2026-09' },
       { data: '2026-07-26', desc: 'FACEBK *V6ZBDY9WL2 - Facebook Ads', cartao: 'Itau Black', cat: 'Marketing PJ', origem: 'PJ', valor: 1144.50, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
       { data: '2026-07-28', desc: 'HUBLA *ACACADEMY - Hubla', cartao: 'Itau Black', cat: 'Marketing PJ', origem: 'PJ', valor: 297.00, parcela_atual: 1, parcela_total: 1, valor_parcela: 297.00, data_termino: '2026-08' },
+      // Itau Latam
+      { data: '2025-08-25', desc: 'HTM*Sobral Ens', cartao: 'Itau Latam', cat: 'Educação', origem: 'PF', valor: 249.21, parcela_atual: 12, parcela_total: 12, valor_parcela: 249.21, data_termino: '2026-08-01' },
+      { data: '2025-09-03', desc: 'ASAAS*REPORTEI', cartao: 'Itau Latam', cat: 'Assinaturas', origem: 'PF', valor: 82.45, parcela_atual: 11, parcela_total: 12, valor_parcela: 82.45, data_termino: '2026-09-01' },
+      { data: '2026-03-24', desc: 'RAYBAN BRASILS', cartao: 'Itau Latam', cat: 'Vestuário', origem: 'PF', valor: 99.00, parcela_atual: 5, parcela_total: 10, valor_parcela: 99.00, data_termino: '2026-12-01' },
+      { data: '2026-04-02', desc: 'TmOdontologiaS', cartao: 'Itau Latam', cat: 'Saúde', origem: 'PF', valor: 1000.00, parcela_atual: 4, parcela_total: 4, valor_parcela: 1000.00, data_termino: '2026-08-01' },
+      { data: '2026-04-08', desc: 'PLANALTO MATER', cartao: 'Itau Latam', cat: 'Outros', origem: 'PF', valor: 636.40, parcela_atual: 4, parcela_total: 4, valor_parcela: 636.40, data_termino: '2026-08-01' },
+      { data: '2026-04-14', desc: 'LEROY MERLINSA', cartao: 'Itau Latam', cat: 'Outros', origem: 'PF', valor: 279.86, parcela_atual: 4, parcela_total: 8, valor_parcela: 279.86, data_termino: '2026-11-01' },
+      { data: '2026-06-09', desc: 'MOVIDA RAC SJA', cartao: 'Itau Latam', cat: 'Transporte', origem: 'PF', valor: 181.94, parcela_atual: 2, parcela_total: 3, valor_parcela: 181.94, data_termino: '2026-09-01' },
+      { data: '2026-07-04', desc: 'Mensalidade Plano Anuidade', cartao: 'Itau Latam', cat: 'Serviços', origem: 'PF', valor: 105.00, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-09', desc: 'STRACTCURITIBABRA', cartao: 'Itau Latam', cat: 'Serviços', origem: 'PF', valor: 149.00, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-11', desc: 'OBA HORTIFRUTI', cartao: 'Itau Latam', cat: 'Alimentação', origem: 'PF', valor: 267.68, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-11', desc: 'SJRP DAHMA', cartao: 'Itau Latam', cat: 'Alimentação', origem: 'PF', valor: 251.31, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-11', desc: 'PostoVillageMall', cartao: 'Itau Latam', cat: 'Transporte', origem: 'PF', valor: 290.06, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-12', desc: 'JoaoGabriel Supermercado', cartao: 'Itau Latam', cat: 'Alimentação', origem: 'PF', valor: 246.40, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-13', desc: 'FACEBK* R26U6WZ8W2 - Facebook Ads', cartao: 'Itau Latam', cat: 'Marketing PJ', origem: 'PJ', valor: 73.19, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-15', desc: 'Hotel at Booking.com', cartao: 'Itau Latam', cat: 'Viagem', origem: 'PF', valor: 1140.22, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-15', desc: 'CANCELAMENTO Booking.com', cartao: 'Itau Latam', cat: 'Viagem', origem: 'PF', valor: -1140.22, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-18', desc: 'ANDREAS FOOD COMERCIO', cartao: 'Itau Latam', cat: 'Alimentação', origem: 'PF', valor: 74.00, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-21', desc: 'Google One', cartao: 'Itau Latam', cat: 'Assinaturas', origem: 'PF', valor: 9.99, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-27', desc: 'HTM*Escalytics LTDA 1', cartao: 'Itau Latam', cat: 'Educação', origem: 'PF', valor: 297.00, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-27', desc: 'HTM*Escalytics LTDA 2', cartao: 'Itau Latam', cat: 'Educação', origem: 'PF', valor: 147.00, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-28', desc: 'APPLE.COM/BILL', cartao: 'Itau Latam', cat: 'Assinaturas', origem: 'PF', valor: 66.90, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-28', desc: 'HTM *TrafegoComIA', cartao: 'Itau Latam', cat: 'Educação', origem: 'PF', valor: 297.00, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-07-29', desc: 'LATAM AIR*LZRA', cartao: 'Itau Latam', cat: 'Viagem', origem: 'PF', valor: 214.77, parcela_atual: 1, parcela_total: 10, valor_parcela: 214.77, data_termino: '2027-04-01' },
+      { data: '2026-07-31', desc: 'EBN*SPOTIFYCURITIBA', cartao: 'Itau Latam', cat: 'Assinaturas', origem: 'PF', valor: 23.90, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
+      { data: '2026-08-01', desc: 'Google Workspace Velar', cartao: 'Itau Latam', cat: 'Assinaturas', origem: 'PF', valor: 163.60, parcela_atual: null, parcela_total: null, valor_parcela: null, data_termino: null },
     ],
     'metas': [
       { meta: 'Reserva de emergência', cat: 'Reserva', alvo: 0, real: 0 },
@@ -267,14 +293,31 @@ export default function FinanceiroPage() {
     })();
   }, []);
 
-  // MIGRAÇÃO: popula card-tx seedado se estiver vazio no Supabase
+  // MIGRAÇÃO: popula card-tx seedado se estiver vazio ou faltando transações de algum cartão
   useEffect(() => {
     if (loading) return;
     const saved = db[currentMonth];
     if (!saved) return; // mês não existe no Supabase — makeEmptyMonth já cobre
-    if (Array.isArray(saved['card-tx']) && saved['card-tx'].length === 0) {
-      const seed = makeEmptyMonth()['card-tx'];
-      const migrated = { ...saved, 'card-tx': seed };
+    const nrm = (s: string) => s?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const allSeed = makeEmptyMonth()['card-tx'] as any[];
+    let current: any[] = Array.isArray(saved['card-tx']) ? saved['card-tx'] : [];
+    let changed = false;
+    if (current.length === 0) {
+      current = allSeed;
+      changed = true;
+    } else {
+      // Acrescenta seed de cada cartão ausente no array existente
+      const seedCards = [...new Set(allSeed.map((tx: any) => nrm(tx.cartao)))];
+      seedCards.forEach(cardNrm => {
+        const hasCard = current.some((tx: any) => nrm(tx.cartao) === cardNrm);
+        if (!hasCard) {
+          current = [...current, ...allSeed.filter((tx: any) => nrm(tx.cartao) === cardNrm)];
+          changed = true;
+        }
+      });
+    }
+    if (changed) {
+      const migrated = { ...saved, 'card-tx': current };
       setDb(prev => ({ ...prev, [currentMonth]: migrated }));
       fetch('/api/financeiro', {
         method: 'POST',
