@@ -1172,7 +1172,8 @@ export default function FinanceiroPage() {
               </div>
 
               {cards.map((card: any, cardIdx: number) => {
-                const cardTxs = txs.map((tx, i) => ({ tx, origIdx: i })).filter(({ tx }) => tx.cartao === card.nome);
+                const normalize = (s: string) => s?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                const cardTxs = txs.map((tx, i) => ({ tx, origIdx: i })).filter(({ tx }) => normalize(tx.cartao) === normalize(card.nome));
                 const faturaTxs = cardTxs.reduce((s, { tx }) => s + (parseFloat(tx.valor) || 0), 0);
                 const parcelasVencer = cardTxs.reduce((s, { tx }) => {
                   if (tx.parcela_atual != null && tx.parcela_total != null && tx.valor_parcela != null) {
