@@ -1226,7 +1226,7 @@ export default function FinanceiroPage() {
                                           <td style={{ ...ESTILO_TABELA.celula, fontFamily: 'JetBrains Mono,monospace', fontSize: 12, whiteSpace: 'nowrap', width: 90 }}>{tx.data}</td>
                                           <td style={ESTILO_TABELA.celula}>
                                             <span>{tx.desc}</span>
-                                            {isParcelado && <span style={{ display: 'block', fontSize: 11, color: 'var(--info)', fontFamily: 'JetBrains Mono,monospace', marginTop: 1 }}>{fmtParcela(tx)}</span>}
+                                            {isParcelado && <span style={{ display: 'block', fontSize: 11, color: '#CCFF00', fontFamily: 'JetBrains Mono,monospace', marginTop: 1 }}>{fmtParcela(tx)}</span>}
                                           </td>
                                           <td style={{ ...ESTILO_TABELA.celula, width: 50, textAlign: 'center' }}>
                                             <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: tx.origem === 'PJ' ? 'rgba(167,139,250,0.15)' : 'var(--bg-3)', color: tx.origem === 'PJ' ? 'var(--accent)' : 'var(--text-dim)' }}>{tx.origem}</span>
