@@ -267,6 +267,24 @@ export default function FinanceiroPage() {
     })();
   }, []);
 
+  // MIGRAÇÃO: popula card-tx seedado se estiver vazio no Supabase
+  useEffect(() => {
+    if (loading) return;
+    const saved = db[currentMonth];
+    if (!saved) return; // mês não existe no Supabase — makeEmptyMonth já cobre
+    if (Array.isArray(saved['card-tx']) && saved['card-tx'].length === 0) {
+      const seed = makeEmptyMonth()['card-tx'];
+      const migrated = { ...saved, 'card-tx': seed };
+      setDb(prev => ({ ...prev, [currentMonth]: migrated }));
+      fetch('/api/financeiro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month_key: currentMonth, data: migrated }),
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, currentMonth]);
+
   // SALVAR no Supabase (debounced)
   const saveMonth = useCallback(async (monthKey: string, monthData: any) => {
     setSaveStatus('Salvando...');
