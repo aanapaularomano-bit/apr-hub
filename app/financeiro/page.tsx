@@ -322,7 +322,8 @@ export default function FinanceiroPage() {
 
 
 
-  const m = db[currentMonth] || makeEmptyMonth();
+  const _saved = db[currentMonth];
+  const m = _saved ? { ...makeEmptyMonth(), ..._saved } : makeEmptyMonth();
 
   // ===== CÁLCULOS =====
   const sumValor = (arr: any[]) => (arr || []).reduce((s, r) => s + (parseFloat(r.valor) || 0), 0);
