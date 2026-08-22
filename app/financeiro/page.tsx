@@ -1126,6 +1126,7 @@ export default function FinanceiroPage() {
 
         {/* CARTÕES */}
         {activeTab === 'cartoes' && (() => {
+          console.log('cards:', m['cards']?.map((c: any) => c.nome), 'txs:', m['lancamentos']?.map((t: any) => t.cartao));
           const txs: any[] = m['card-tx'] || [];
           const cards: any[] = m['cards'] || [];
           const totalGeral = txs.reduce((s: number, tx: any) => s + (parseFloat(tx.valor) || 0), 0);
