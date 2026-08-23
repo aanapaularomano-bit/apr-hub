@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .env.local
+tsconfig.tsbuildinfo
 
 # APR Financeiro - arquivos de atualização
 apr-financeiro-update.zip

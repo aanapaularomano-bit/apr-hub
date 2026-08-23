@@ -347,8 +347,19 @@ export default function FinanceiroPage() {
       invs = makeEmptyMonth()['investimentos'] as any[];
       changed = true;
     }
+    // Metas: popula seed se array vazio
+    const METAS_SEED = [
+      { id: '1', nome: 'Patrimônio Total R$ 500k',      valor_alvo: 500000, valor_atual: 426000, prazo: '2027-12-31', anotacao: 'Meta principal de patrimônio consolidado' },
+      { id: '2', nome: 'Reserva Internacional US$ 25k', valor_alvo: 25000,  valor_atual: 19218,  prazo: '2026-12-31', anotacao: 'Carteira internacional BTG' },
+      { id: '3', nome: 'Renda Passiva R$ 5.000/mês',    valor_alvo: 5000,   valor_atual: 3600,   prazo: '2027-06-30', anotacao: 'Renda mensal estimada dos investimentos' },
+    ];
+    let metas: any[] = Array.isArray(saved['metas']) ? saved['metas'] : [];
+    if (metas.length === 0) {
+      metas = METAS_SEED;
+      changed = true;
+    }
     if (changed) {
-      const migrated = { ...saved, 'card-tx': current, 'investimentos': invs };
+      const migrated = { ...saved, 'card-tx': current, 'investimentos': invs, 'metas': metas };
       setDb(prev => ({ ...prev, [currentMonth]: migrated }));
       fetch('/api/financeiro', {
         method: 'POST',
