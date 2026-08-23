@@ -1421,6 +1421,7 @@ export default function FinanceiroPage() {
 
         {/* INVESTIMENTOS */}
         {activeTab === 'investimentos' && (() => {
+          console.log('[investimentos] m[investimentos]:', m['investimentos'], '| db[currentMonth]?.investimentos:', db[currentMonth]?.['investimentos']);
           const invs: any[] = m['investimentos'] || [];
           const toInvBRL = (inv: any) => (parseFloat(inv.saldo) || 0) * (inv.moeda === 'EUR' ? eurRate : inv.moeda === 'USD' ? usdRate : 1);
           const totalPatrimonio = invs.reduce((s, inv) => s + toInvBRL(inv), 0);
