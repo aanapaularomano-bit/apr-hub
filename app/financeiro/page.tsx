@@ -1424,9 +1424,8 @@ export default function FinanceiroPage() {
         {activeTab === 'investimentos' && (() => {
           const invs: any[] = m['investimentos'] || [];
           const totalPatrimonio = invs.reduce((s, inv) => s + parseFloat(inv.saldo) * (inv.moeda === 'USD' ? usdRate : inv.moeda === 'EUR' ? eurRate : 1), 0);
-          const _brlSum = invs.filter((i: any) => i.moeda === 'BRL').reduce((s: number, i: any) => s + parseFloat(i.saldo), 0);
-          const _usdSum = invs.filter((i: any) => i.moeda === 'USD').reduce((s: number, i: any) => s + parseFloat(i.saldo), 0);
-          console.log('[inv debug] usdRate=', usdRate, 'eurRate=', eurRate, '| BRL raw=', _brlSum.toFixed(2), '| USD raw=', _usdSum.toFixed(2), '| USD converted=', (_usdSum * usdRate).toFixed(2), '| TOTAL=', totalPatrimonio.toFixed(2));
+          console.log('usdRate at calc:', usdRate, 'eurRate:', eurRate);
+          console.log('inv sample:', m['investimentos']?.map((i:any) => ({nome: i.nome, moeda: i.moeda, saldo: i.saldo, converted: parseFloat(i.saldo) * (i.moeda === 'USD' ? usdRate : i.moeda === 'EUR' ? eurRate : 1)})));
           return (
             <section>
               <h2 className="section-title">📈 Investimentos</h2>
