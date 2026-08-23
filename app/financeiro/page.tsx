@@ -1425,7 +1425,7 @@ export default function FinanceiroPage() {
           const invs: any[] = m['investimentos'] || [];
           const toInvBRL = (inv: any) => (parseFloat(inv.saldo) || 0) * (inv.moeda === 'EUR' ? eurRate : inv.moeda === 'USD' ? usdRate : 1);
           const totalPatrimonio = invs.reduce((s, inv) => s + toInvBRL(inv), 0);
-          console.log('inv rows:', m['investimentos']?.map((i: any) => ({ nome: i.nome, moeda: i.moeda, saldo: i.saldo })));
+          console.log('inv rows:', JSON.stringify(m['investimentos']?.slice(0,3)));
           return (
             <section>
               <h2 className="section-title">📈 Investimentos</h2>
