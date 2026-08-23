@@ -341,12 +341,28 @@ export default function FinanceiroPage() {
         }
       });
     }
-    // Investimentos: substitui seed se vazio ou com dado placeholder
+    // Investimentos: substitui seed se vazio/placeholder; caso contrário, merge por id para preencher campos ausentes (ex: moeda)
+    const invSeed: any[] = makeEmptyMonth()['investimentos'] as any[];
     let invs: any[] = Array.isArray(saved['investimentos']) ? saved['investimentos'] : [];
     const invNeedsReset = !invs.length || (invs.length === 1 && (!invs[0].nome || invs[0].nome === '' || invs[0].nome === 'Nome'));
     if (invNeedsReset) {
-      invs = makeEmptyMonth()['investimentos'] as any[];
+      invs = invSeed;
       changed = true;
+    } else {
+      // Merge: para cada row salvo, preenche campos ausentes a partir do seed pelo id
+      const merged = invs.map((row: any) => {
+        const seedRow = invSeed.find((s: any) => s.id === row.id);
+        if (!seedRow) return row;
+        const fix: any = {};
+        if (!row.moeda) fix.moeda = seedRow.moeda;
+        if (!row.tipo) fix.tipo = seedRow.tipo;
+        return Object.keys(fix).length ? { ...seedRow, ...row, ...fix } : row;
+      });
+      const needsMerge = merged.some((r: any, i: number) => r !== invs[i]);
+      if (needsMerge) {
+        invs = merged;
+        changed = true;
+      }
     }
     // Metas: popula seed se array vazio
     const METAS_SEED = [
