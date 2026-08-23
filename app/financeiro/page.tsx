@@ -1451,13 +1451,53 @@ export default function FinanceiroPage() {
             <section>
               <h2 className="section-title">📈 Investimentos</h2>
               <p className="section-sub">Portfólio de investimentos e patrimônio total convertido em BRL</p>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ display: 'inline-block', background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5, padding: '3px 10px', fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: eurRateStatus === 'offline' ? 'var(--warn)' : 'var(--text-dim)' }}>
                   {eurRateStatus === 'offline' ? '⚠ EUR offline' : `€1 = R$ ${eurRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (média 30 dias)`}
                 </span>
                 <span style={{ display: 'inline-block', background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5, padding: '3px 10px', fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: usdRateStatus === 'offline' ? 'var(--warn)' : 'var(--text-dim)' }}>
                   {usdRateStatus === 'offline' ? '⚠ USD offline' : `US$1 = R$ ${usdRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (média 30 dias)`}
                 </span>
+                <button
+                  onClick={() => {
+                    setUsdRateStatus('loading');
+                    setEurRateStatus('loading');
+                    fetch('https://economia.awesomeapi.com.br/json/daily/USD-BRL/30')
+                      .then(r => r.json())
+                      .then((data: any[]) => {
+                        const avg = data.reduce((s: number, d: any) => s + parseFloat(d.bid || '0'), 0) / data.length;
+                        setUsdRate(avg);
+                        setUsdRateStatus('ok');
+                      })
+                      .catch(() => setUsdRateStatus('offline'));
+                    fetch('https://economia.awesomeapi.com.br/json/daily/EUR-BRL/30')
+                      .then(r => r.json())
+                      .then((data: any[]) => {
+                        const avg = data.reduce((s: number, d: any) => s + parseFloat(d.bid || '0'), 0) / data.length;
+                        setEurRate(avg);
+                        setEurRateStatus('ok');
+                      })
+                      .catch(() => setEurRateStatus('offline'));
+                  }}
+                  style={{ fontSize: 11, padding: '3px 10px', borderRadius: 5, border: '1px solid var(--line)', background: 'var(--bg-2)', color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'JetBrains Mono,monospace' }}
+                >🔄 Atualizar Cotações</button>
+                <button
+                  onClick={() => {
+                    const USD_IDS = ['14','15','16','17','18','19','20','21','22','23','24'];
+                    updateMonth((month: any) => {
+                      const arr = [...(month['investimentos'] || [])];
+                      arr.forEach((row: any, idx: number) => {
+                        if (USD_IDS.includes(String(row.id))) arr[idx] = { ...row, moeda: 'USD' };
+                        else arr[idx] = { ...row, moeda: 'BRL' };
+                      });
+                      month['investimentos'] = arr;
+                      return month;
+                    });
+                    setSaveStatus('Moedas corrigidas! ✓');
+                    setTimeout(() => setSaveStatus('Sincronizado'), 3000);
+                  }}
+                  style={{ fontSize: 11, padding: '3px 10px', borderRadius: 5, border: '1px solid var(--line)', background: 'rgba(200,255,90,.08)', color: '#c8ff5a', cursor: 'pointer', fontFamily: 'JetBrains Mono,monospace' }}
+                >🔧 Corrigir Moedas</button>
               </div>
               <div className="kpi-grid">
                 <div className="kpi"><div className="kpi-label">💰 Patrimônio BRL</div><div className="kpi-value pos">{fmtBR(totalBRL)}</div><div className="kpi-meta">{invs.filter((i: any) => i.moeda !== 'USD' && i.moeda !== 'EUR').length} ativo{invs.filter((i: any) => i.moeda !== 'USD' && i.moeda !== 'EUR').length !== 1 ? 's' : ''}</div></div>
