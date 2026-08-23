@@ -214,7 +214,32 @@ function makeEmptyMonth() {
       { desc: 'Reserva de emergência', tipo: 'CDB liquidez diária', saldo: 0, aporte: 0 },
       { desc: 'Investimentos LP', tipo: 'Tesouro/CDI', saldo: 0, aporte: 0 },
     ],
-    'investimentos': [],
+    'investimentos': [
+      { id: '1',  nome: 'BTG Pactual CDB Plus FIRF CrPr RL',          tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 41909.92, anotacao: 'CDI · D+0 · rent. 0,85%/mês' },
+      { id: '2',  nome: 'More MCA II FICFIDC RL',                      tipo: 'Fundo de Investimento', moeda: 'BRL', saldo: 54680.92, anotacao: 'Renda Fixa · D+61 · rent. 0,84%/mês' },
+      { id: '3',  nome: 'M8 Capital Plus FIRF LP CrPr RL',             tipo: 'Fundo de Investimento', moeda: 'BRL', saldo: 38658.55, anotacao: 'Renda Fixa · D+32 · rent. 0,79%/mês' },
+      { id: '4',  nome: 'BTG Pactual CDB Liquidez Diária',             tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 3323.26,  anotacao: 'CDB · CDI · venc. 19/07/2027' },
+      { id: '5',  nome: 'C6 CDB 15,80% a.a.',                          tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 1218.27,  anotacao: 'CDB · 15,80% a.a. · venc. 13/11/2026' },
+      { id: '6',  nome: 'C6 CDB 14,25% a.a.',                          tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 10381.94, anotacao: 'CDB · 14,25% a.a. · venc. 14/04/2031' },
+      { id: '7',  nome: 'Banco Digimais CDB 112% CDI',                 tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 5754.67,  anotacao: 'CDB · 112% CDI · venc. 17/07/2030' },
+      { id: '8',  nome: 'Banco Digimais CDB 114% CDI',                 tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 5769.33,  anotacao: 'CDB · 114% CDI · venc. 17/07/2031' },
+      { id: '9',  nome: 'Banco Original LCA 92,5% CDI',                tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 2196.48,  anotacao: 'LCA · 92,5% CDI · venc. 19/03/2027' },
+      { id: '10', nome: 'BTG Pactual LCA 92% CDI',                     tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 1104.99,  anotacao: 'LCA · 92% CDI · venc. 30/08/2027' },
+      { id: '11', nome: 'Ouribank CDB 106,2% CDI',                     tipo: 'Renda Fixa',           moeda: 'BRL', saldo: 1119.68,  anotacao: 'CDB · 106,2% CDI · venc. 06/09/2027' },
+      { id: '12', nome: 'ARZ CONFIDAS D PF FIM',                       tipo: 'Fundo de Investimento', moeda: 'BRL', saldo: 10139.57, anotacao: 'Multimercados · rent. 0,94%/mês' },
+      { id: '13', nome: 'Bitcoin (BTC)',                                tipo: 'Cripto',               moeda: 'BRL', saldo: 7255.24,  anotacao: '0,01824219 BTC · investido R$7.940,50 · rent. -R$685,26' },
+      { id: '14', nome: 'JPMorgan Chase (JPM)',                        tipo: 'Internacional',         moeda: 'USD', saldo: 117.87,   anotacao: 'Ação · investido US$101,00 · +16,70%' },
+      { id: '15', nome: 'Microsoft (MSFT)',                            tipo: 'Internacional',         moeda: 'USD', saldo: 94.51,    anotacao: 'Ação · investido US$101,00 · -6,43%' },
+      { id: '16', nome: 'NVIDIA (NVDA)',                               tipo: 'Internacional',         moeda: 'USD', saldo: 124.63,   anotacao: 'Ação · investido US$101,00 · +23,40%' },
+      { id: '17', nome: 'JPMorgan USD Emerg Markets (EMB)',            tipo: 'Internacional',         moeda: 'USD', saldo: 1864.81,  anotacao: 'ETF · investido US$1.912,00 · -2,47%' },
+      { id: '18', nome: 'Russell 2000 iShares ETF (IWM)',              tipo: 'Internacional',         moeda: 'USD', saldo: 3623.78,  anotacao: 'ETF · investido US$3.210,00 · +12,89%' },
+      { id: '19', nome: 'SPDR Portfolio Long Term Treasury (SPTL)',    tipo: 'Internacional',         moeda: 'USD', saldo: 2036.01,  anotacao: 'ETF · investido US$2.094,50 · -2,79%' },
+      { id: '20', nome: 'SPDR S&P 500 ETF (SPY)',                      tipo: 'Internacional',         moeda: 'USD', saldo: 2443.70,  anotacao: 'ETF · investido US$2.275,00 · +7,42%' },
+      { id: '21', nome: 'S&P 500 Vanguard ETF (VOO)',                  tipo: 'Internacional',         moeda: 'USD', saldo: 120.58,   anotacao: 'ETF · investido US$101,00 · +19,39%' },
+      { id: '22', nome: 'Vanguard Total World Stock (VT)',             tipo: 'Internacional',         moeda: 'USD', saldo: 1505.84,  anotacao: 'ETF · investido US$1.407,50 · +6,99%' },
+      { id: '23', nome: 'FTGF Western Asset US Gov. Liquidity',        tipo: 'Internacional',         moeda: 'USD', saldo: 920.48,   anotacao: 'Money Market · investido US$917,22 · +0,36%' },
+      { id: '24', nome: 'Invesco US Dollar Liquidity Portfolio',       tipo: 'Internacional',         moeda: 'USD', saldo: 6107.18,  anotacao: 'Money Market · investido US$6.021,78 · +1,42%' },
+    ],
     notes: ''
   };
 }
@@ -316,8 +341,14 @@ export default function FinanceiroPage() {
         }
       });
     }
+    // Investimentos: popula seed se array vazio
+    let invs: any[] = Array.isArray(saved['investimentos']) ? saved['investimentos'] : [];
+    if (invs.length === 0) {
+      invs = makeEmptyMonth()['investimentos'] as any[];
+      changed = true;
+    }
     if (changed) {
-      const migrated = { ...saved, 'card-tx': current };
+      const migrated = { ...saved, 'card-tx': current, 'investimentos': invs };
       setDb(prev => ({ ...prev, [currentMonth]: migrated }));
       fetch('/api/financeiro', {
         method: 'POST',
