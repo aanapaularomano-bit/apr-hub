@@ -1423,9 +1423,7 @@ export default function FinanceiroPage() {
         {/* INVESTIMENTOS */}
         {activeTab === 'investimentos' && (() => {
           const invs: any[] = m['investimentos'] || [];
-          const toInvBRL = (inv: any) => (parseFloat(inv.saldo) || 0) * (inv.moeda === 'EUR' ? eurRate : inv.moeda === 'USD' ? usdRate : 1);
-          const totalPatrimonio = invs.reduce((s, inv) => s + toInvBRL(inv), 0);
-          console.log('inv rows:', JSON.stringify(m['investimentos']?.slice(0,3)));
+          const totalPatrimonio = invs.reduce((s, inv) => s + parseFloat(inv.saldo) * (inv.moeda === 'USD' ? usdRate : inv.moeda === 'EUR' ? eurRate : 1), 0);
           return (
             <section>
               <h2 className="section-title">📈 Investimentos</h2>
@@ -1460,7 +1458,7 @@ export default function FinanceiroPage() {
                       {invs.length === 0
                         ? <tr><td colSpan={7} style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum investimento cadastrado.</td></tr>
                         : invs.map((inv: any, i: number) => {
-                          const saldoBRL = toInvBRL(inv);
+                          const saldoBRL = parseFloat(inv.saldo) * (inv.moeda === 'USD' ? usdRate : inv.moeda === 'EUR' ? eurRate : 1);
                           return (
                             <tr key={i}>
                               <td style={ESTILO_TABELA.celula}><input type="text" defaultValue={inv.nome || ''} placeholder="Nome" onBlur={e => updRow('investimentos', i, 'nome', e.target.value)} /></td>
