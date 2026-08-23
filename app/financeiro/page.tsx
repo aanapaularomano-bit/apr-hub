@@ -1445,7 +1445,8 @@ export default function FinanceiroPage() {
             if (inv.moeda === 'EUR') return s * eurRate;
             return s;
           };
-          const totalPatrimonio = invs.reduce((s, inv) => s + toBRL(inv), 0);
+          const totalBRL = invs.filter((inv: any) => inv.moeda !== 'USD' && inv.moeda !== 'EUR').reduce((s: number, inv: any) => s + (parseFloat(inv.saldo) || 0), 0);
+          const totalUSD = invs.filter((inv: any) => inv.moeda === 'USD').reduce((s: number, inv: any) => s + (parseFloat(inv.saldo) || 0), 0);
           return (
             <section>
               <h2 className="section-title">📈 Investimentos</h2>
@@ -1459,7 +1460,8 @@ export default function FinanceiroPage() {
                 </span>
               </div>
               <div className="kpi-grid">
-                <div className="kpi"><div className="kpi-label">Total Patrimônio</div><div className="kpi-value pos">{fmtBR(totalPatrimonio)}</div><div className="kpi-meta">{invs.length} investimento{invs.length !== 1 ? 's' : ''}</div></div>
+                <div className="kpi"><div className="kpi-label">💰 Patrimônio BRL</div><div className="kpi-value pos">{fmtBR(totalBRL)}</div><div className="kpi-meta">{invs.filter((i: any) => i.moeda !== 'USD' && i.moeda !== 'EUR').length} ativo{invs.filter((i: any) => i.moeda !== 'USD' && i.moeda !== 'EUR').length !== 1 ? 's' : ''}</div></div>
+                <div className="kpi"><div className="kpi-label">🇺🇸 Patrimônio USD</div><div className="kpi-value pos">{'US$ ' + totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div><div className="kpi-meta">{invs.filter((i: any) => i.moeda === 'USD').length} ativo{invs.filter((i: any) => i.moeda === 'USD').length !== 1 ? 's' : ''}</div></div>
               </div>
               <div className="block">
                 <div className="block-head"><div className="block-title">💼 Carteira de Investimentos</div></div>
@@ -1505,7 +1507,8 @@ export default function FinanceiroPage() {
                     </tbody>
                   </table>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 8px 0', marginTop: 8, borderTop: '2px solid var(--line)', fontWeight: 600, color: 'var(--accent)', fontFamily: 'JetBrains Mono,monospace', fontSize: 13 }}>
-                    <span>TOTAL PATRIMÔNIO</span><span>{fmtBR(totalPatrimonio)}</span>
+                    <span>TOTAL BRL</span><span>{fmtBR(totalBRL)}</span>
+                    <span style={{ marginLeft: 32 }}>TOTAL USD</span><span>{'US$ ' + totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="add-row"><button className="btn btn-primary" onClick={() => addRow('investimentos')}>＋ Adicionar Investimento</button></div>
                 </div>
