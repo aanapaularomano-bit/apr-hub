@@ -307,7 +307,7 @@ export default function FinanceiroPage() {
       changed = true;
     } else {
       // Acrescenta seed de cada cartão ausente no array existente
-      const seedCards = [...new Set(allSeed.map((tx: any) => nrm(tx.cartao)))];
+      const seedCards = Array.from(new Set(allSeed.map((tx: any) => nrm(tx.cartao))));
       seedCards.forEach(cardNrm => {
         const hasCard = current.some((tx: any) => nrm(tx.cartao) === cardNrm);
         if (!hasCard) {
