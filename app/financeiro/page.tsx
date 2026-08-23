@@ -267,7 +267,7 @@ export default function FinanceiroPage() {
   const [addFormDraft, setAddFormDraft] = useState({ data: '', desc: '', cat: CATS_CARD[0], origem: 'PF', valor: '', parcelado: false, parcela_atual: 1, parcela_total: 2, valor_parcela: '', data_termino: '' });
   const [eurRate, setEurRate] = useState(6.0);
   const [eurRateStatus, setEurRateStatus] = useState<'loading'|'ok'|'offline'>('loading');
-  const [usdRate, setUsdRate] = useState(5.5);
+  const [usdRate, setUsdRate] = useState(5.13);
   const [usdRateStatus, setUsdRateStatus] = useState<'loading'|'ok'|'offline'>('loading');
   const saveTimerRef = useRef<any>(null);
 
@@ -1423,9 +1423,13 @@ export default function FinanceiroPage() {
         {/* INVESTIMENTOS */}
         {activeTab === 'investimentos' && (() => {
           const invs: any[] = m['investimentos'] || [];
-          const totalPatrimonio = invs.reduce((s, inv) => s + parseFloat(inv.saldo) * (inv.moeda === 'USD' ? usdRate : inv.moeda === 'EUR' ? eurRate : 1), 0);
-          console.log('usdRate at calc:', usdRate, 'eurRate:', eurRate);
-          console.log('inv sample:', m['investimentos']?.map((i:any) => ({nome: i.nome, moeda: i.moeda, saldo: i.saldo, converted: parseFloat(i.saldo) * (i.moeda === 'USD' ? usdRate : i.moeda === 'EUR' ? eurRate : 1)})));
+          const toBRL = (inv: any) => {
+            const s = parseFloat(inv.saldo) || 0;
+            if (inv.moeda === 'USD') return s * usdRate;
+            if (inv.moeda === 'EUR') return s * eurRate;
+            return s;
+          };
+          const totalPatrimonio = invs.reduce((s, inv) => s + toBRL(inv), 0);
           return (
             <section>
               <h2 className="section-title">📈 Investimentos</h2>
@@ -1460,7 +1464,7 @@ export default function FinanceiroPage() {
                       {invs.length === 0
                         ? <tr><td colSpan={7} style={{ padding: '24px 8px', color: 'var(--text-dim)', textAlign: 'center', fontSize: 13 }}>Nenhum investimento cadastrado.</td></tr>
                         : invs.map((inv: any, i: number) => {
-                          const saldoBRL = parseFloat(inv.saldo) * (inv.moeda === 'USD' ? usdRate : inv.moeda === 'EUR' ? eurRate : 1);
+                          const saldoBRL = toBRL(inv);
                           return (
                             <tr key={i}>
                               <td style={ESTILO_TABELA.celula}><input type="text" defaultValue={inv.nome || ''} placeholder="Nome" onBlur={e => updRow('investimentos', i, 'nome', e.target.value)} /></td>
