@@ -341,9 +341,10 @@ export default function FinanceiroPage() {
         }
       });
     }
-    // Investimentos: popula seed se array vazio
+    // Investimentos: substitui seed se vazio ou com dado placeholder
     let invs: any[] = Array.isArray(saved['investimentos']) ? saved['investimentos'] : [];
-    if (invs.length === 0) {
+    const invNeedsReset = !invs.length || (invs.length === 1 && (!invs[0].nome || invs[0].nome === '' || invs[0].nome === 'Nome'));
+    if (invNeedsReset) {
       invs = makeEmptyMonth()['investimentos'] as any[];
       changed = true;
     }
@@ -1421,7 +1422,6 @@ export default function FinanceiroPage() {
 
         {/* INVESTIMENTOS */}
         {activeTab === 'investimentos' && (() => {
-          console.log('[investimentos] m[investimentos]:', m['investimentos'], '| db[currentMonth]?.investimentos:', db[currentMonth]?.['investimentos']);
           const invs: any[] = m['investimentos'] || [];
           const toInvBRL = (inv: any) => (parseFloat(inv.saldo) || 0) * (inv.moeda === 'EUR' ? eurRate : inv.moeda === 'USD' ? usdRate : 1);
           const totalPatrimonio = invs.reduce((s, inv) => s + toInvBRL(inv), 0);
