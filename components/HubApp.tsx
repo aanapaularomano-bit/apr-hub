@@ -9,6 +9,7 @@ import BancoEstrategias from './BancoEstrategias';
 import DashboardManager from './DashboardManager';
 import ProximasAcoes from './ProximasAcoes';
 import Dossies from './Dossies';
+import CentralDeControle from './CentralDeControle';
 
 const btnS = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
@@ -22,7 +23,7 @@ export default function HubApp({ user }: { user: any }) {
   const [tasks, setTasks] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState('alice');
+  const [page, setPage] = useState('central');
   const [squad, setSquad] = useState('todos');
   const [sel, setSel] = useState<any>(null);
   const [search, setSearch] = useState('');
@@ -317,6 +318,7 @@ export default function HubApp({ user }: { user: any }) {
         <div><div style={{ fontSize: 16, fontWeight: 800 }}>Ana Paula Romano</div><div style={{ fontSize: 11, color: T.mt2, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{user.email}</div></div>
       </div>
 
+      {navBtn('central', '⚡', 'Central', allAlerts.length > 0 ? allAlerts.length : undefined)}
       {navBtn('alice', '🤖', 'Alice', allAlerts.length + overdueTasks.length)}
 
       {sectionLabel('CRM')}
@@ -414,6 +416,21 @@ Responda a pergunta da Ana Paula sobre a agência.`;
     }
     setChatLoading(false);
   }
+
+  // ═══ CENTRAL DE CONTROLE ═══
+  if (page === 'central') return (
+    <div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>
+      {sidebar}
+      <main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}>
+        <CentralDeControle
+          clients={clients}
+          tasks={tasks}
+          T={T}
+          onOpenClient={openC}
+        />
+      </main>
+    </div>
+  );
 
   // ═══ ALICE PAGE ═══
   if (page === 'alice') {
