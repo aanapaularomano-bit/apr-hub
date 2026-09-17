@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS client_portals (
   id             uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id      uuid        NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   slug           text        UNIQUE NOT NULL,
-  password_hash  text        NOT NULL DEFAULT '',
+  password_hash  text        NOT NULL DEFAULT 'pendente',
   enabled        boolean     DEFAULT true,
   sections       jsonb       DEFAULT '{"overview":true,"requests":true,"links":true}'::jsonb,
   last_visit_at  timestamptz,
