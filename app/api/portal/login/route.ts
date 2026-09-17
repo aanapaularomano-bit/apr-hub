@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     const { data: portal } = await supabase
       .from('client_portals')
-      .select('id, slug, password_hash, enabled')
+      .select('id, slug, password_hash, admin_password_hash, enabled')
       .eq('slug', slug)
       .single();
 
@@ -25,20 +25,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Portal não encontrado' }, { status: 404 });
     }
 
-    const valid = await verifyPassword(password, portal.password_hash);
-    if (!valid) {
+    // Check admin password first
+    let role: 'client' | 'admin' | null = null;
+    if (portal.admin_password_hash) {
+      const isAdmin = await verifyPassword(password, portal.admin_password_hash);
+      if (isAdmin) role = 'admin';
+    }
+    // Then check client password
+    if (!role && portal.password_hash) {
+      const isClient = await verifyPassword(password, portal.password_hash);
+      if (isClient) role = 'client';
+    }
+
+    if (!role) {
       await new Promise(r => setTimeout(r, 800));
       return NextResponse.json({ error: 'Senha incorreta' }, { status: 401 });
     }
 
-    // Update last_visit_at
-    await supabase
-      .from('client_portals')
-      .update({ last_visit_at: new Date().toISOString() })
-      .eq('id', portal.id);
+    // Update last_visit_at for clients (not admin logins)
+    if (role === 'client') {
+      await supabase
+        .from('client_portals')
+        .update({ last_visit_at: new Date().toISOString() })
+        .eq('id', portal.id);
+    }
 
-    const token = await makePortalToken(slug);
-    const response = NextResponse.json({ success: true });
+    const token = await makePortalToken(slug, role);
+    const response = NextResponse.json({ success: true, role });
     response.cookies.set(portalCookieName(slug), token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

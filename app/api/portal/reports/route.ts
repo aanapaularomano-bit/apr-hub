@@ -18,16 +18,20 @@ async function auth(req: NextRequest, slug: string) {
 
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get('slug') ?? '';
+  const kind = req.nextUrl.searchParams.get('kind');
   const session = await auth(req, slug);
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-  const { data, error } = await sb
-    .from('portal_launches')
-    .select('id, name, period, status, metrics, content, created_at')
+  let query = sb
+    .from('portal_reports')
+    .select('id, kind, ref_date, title, content, created_at')
     .eq('client_id', session.clientId)
-    .order('created_at', { ascending: false });
+    .order('ref_date', { ascending: false });
+  if (kind) query = query.eq('kind', kind);
+
+  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ launches: data });
+  return NextResponse.json({ reports: data });
 }
 
 export async function POST(req: NextRequest) {
@@ -36,16 +40,18 @@ export async function POST(req: NextRequest) {
   if (!session || session.role !== 'admin')
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const { name, period, status, metrics, content } = await req.json();
-  if (!name) return NextResponse.json({ error: 'name obrigatório' }, { status: 400 });
+  const body = await req.json();
+  const { kind, ref_date, title, content } = body;
+  if (!kind || !ref_date || !title)
+    return NextResponse.json({ error: 'Campos obrigatórios: kind, ref_date, title' }, { status: 400 });
 
   const { data, error } = await sb
-    .from('portal_launches')
-    .insert({ client_id: session.clientId, name, period: period ?? null, status: status ?? 'planejamento', metrics: metrics ?? null, content: content ?? null })
+    .from('portal_reports')
+    .insert({ client_id: session.clientId, kind, ref_date, title, content: content ?? null })
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ launch: data });
+  return NextResponse.json({ report: data });
 }
 
 export async function PUT(req: NextRequest) {
@@ -54,18 +60,18 @@ export async function PUT(req: NextRequest) {
   if (!session || session.role !== 'admin')
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const { id, name, period, status, metrics, content } = await req.json();
+  const { id, kind, ref_date, title, content } = await req.json();
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
 
   const { data, error } = await sb
-    .from('portal_launches')
-    .update({ name, period, status, metrics, content })
+    .from('portal_reports')
+    .update({ kind, ref_date, title, content })
     .eq('id', id)
     .eq('client_id', session.clientId)
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ launch: data });
+  return NextResponse.json({ report: data });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -77,7 +83,7 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
 
   const { error } = await sb
-    .from('portal_launches')
+    .from('portal_reports')
     .delete()
     .eq('id', id)
     .eq('client_id', session.clientId);

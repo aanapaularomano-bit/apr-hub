@@ -1,37 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { verifyPortalToken, portalCookieName } from '@/lib/portalAuth';
+import { getPortalRole, portalCookieName } from '@/lib/portalAuth';
 
-const supabase = createClient(
+const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function GET(request: NextRequest) {
-  const slug = request.nextUrl.searchParams.get('slug');
-  if (!slug) return NextResponse.json({ error: 'slug obrigatório' }, { status: 400 });
+async function auth(req: NextRequest, slug: string) {
+  const token = req.cookies.get(portalCookieName(slug))?.value;
+  if (!token) return null;
+  const role = await getPortalRole(slug, token);
+  if (!role) return null;
+  const { data } = await sb.from('client_portals').select('client_id').eq('slug', slug).single();
+  return data ? { clientId: data.client_id as string, role } : null;
+}
 
-  const token = request.cookies.get(portalCookieName(slug))?.value;
-  if (!token || !(await verifyPortalToken(slug, token))) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
-  }
+export async function GET(req: NextRequest) {
+  const slug = req.nextUrl.searchParams.get('slug') ?? '';
+  const session = await auth(req, slug);
+  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-  const { data: portal } = await supabase
-    .from('client_portals')
-    .select('client_id')
-    .eq('slug', slug)
-    .single();
-
-  if (!portal) return NextResponse.json({ error: 'Portal não encontrado' }, { status: 404 });
-
-  const { data: links } = await supabase
+  const { data, error } = await sb
     .from('portal_links')
-    .select('id, group_name, label, url, description, tag, sort_order')
-    .eq('client_id', portal.client_id)
-    .eq('visible_to_client', true)
-    .is('launch_id', null)
-    .order('sort_order')
+    .select('id, group_name, label, url, created_at')
+    .eq('client_id', session.clientId)
+    .order('group_name')
     .order('created_at');
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ links: data });
+}
 
-  return NextResponse.json({ links: links || [] });
+export async function POST(req: NextRequest) {
+  const slug = req.nextUrl.searchParams.get('slug') ?? '';
+  const session = await auth(req, slug);
+  if (!session || session.role !== 'admin')
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+
+  const { group_name, label, url } = await req.json();
+  if (!group_name || !label || !url)
+    return NextResponse.json({ error: 'group_name, label e url obrigatórios' }, { status: 400 });
+
+  const { data, error } = await sb
+    .from('portal_links')
+    .insert({ client_id: session.clientId, group_name, label, url })
+    .select()
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ link: data });
+}
+
+export async function PUT(req: NextRequest) {
+  const slug = req.nextUrl.searchParams.get('slug') ?? '';
+  const session = await auth(req, slug);
+  if (!session || session.role !== 'admin')
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+
+  const { id, group_name, label, url } = await req.json();
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+
+  const { data, error } = await sb
+    .from('portal_links')
+    .update({ group_name, label, url })
+    .eq('id', id)
+    .eq('client_id', session.clientId)
+    .select()
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ link: data });
+}
+
+export async function DELETE(req: NextRequest) {
+  const slug = req.nextUrl.searchParams.get('slug') ?? '';
+  const id = req.nextUrl.searchParams.get('id');
+  const session = await auth(req, slug);
+  if (!session || session.role !== 'admin')
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+
+  const { error } = await sb
+    .from('portal_links')
+    .delete()
+    .eq('id', id)
+    .eq('client_id', session.clientId);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }

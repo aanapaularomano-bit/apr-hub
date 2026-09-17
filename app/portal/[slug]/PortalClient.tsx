@@ -1,1120 +1,679 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-// ── Design tokens ────────────────────────────────────────────
+// ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
-  bg: '#F2F4F1',
-  card: '#FFFFFF',
-  secondary: '#EBEFE9',
-  border: '#D7DDD6',
-  text: '#121714',
-  soft: '#5C6861',
-  accent: '#3F6B00',
-  accentBg: '#EBF2E0',
-  ok: '#1E7F47',
-  okBg: '#E4F5EC',
-  error: '#B93B28',
-  errorBg: '#FBEAE7',
-  alertBg: '#FFF8E6',
-  alertText: '#8A5F00',
-  alertBorder: '#F0D882',
+  bg: '#F2F4F1', card: '#FFFFFF', secondary: '#EBEFE9', border: '#D7DDD6',
+  text: '#121714', soft: '#5C6861', accent: '#3F6B00', accentBg: '#EBF2E0',
+  ok: '#1E7F47', okBg: '#E4F5EC', error: '#B93B28', errorBg: '#FBEAE7',
+  warn: '#8A5F00', warnBg: '#FFF8E6',
 };
-
 const fn = "'Space Grotesk', system-ui, sans-serif";
 const fnTitle = "'Fraunces', Georgia, serif";
-const fnMono = "'JetBrains Mono', 'Fira Mono', monospace";
 
-const REQ_STATUS_LABEL: Record<string, string> = { pendente: 'Pendente', em_andamento: 'Em andamento', concluido: 'Concluído', cancelado: 'Cancelado' };
-const REQ_STATUS_COLOR: Record<string, { bg: string; text: string }> = {
-  pendente: { bg: C.alertBg, text: C.alertText },
-  em_andamento: { bg: '#EEF2FF', text: '#3730A3' },
-  concluido: { bg: C.okBg, text: C.ok },
-  cancelado: { bg: '#F5F5F5', text: '#6B7280' },
-};
-const ACT_STATUS_LABEL: Record<string, string> = { todo: 'A fazer', doing: 'Em andamento', done: 'Feito', not_done: 'Não feito' };
-const ACT_STATUS_COLOR: Record<string, { bg: string; text: string }> = {
-  todo: { bg: C.secondary, text: C.soft },
-  doing: { bg: '#FEF3C7', text: '#92400E' },
-  done: { bg: C.okBg, text: C.ok },
-  not_done: { bg: C.errorBg, text: C.error },
-};
-const LAUNCH_STATUS_LABEL: Record<string, string> = { planejamento: 'Planejamento', em_andamento: 'Em andamento', concluido: 'Concluído', pausado: 'Pausado' };
+// ── Types ──────────────────────────────────────────────────────────────────────
+type Report  = { id: string; kind: string; ref_date: string; title: string; content: string | null; created_at: string };
+type Task    = { id: string; title: string; owner: string; status: string; note: string | null; due_date: string | null; created_at: string };
+type Link    = { id: string; group_name: string; label: string; url: string };
+type Launch  = { id: string; name: string; period: string | null; status: string; metrics: string | null; content: string | null };
 
-interface Portal {
-  id: string;
-  client_id: string;
-  slug: string;
-  enabled: boolean;
-  sections: Record<string, boolean>;
-  clients: { id: string; name: string; squad: string; niche?: string; product?: string };
+// ── Constants ──────────────────────────────────────────────────────────────────
+const KIND_LABEL: Record<string, string>                           = { diario: 'Diário', semanal: 'Semanal', mensal: 'Mensal' };
+const KIND_COLOR: Record<string, { bg: string; text: string }>    = { diario: { bg: '#EEF2FF', text: '#3730A3' }, semanal: { bg: C.accentBg, text: C.accent }, mensal: { bg: C.okBg, text: C.ok } };
+const TSTATUS_LABEL: Record<string, string>                        = { a_fazer: 'A fazer', fazendo: 'Fazendo', feito: 'Feito', nao_feito: 'Não feito' };
+const TSTATUS_COLOR: Record<string, { bg: string; text: string }> = { a_fazer: { bg: C.secondary, text: C.soft }, fazendo: { bg: '#FEF3C7', text: '#92400E' }, feito: { bg: C.okBg, text: C.ok }, nao_feito: { bg: C.errorBg, text: C.error } };
+const TSTATUS_CYCLE: Record<string, string>                        = { a_fazer: 'fazendo', fazendo: 'feito', feito: 'nao_feito', nao_feito: 'a_fazer' };
+const TSTATUS_ORDER                                                 = ['a_fazer', 'fazendo', 'feito', 'nao_feito'];
+const OWNER_LABEL: Record<string, string>                          = { agencia: 'Agência', cliente: 'Cliente' };
+const LSTATUS_LABEL: Record<string, string>                        = { planejamento: 'Planejamento', em_andamento: 'Em andamento', concluido: 'Concluído', pausado: 'Pausado' };
+const LSTATUS_COLOR: Record<string, { bg: string; text: string }> = { planejamento: { bg: '#EEF2FF', text: '#3730A3' }, em_andamento: { bg: '#FEF3C7', text: '#92400E' }, concluido: { bg: C.okBg, text: C.ok }, pausado: { bg: C.secondary, text: C.soft } };
+const LINK_GROUPS = ['Páginas e checkout', 'Criativos', 'Swipe file e referências', 'Pastas e arquivos', 'Dashboards', 'Acessos'];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtDate(iso: string | null) {
+  if (!iso) return '';
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return `${d}/${m}/${y}`;
 }
 
-// ── Helpers ──────────────────────────────────────────────────
-
-function formatDate(d?: string | null) {
-  if (!d) return null;
-  const [y, m, day] = d.split('-');
-  return `${day}/${m}/${y}`;
+async function apiFetch(
+  method: string, resource: string, slug: string,
+  body?: Record<string, unknown>, extra?: Record<string, string>
+) {
+  const params = new URLSearchParams({ slug, ...extra });
+  if (method === 'DELETE' && body?.id) params.set('id', String(body.id));
+  const res = await fetch(`/api/portal/${resource}?${params}`, {
+    method,
+    headers: body && method !== 'DELETE' ? { 'Content-Type': 'application/json' } : {},
+    body: body && method !== 'DELETE' ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Erro'); }
+  return res.json();
 }
 
-function fmtMoney(v: any) {
-  if (v == null || v === '') return '—';
-  return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+// ── Markdown ──────────────────────────────────────────────────────────────────
+function renderInline(text: string): React.ReactNode {
+  return <>{text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((p, i) => {
+    if (p.startsWith('**') && p.endsWith('**')) return <strong key={i}>{p.slice(2, -2)}</strong>;
+    if (p.startsWith('*') && p.endsWith('*')) return <em key={i}>{p.slice(1, -1)}</em>;
+    return p;
+  })}</>;
 }
 
-function fmtNum(v: any) {
-  if (v == null || v === '') return '—';
-  return Number(v).toLocaleString('pt-BR');
-}
-
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 22px', ...style }}>{children}</div>;
-}
-
-function Badge({ label, bg, text }: { label: string; bg: string; text: string }) {
-  return <span style={{ background: bg, color: text, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>{label}</span>;
-}
-
-function LoadingState() {
-  return <div style={{ padding: '40px 0', textAlign: 'center', color: C.soft, fontFamily: fn }}>Carregando...</div>;
-}
-
-// ── Login Screen ─────────────────────────────────────────────
-
-function LoginScreen({ slug, clientName }: { slug: string; clientName: string }) {
-  const router = useRouter();
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/portal/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, password }) });
-      if (res.ok) { router.refresh(); } else {
-        const data = await res.json();
-        setError(data.error || 'Senha incorreta');
-        setLoading(false);
+function Markdown({ text }: { text: string | null }) {
+  if (!text?.trim()) return null;
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.startsWith('## ')) {
+      nodes.push(<h3 key={i} style={{ fontSize: 14, fontWeight: 700, margin: '12px 0 4px', color: C.text }}>{line.slice(3)}</h3>);
+    } else if (line.startsWith('# ')) {
+      nodes.push(<h2 key={i} style={{ fontFamily: fnTitle, fontSize: 17, fontWeight: 600, margin: '14px 0 4px', color: C.text }}>{line.slice(2)}</h2>);
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
+        items.push(<li key={i}>{renderInline(lines[i].slice(2))}</li>);
+        i++;
       }
-    } catch { setError('Erro de conexão. Tente novamente.'); setLoading(false); }
+      nodes.push(<ul key={`ul${i}`} style={{ margin: '4px 0 8px', paddingLeft: 20 }}>{items}</ul>);
+      continue;
+    } else if (line.trim()) {
+      nodes.push(<p key={i} style={{ margin: '0 0 6px', lineHeight: 1.65 }}>{renderInline(line)}</p>);
+    }
+    i++;
+  }
+  return <div style={{ fontSize: 14, color: C.text }}>{nodes}</div>;
+}
+
+// ── UI atoms ──────────────────────────────────────────────────────────────────
+function Badge({ label, color }: { label: string; color: { bg: string; text: string } }) {
+  return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 20, background: color.bg, color: color.text, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span>;
+}
+
+function Btn({ children, onClick, type = 'button', variant = 'primary', small, disabled }: {
+  children: React.ReactNode; onClick?: () => void; type?: 'button' | 'submit'; variant?: 'primary' | 'ghost' | 'danger'; small?: boolean; disabled?: boolean;
+}) {
+  const v: Record<string, React.CSSProperties> = {
+    primary: { background: C.accent, color: '#fff', border: 'none' },
+    ghost:   { background: 'transparent', color: C.soft, border: `1px solid ${C.border}` },
+    danger:  { background: 'transparent', color: C.error, border: `1px solid ${C.errorBg}` },
+  };
+  return (
+    <button type={type} onClick={onClick} disabled={disabled}
+      style={{ ...v[variant], fontFamily: fn, fontSize: small ? 12 : 14, fontWeight: 500, padding: small ? '4px 10px' : '8px 16px', borderRadius: 8, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
+      {children}
+    </button>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 8,
+  border: `1px solid ${C.border}`, fontFamily: fn, fontSize: 14, color: C.text, background: C.bg,
+};
+const taStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 120, lineHeight: 1.6 };
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.soft, marginBottom: 4 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Modal({ title, onClose, onSubmit, saving, children }: {
+  title: string; onClose: () => void; onSubmit: (e: React.FormEvent) => void; saving: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.22)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <form onSubmit={onSubmit} style={{ background: C.card, borderRadius: 14, padding: 28, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+          <h2 style={{ fontFamily: fnTitle, fontSize: 20, fontWeight: 600, color: C.text, margin: 0 }}>{title}</h2>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.soft }}>✕</button>
+        </div>
+        {children}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
+          <Btn type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Btn>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ActionRow({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <Btn small variant="ghost" onClick={onEdit}>Editar</Btn>
+      <Btn small variant="danger" onClick={onDelete}>Excluir</Btn>
+    </div>
+  );
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+function LoginScreen({ slug, clientName }: { slug: string; clientName: string }) {
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(''); setLoading(true);
+    try {
+      const res = await fetch('/api/portal/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, password: pw }) });
+      if (res.ok) { router.refresh(); }
+      else { const d = await res.json(); setErr(d.error || 'Senha incorreta'); }
+    } catch { setErr('Erro ao conectar'); }
+    finally { setLoading(false); }
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: fn }}>
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: '48px 40px', maxWidth: 420, width: '100%', boxShadow: '0 4px 32px rgba(0,0,0,0.08)' }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5H22L16 14L18.5 21.5L12 17L5.5 21.5L8 14L2 9.5H9.5L12 2Z" fill="white" /></svg>
-        </div>
-        <h1 style={{ fontFamily: fnTitle, fontSize: 26, fontWeight: 600, color: C.text, margin: '0 0 6px' }}>Portal do Cliente</h1>
-        <p style={{ color: C.soft, fontSize: 14, margin: '0 0 32px' }}>{clientName}</p>
-        <form onSubmit={handleSubmit}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.soft, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Senha de acesso</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Digite sua senha" autoFocus required disabled={loading}
-            style={{ width: '100%', padding: '13px 14px', border: `1px solid ${C.border}`, borderRadius: 10, fontFamily: fn, fontSize: 15, color: C.text, background: C.bg, outline: 'none', boxSizing: 'border-box' }} />
-          {error && <div style={{ background: C.errorBg, border: `1px solid ${C.error}30`, color: C.error, padding: '10px 14px', borderRadius: 8, fontSize: 13, marginTop: 12 }}>{error}</div>}
-          <button type="submit" disabled={loading || !password}
-            style={{ width: '100%', padding: 14, background: C.accent, color: '#fff', border: 'none', borderRadius: 10, fontFamily: fn, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 16, opacity: loading || !password ? 0.6 : 1 }}>
+    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: fn, padding: 16 }}>
+      <div style={{ background: C.card, borderRadius: 16, padding: 40, width: '100%', maxWidth: 380, boxShadow: '0 4px 24px rgba(0,0,0,0.07)' }}>
+        <h1 style={{ fontFamily: fnTitle, fontSize: 28, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>{clientName}</h1>
+        <p style={{ color: C.soft, fontSize: 14, margin: '0 0 28px' }}>Portal do cliente</p>
+        <form onSubmit={handleLogin}>
+          <Field label="Senha de acesso">
+            <input type="password" value={pw} onChange={e => setPw(e.target.value)} style={inputStyle} autoFocus />
+          </Field>
+          {err && <p style={{ color: C.error, fontSize: 13, margin: '0 0 12px' }}>{err}</p>}
+          <button type="submit" style={{ background: C.accent, color: '#fff', border: 'none', fontFamily: fn, fontSize: 14, fontWeight: 600, padding: '10px 24px', borderRadius: 8, cursor: 'pointer', width: '100%' }}>
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-        <p style={{ textAlign: 'center', color: C.soft, fontSize: 12, marginTop: 28 }}>Acesso exclusivo — não compartilhe sua senha.</p>
       </div>
     </div>
   );
 }
 
-// ── Overview Tab ─────────────────────────────────────────────
+// ── Tab: Relatórios ───────────────────────────────────────────────────────────
+type ReportForm = { kind: string; ref_date: string; title: string; content: string };
+const reportFormDefault: ReportForm = { kind: 'semanal', ref_date: '', title: '', content: '' };
 
-function OverviewTab({ slug }: { slug: string }) {
-  const [requests, setRequests] = useState<any[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
+function TabReports({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      fetch(`/api/portal/requests?slug=${slug}`).then(r => r.json()),
-      fetch(`/api/portal/activities?slug=${slug}`).then(r => r.json()),
-    ]).then(([req, act]) => {
-      setRequests(req.requests || []);
-      setActivities((act.activities || []).slice(0, 5));
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [slug]);
-
-  const pendingAgency = requests.filter(r => r.from === 'agency' && r.status === 'pendente');
-  if (loading) return <LoadingState />;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {pendingAgency.length > 0 ? (
-        <div style={{ background: C.alertBg, border: `1px solid ${C.alertBorder}`, borderRadius: 14, padding: '20px 22px' }}>
-          <h2 style={{ fontFamily: fnTitle, fontSize: 18, fontWeight: 600, color: C.alertText, margin: '0 0 14px' }}>O que precisamos de você</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {pendingAgency.map(req => (
-              <div key={req.id} style={{ background: '#fff', borderRadius: 10, padding: '12px 16px', border: `1px solid ${C.alertBorder}` }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontWeight: 600, color: C.text, fontSize: 14 }}>{req.title}</p>
-                    {req.details && <p style={{ margin: '4px 0 0', color: C.soft, fontSize: 13 }}>{req.details}</p>}
-                  </div>
-                  {req.due_date && <span style={{ color: C.alertText, fontSize: 12, fontFamily: fnMono, whiteSpace: 'nowrap' as const }}>até {formatDate(req.due_date)}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <Card style={{ background: C.okBg, border: `1px solid ${C.ok}30` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ margin: 0, color: C.ok, fontWeight: 600, fontSize: 14 }}>Tudo em dia. Nenhuma pendência no momento.</p>
-          </div>
-        </Card>
-      )}
-
-      <Card>
-        <h3 style={{ fontFamily: fnTitle, fontSize: 16, fontWeight: 600, color: C.text, margin: '0 0 14px' }}>Atividades recentes</h3>
-        {activities.length === 0 ? (
-          <p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhuma atividade disponível.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {activities.map(a => {
-              const sc = ACT_STATUS_COLOR[a.status] || ACT_STATUS_COLOR.todo;
-              return (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: C.bg, borderRadius: 9, gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ color: C.text, fontSize: 14 }}>{a.title}</span>
-                    {a.date && <span style={{ color: C.soft, fontSize: 12, marginLeft: 8 }}>{formatDate(a.date)}</span>}
-                  </div>
-                  <Badge label={ACT_STATUS_LABEL[a.status] || a.status} bg={sc.bg} text={sc.text} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-// ── Daily Tab ─────────────────────────────────────────────────
-
-function DailyTab({ slug }: { slug: string }) {
-  const [dates, setDates] = useState<string[]>([]);
-  const [selDate, setSelDate] = useState<string | null>(null);
-  const [data, setData] = useState<{ report: any; activities: any[]; pending_requests: any[] } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/portal/daily?slug=${slug}`)
-      .then(r => r.json())
-      .then(d => { const ds = d.dates || []; setDates(ds); if (ds.length > 0) setSelDate(ds[0]); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [slug]);
-
-  useEffect(() => {
-    if (!selDate) return;
-    setDetailLoading(true);
-    fetch(`/api/portal/daily?slug=${slug}&date=${selDate}`)
-      .then(r => r.json())
-      .then(d => { setData(d.report ? d : null); setDetailLoading(false); })
-      .catch(() => setDetailLoading(false));
-  }, [slug, selDate]);
-
-  if (loading) return <LoadingState />;
-
-  if (dates.length === 0) {
-    return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum relatório diário disponível ainda.</p></Card>;
-  }
-
-  const metrics = data?.report?.metrics || {};
-  const METRIC_CARDS = [
-    { key: 'investimento', label: 'Investimento', fmt: fmtMoney },
-    { key: 'leads', label: 'Leads', fmt: fmtNum },
-    { key: 'cpl', label: 'CPL', fmt: fmtMoney },
-    { key: 'vendas', label: 'Vendas', fmt: fmtNum },
-  ];
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Date selector */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-        {dates.map(d => (
-          <button key={d} onClick={() => setSelDate(d)}
-            style={{ background: selDate === d ? C.accentBg : C.card, border: `1px solid ${selDate === d ? C.accent : C.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: fn, fontSize: 13, fontWeight: selDate === d ? 600 : 500, color: selDate === d ? C.accent : C.text }}>
-            {formatDate(d)}
-          </button>
-        ))}
-      </div>
-
-      {detailLoading ? <LoadingState /> : !data ? (
-        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Relatório não encontrado.</p></Card>
-      ) : (
-        <>
-          {/* Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-            {METRIC_CARDS.map(m => (
-              <Card key={m.key} style={{ textAlign: 'center' as const, padding: '16px 12px' }}>
-                <p style={{ margin: '0 0 4px', fontSize: 12, color: C.soft, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, fontFamily: fnMono }}>{m.fmt(metrics[m.key])}</p>
-              </Card>
-            ))}
-          </div>
-
-          {/* Activities */}
-          {data.activities.length > 0 && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 16, fontWeight: 600, color: C.text, margin: '0 0 14px' }}>Atividades do dia</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {data.activities.map((a: any) => {
-                  const sc = ACT_STATUS_COLOR[a.status] || ACT_STATUS_COLOR.todo;
-                  return (
-                    <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, padding: '10px 12px', background: C.bg, borderRadius: 9 }}>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: 14, color: C.text }}>{a.title}</span>
-                        <span style={{ fontSize: 12, color: C.soft, marginLeft: 8 }}>{a.responsible === 'agency' ? 'Agência' : 'Cliente'}</span>
-                        {a.status === 'not_done' && a.justification && (
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: C.soft, fontStyle: 'italic' }}>{a.justification}</p>
-                        )}
-                      </div>
-                      <Badge label={ACT_STATUS_LABEL[a.status] || a.status} bg={sc.bg} text={sc.text} />
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
-
-          {/* Pending requests */}
-          {data.pending_requests.length > 0 && (
-            <Card style={{ background: C.alertBg, border: `1px solid ${C.alertBorder}` }}>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.alertText, margin: '0 0 12px' }}>Pendencias em aberto</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {data.pending_requests.map((r: any) => (
-                  <div key={r.id} style={{ background: '#fff', borderRadius: 9, padding: '10px 14px', border: `1px solid ${C.alertBorder}` }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: C.text }}>{r.title}</p>
-                    {r.due_date && <p style={{ margin: '3px 0 0', fontSize: 12, color: C.alertText, fontFamily: fnMono }}>até {formatDate(r.due_date)}</p>}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Note */}
-          {data.report.note && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Observações</h3>
-              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{data.report.note}</p>
-            </Card>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Activities Tab ────────────────────────────────────────────
-
-function ActivitiesTab({ slug }: { slug: string }) {
-  const [activities, setActivities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filterResp, setFilterResp] = useState('all');
-
-  useEffect(() => {
-    fetch(`/api/portal/activities?slug=${slug}`)
-      .then(r => r.json())
-      .then(d => { setActivities(d.activities || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [slug]);
-
-  if (loading) return <LoadingState />;
-
-  const filtered = filterResp === 'all' ? activities : activities.filter(a => a.responsible === filterResp);
-
-  // Group by date
-  const grouped: Record<string, any[]> = {};
-  for (const a of filtered) {
-    if (!grouped[a.date]) grouped[a.date] = [];
-    grouped[a.date].push(a);
-  }
-  const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Filter */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-        {[{ v: 'all', l: 'Todas' }, { v: 'agency', l: 'Agência' }, { v: 'client', l: 'Cliente' }].map(f => (
-          <button key={f.v} onClick={() => setFilterResp(f.v)}
-            style={{ background: filterResp === f.v ? C.accentBg : C.card, border: `1px solid ${filterResp === f.v ? C.accent : C.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: fn, fontSize: 13, fontWeight: filterResp === f.v ? 600 : 500, color: filterResp === f.v ? C.accent : C.text }}>
-            {f.l}
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhuma atividade encontrada.</p></Card>
-      ) : (
-        dates.map(date => (
-          <div key={date}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: C.soft, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>{formatDate(date)}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {grouped[date].map(a => {
-                const sc = ACT_STATUS_COLOR[a.status] || ACT_STATUS_COLOR.todo;
-                return (
-                  <Card key={a.id} style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14, color: C.text }}>{a.title}</p>
-                        <span style={{ fontSize: 12, color: C.soft }}>{a.responsible === 'agency' ? 'Agência' : 'Cliente'}</span>
-                        {a.status === 'not_done' && a.justification && (
-                          <p style={{ margin: '6px 0 0', fontSize: 13, color: C.soft, fontStyle: 'italic' }}>{a.justification}</p>
-                        )}
-                      </div>
-                      <Badge label={ACT_STATUS_LABEL[a.status] || a.status} bg={sc.bg} text={sc.text} />
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );
-}
-
-// ── Requests Tab ─────────────────────────────────────────────
-
-function RequestsTab({ slug }: { slug: string }) {
-  const [requests, setRequests] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', details: '' });
+  const [modal, setModal] = useState<{ editing: Report | null } | null>(null);
+  const [form, setForm] = useState<ReportForm>(reportFormDefault);
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    fetch(`/api/portal/requests?slug=${slug}`).then(r => r.json()).then(d => { setRequests(d.requests || []); setLoading(false); }).catch(() => setLoading(false));
+    try {
+      const d = await apiFetch('GET', 'reports', slug, undefined, filter ? { kind: filter } : {});
+      setReports(d.reports || []);
+    } catch {} finally { setLoading(false); }
+  }, [slug, filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function openCreate() { setForm(reportFormDefault); setModal({ editing: null }); }
+  function openEdit(r: Report) { setForm({ kind: r.kind, ref_date: r.ref_date, title: r.title, content: r.content || '' }); setModal({ editing: r }); }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true);
+    try {
+      if (modal?.editing) await apiFetch('PUT', 'reports', slug, { id: modal.editing.id, ...form });
+      else await apiFetch('POST', 'reports', slug, form);
+      setModal(null); await load();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Erro'); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(r: Report) {
+    if (!confirm(`Excluir "${r.title}"?`)) return;
+    await apiFetch('DELETE', 'reports', slug, { id: r.id });
+    await load();
+  }
+
+  const filterBtn = (v: string, label: string) => (
+    <button onClick={() => setFilter(f => f === v ? '' : v)}
+      style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${filter === v ? C.accent : C.border}`, background: filter === v ? C.accentBg : C.card, color: filter === v ? C.accent : C.soft, fontFamily: fn, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {filterBtn('diario', 'Diário')}
+          {filterBtn('semanal', 'Semanal')}
+          {filterBtn('mensal', 'Mensal')}
+        </div>
+        {isAdmin && <Btn onClick={openCreate}>+ Novo relatório</Btn>}
+      </div>
+
+      {loading ? <p style={{ color: C.soft }}>Carregando...</p> : reports.length === 0 ? (
+        <p style={{ color: C.soft, fontSize: 14 }}>Nenhum relatório{filter ? ` ${KIND_LABEL[filter].toLowerCase()}` : ''} ainda.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {reports.map(r => (
+            <div key={r.id} style={{ background: C.card, borderRadius: 12, padding: 20, border: `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <Badge label={KIND_LABEL[r.kind] || r.kind} color={KIND_COLOR[r.kind] || { bg: C.secondary, text: C.soft }} />
+                  <span style={{ fontSize: 12, color: C.soft }}>{fmtDate(r.ref_date)}</span>
+                </div>
+                {isAdmin && <ActionRow onEdit={() => openEdit(r)} onDelete={() => handleDelete(r)} />}
+              </div>
+              <h3 style={{ fontFamily: fnTitle, fontSize: 17, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>{r.title}</h3>
+              {r.content && <Markdown text={r.content} />}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <Modal title={modal.editing ? 'Editar relatório' : 'Novo relatório'} onClose={() => setModal(null)} onSubmit={handleSubmit} saving={saving}>
+          <Field label="Tipo">
+            <select value={form.kind} onChange={e => setForm(f => ({ ...f, kind: e.target.value }))} style={inputStyle}>
+              <option value="diario">Diário</option>
+              <option value="semanal">Semanal</option>
+              <option value="mensal">Mensal</option>
+            </select>
+          </Field>
+          <Field label="Data de referência">
+            <input type="date" value={form.ref_date} onChange={e => setForm(f => ({ ...f, ref_date: e.target.value }))} style={inputStyle} required />
+          </Field>
+          <Field label="Título">
+            <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} required />
+          </Field>
+          <Field label="Conteúdo (markdown: **negrito**, *itálico*, # título, - lista)">
+            <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} style={taStyle} />
+          </Field>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── Tab: Tarefas ──────────────────────────────────────────────────────────────
+type TaskForm = { title: string; owner: string; status: string; due_date: string; note: string };
+const taskFormDefault: TaskForm = { title: '', owner: 'agencia', status: 'a_fazer', due_date: '', note: '' };
+
+function TabTasks({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState<{ editing: Task | null } | null>(null);
+  const [form, setForm] = useState<TaskForm>(taskFormDefault);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { const d = await apiFetch('GET', 'tasks', slug); setTasks(d.tasks || []); }
+    catch {} finally { setLoading(false); }
   }, [slug]);
 
   useEffect(() => { load(); }, [load]);
 
-  async function submitRequest() {
-    if (!form.title.trim()) { setFormError('Digite um título para a solicitação.'); return; }
-    setSaving(true); setFormError('');
-    const res = await fetch(`/api/portal/requests?slug=${slug}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-    setSaving(false);
-    if (res.ok) { setForm({ title: '', details: '' }); setShowForm(false); load(); } else { setFormError('Erro ao enviar. Tente novamente.'); }
+  function openCreate() { setForm(taskFormDefault); setModal({ editing: null }); }
+  function openEdit(t: Task) {
+    setForm({ title: t.title, owner: t.owner, status: t.status, due_date: t.due_date || '', note: t.note || '' });
+    setModal({ editing: t });
   }
 
-  const agencyRequests = requests.filter(r => r.from === 'agency');
-  const clientRequests = requests.filter(r => r.from === 'client');
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true);
+    try {
+      const payload = { ...form, due_date: form.due_date || null, note: form.note || null };
+      if (modal?.editing) await apiFetch('PUT', 'tasks', slug, { id: modal.editing.id, ...payload });
+      else await apiFetch('POST', 'tasks', slug, payload);
+      setModal(null); await load();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Erro'); }
+    finally { setSaving(false); }
+  }
 
-  if (loading) return <LoadingState />;
+  async function handleDelete(t: Task) {
+    if (!confirm(`Excluir "${t.title}"?`)) return;
+    await apiFetch('DELETE', 'tasks', slug, { id: t.id }); await load();
+  }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div>
-        <h3 style={{ fontFamily: fnTitle, fontSize: 17, fontWeight: 600, color: C.text, margin: '0 0 12px' }}>Nós pedimos a você</h3>
-        {agencyRequests.length === 0 ? (
-          <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhuma solicitação pendente da nossa parte.</p></Card>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {agencyRequests.map(req => {
-              const sc = REQ_STATUS_COLOR[req.status] || REQ_STATUS_COLOR.pendente;
-              return (
-                <Card key={req.id}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: req.details ? 6 : 0 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{req.title}</span>
-                        <Badge label={REQ_STATUS_LABEL[req.status] || req.status} bg={sc.bg} text={sc.text} />
-                      </div>
-                      {req.details && <p style={{ margin: 0, color: C.soft, fontSize: 13 }}>{req.details}</p>}
-                      {req.note && <p style={{ margin: '6px 0 0', color: C.soft, fontSize: 13, fontStyle: 'italic' }}>Obs: {req.note}</p>}
-                    </div>
-                    <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
-                      {req.due_date && <p style={{ color: C.alertText, fontSize: 12, fontFamily: fnMono, margin: 0 }}>até {formatDate(req.due_date)}</p>}
-                      <p style={{ color: C.soft, fontSize: 11, margin: '4px 0 0' }}>{formatDate(req.created_at?.slice(0, 10))}</p>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 style={{ fontFamily: fnTitle, fontSize: 17, fontWeight: 600, color: C.text, margin: 0 }}>Você pediu à agência</h3>
-          <button onClick={() => setShowForm(!showForm)} style={{ background: C.accent, color: '#fff', border: 'none', borderRadius: 9, padding: '8px 16px', fontFamily: fn, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            + Nova solicitação
-          </button>
-        </div>
-
-        {showForm && (
-          <Card style={{ marginBottom: 12, background: C.secondary }}>
-            <p style={{ margin: '0 0 12px', fontWeight: 600, fontSize: 14, color: C.text }}>Nova solicitação</p>
-            <input type="text" placeholder="Título *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: fn, fontSize: 14, color: C.text, background: C.card, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 8 }} />
-            <textarea placeholder="Detalhes (opcional)" value={form.details} onChange={e => setForm(f => ({ ...f, details: e.target.value }))} rows={3}
-              style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: fn, fontSize: 14, color: C.text, background: C.card, outline: 'none', boxSizing: 'border-box' as const, resize: 'vertical' as const, marginBottom: 8 }} />
-            {formError && <p style={{ color: C.error, fontSize: 13, margin: '0 0 8px' }}>{formError}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={submitRequest} disabled={saving} style={{ background: C.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontFamily: fn, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Enviando...' : 'Enviar'}</button>
-              <button onClick={() => { setShowForm(false); setFormError(''); }} style={{ background: C.secondary, color: C.soft, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 18px', fontFamily: fn, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-            </div>
-          </Card>
-        )}
-
-        {clientRequests.length === 0 ? (
-          <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Você ainda não fez nenhuma solicitação.</p></Card>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {clientRequests.map(req => {
-              const sc = REQ_STATUS_COLOR[req.status] || REQ_STATUS_COLOR.pendente;
-              return (
-                <Card key={req.id}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: req.details ? 6 : 0 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{req.title}</span>
-                        <Badge label={REQ_STATUS_LABEL[req.status] || req.status} bg={sc.bg} text={sc.text} />
-                      </div>
-                      {req.details && <p style={{ margin: 0, color: C.soft, fontSize: 13 }}>{req.details}</p>}
-                      {req.note && <p style={{ margin: '6px 0 0', color: C.soft, fontSize: 13, fontStyle: 'italic' }}>Resposta: {req.note}</p>}
-                    </div>
-                    <p style={{ color: C.soft, fontSize: 11, margin: 0, flexShrink: 0 }}>{formatDate(req.created_at?.slice(0, 10))}</p>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Launches Tab ──────────────────────────────────────────────
-
-function LaunchesTab({ slug }: { slug: string }) {
-  const [launches, setLaunches] = useState<any[]>([]);
-  const [selId, setSelId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<{ launch: any; links: any[] } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/portal/launches?slug=${slug}`).then(r => r.json()).then(d => { setLaunches(d.launches || []); setLoading(false); }).catch(() => setLoading(false));
-  }, [slug]);
-
-  useEffect(() => {
-    if (!selId) return;
-    setDetailLoading(true);
-    fetch(`/api/portal/launches?slug=${slug}&id=${selId}`).then(r => r.json()).then(d => { setDetail(d); setDetailLoading(false); }).catch(() => setDetailLoading(false));
-  }, [slug, selId]);
-
-  if (loading) return <LoadingState />;
-
-  if (launches.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum lançamento disponível.</p></Card>;
-
-  const launch = detail?.launch;
-  const phases: any[] = launch?.portal_launch_phases || [];
-  const goals = launch?.goals || {};
-  const results = launch?.results || {};
+  async function cycleStatus(t: Task) {
+    const next = TSTATUS_CYCLE[t.status] || 'a_fazer';
+    setTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: next } : x));
+    try { await apiFetch('PUT', 'tasks', slug, { id: t.id, status: next }); }
+    catch { setTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: t.status } : x)); }
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Launch list */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-        {launches.map(l => (
-          <button key={l.id} onClick={() => setSelId(l.id)}
-            style={{ background: selId === l.id ? C.accentBg : C.card, border: `1px solid ${selId === l.id ? C.accent : C.border}`, borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontFamily: fn, textAlign: 'left' as const }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: selId === l.id ? C.accent : C.text }}>{l.name}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: C.soft }}>{LAUNCH_STATUS_LABEL[l.status]}</p>
-          </button>
-        ))}
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+        {isAdmin && <Btn onClick={openCreate}>+ Nova tarefa</Btn>}
       </div>
 
-      {selId && (detailLoading ? <LoadingState /> : !detail ? (
-        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Não foi possível carregar o lançamento.</p></Card>
+      {loading ? <p style={{ color: C.soft }}>Carregando...</p> : tasks.length === 0 ? (
+        <p style={{ color: C.soft, fontSize: 14 }}>Nenhuma tarefa ainda.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Header */}
-          <div>
-            <h2 style={{ fontFamily: fnTitle, fontSize: 20, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>{launch.name}</h2>
-            <p style={{ margin: 0, fontSize: 13, color: C.soft }}>
-              {LAUNCH_STATUS_LABEL[launch.status]}
-              {launch.start_date && ` · ${formatDate(launch.start_date)} — ${formatDate(launch.end_date)}`}
-            </p>
-          </div>
-
-          {/* Phases timeline */}
-          {phases.length > 0 && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 16px' }}>Fases</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {phases.map((p: any, i: number) => (
-                  <div key={p.id} style={{ display: 'flex', gap: 14, position: 'relative' as const }}>
-                    {/* Timeline line */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 20, flexShrink: 0 }}>
-                      <div style={{ width: 12, height: 12, borderRadius: '50%', background: C.accent, border: `2px solid ${C.accentBg}`, flexShrink: 0, marginTop: 4 }} />
-                      {i < phases.length - 1 && <div style={{ width: 2, flex: 1, minHeight: 24, background: C.border, margin: '4px 0' }} />}
-                    </div>
-                    <div style={{ flex: 1, paddingBottom: i < phases.length - 1 ? 16 : 0 }}>
-                      <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 14, color: C.text }}>{p.name}</p>
-                      {(p.start_date || p.end_date) && (
-                        <p style={{ margin: 0, fontSize: 12, color: C.soft, fontFamily: fnMono }}>{formatDate(p.start_date)} — {formatDate(p.end_date)}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Goals */}
-          {Object.keys(goals).length > 0 && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 14px' }}>Metas</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {Object.entries(goals).map(([k, v]: [string, any]) => {
-                  const target = typeof v === 'object' ? v?.target : v;
-                  const current = typeof v === 'object' ? v?.current : (results[k] ?? null);
-                  const pct = target && current ? Math.min(100, Math.round((Number(current) / Number(target)) * 100)) : null;
-                  return (
-                    <div key={k}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textTransform: 'capitalize' }}>{k}</span>
-                        <span style={{ fontSize: 13, color: C.soft, fontFamily: fnMono }}>
-                          {current != null ? `${current} / ` : ''}{target}
-                          {pct != null && <span style={{ marginLeft: 8, color: C.accent, fontWeight: 600 }}>{pct}%</span>}
-                        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {TSTATUS_ORDER.map(status => {
+            const group = tasks.filter(t => t.status === status);
+            if (group.length === 0) return null;
+            return (
+              <div key={status}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <Badge label={TSTATUS_LABEL[status]} color={TSTATUS_COLOR[status]} />
+                  <span style={{ fontSize: 13, color: C.soft }}>{group.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {group.map(t => (
+                    <div key={t.id} style={{ background: C.card, borderRadius: 10, padding: '14px 16px', border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: t.note || t.due_date ? 6 : 0 }}>
+                          <span style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{t.title}</span>
+                          <span style={{ fontSize: 12, color: C.soft, background: C.secondary, padding: '1px 8px', borderRadius: 10 }}>{OWNER_LABEL[t.owner] || t.owner}</span>
+                          {t.due_date && <span style={{ fontSize: 12, color: C.soft }}>até {fmtDate(t.due_date)}</span>}
+                        </div>
+                        {t.note && <p style={{ margin: 0, fontSize: 13, color: C.soft, lineHeight: 1.5 }}>{t.note}</p>}
                       </div>
-                      {pct != null && (
-                        <div style={{ height: 6, background: C.secondary, borderRadius: 10 }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: C.accent, borderRadius: 10, transition: 'width 0.4s ease' }} />
+                      {isAdmin && (
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button onClick={() => cycleStatus(t)}
+                            style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${C.border}`, background: TSTATUS_COLOR[t.status].bg, color: TSTATUS_COLOR[t.status].text, fontFamily: fn, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            {TSTATUS_LABEL[t.status]}
+                          </button>
+                          <Btn small variant="ghost" onClick={() => openEdit(t)}>Editar</Btn>
+                          <Btn small variant="danger" onClick={() => handleDelete(t)}>Excluir</Btn>
                         </div>
                       )}
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </Card>
-          )}
+            );
+          })}
+        </div>
+      )}
 
-          {/* Links */}
-          {(detail.links || []).length > 0 && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 12px' }}>Links do lançamento</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(detail.links || []).map((l: any) => (
-                  <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: C.bg, borderRadius: 9, gap: 10 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: C.text }}>{l.label}</p>
-                      {l.description && <p style={{ margin: '2px 0 0', fontSize: 12, color: C.soft }}>{l.description}</p>}
-                    </div>
+      {modal && (
+        <Modal title={modal.editing ? 'Editar tarefa' : 'Nova tarefa'} onClose={() => setModal(null)} onSubmit={handleSubmit} saving={saving}>
+          <Field label="Título">
+            <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} required />
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Responsável">
+              <select value={form.owner} onChange={e => setForm(f => ({ ...f, owner: e.target.value }))} style={inputStyle}>
+                <option value="agencia">Agência</option>
+                <option value="cliente">Cliente</option>
+              </select>
+            </Field>
+            <Field label="Status">
+              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
+                {TSTATUS_ORDER.map(s => <option key={s} value={s}>{TSTATUS_LABEL[s]}</option>)}
+              </select>
+            </Field>
+          </div>
+          <Field label="Prazo (opcional)">
+            <input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} style={inputStyle} />
+          </Field>
+          <Field label="Observação (opcional)">
+            <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} style={{ ...taStyle, minHeight: 80 }} />
+          </Field>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── Tab: Links ────────────────────────────────────────────────────────────────
+type LinkForm = { group_name: string; label: string; url: string };
+const linkFormDefault: LinkForm = { group_name: '', label: '', url: '' };
+
+function TabLinks({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [links, setLinks] = useState<Link[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState<{ editing: Link | null } | null>(null);
+  const [form, setForm] = useState<LinkForm>(linkFormDefault);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { const d = await apiFetch('GET', 'links', slug); setLinks(d.links || []); }
+    catch {} finally { setLoading(false); }
+  }, [slug]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function openCreate() { setForm(linkFormDefault); setModal({ editing: null }); }
+  function openEdit(l: Link) { setForm({ group_name: l.group_name, label: l.label, url: l.url }); setModal({ editing: l }); }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true);
+    try {
+      if (modal?.editing) await apiFetch('PUT', 'links', slug, { id: modal.editing.id, ...form });
+      else await apiFetch('POST', 'links', slug, form);
+      setModal(null); await load();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Erro'); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(l: Link) {
+    if (!confirm(`Excluir "${l.label}"?`)) return;
+    await apiFetch('DELETE', 'links', slug, { id: l.id }); await load();
+  }
+
+  // group links
+  const groups = Array.from(new Set(links.map(l => l.group_name)));
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+        {isAdmin && <Btn onClick={openCreate}>+ Novo link</Btn>}
+      </div>
+
+      {loading ? <p style={{ color: C.soft }}>Carregando...</p> : links.length === 0 ? (
+        <p style={{ color: C.soft, fontSize: 14 }}>Nenhum link ainda.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {groups.map(group => (
+            <div key={group}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: C.soft, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px' }}>{group}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {links.filter(l => l.group_name === group).map(l => (
+                  <div key={l.id} style={{ background: C.card, borderRadius: 10, padding: '12px 16px', border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                     <a href={l.url} target="_blank" rel="noopener noreferrer"
-                      style={{ background: C.accentBg, border: `1px solid ${C.accent}30`, borderRadius: 8, padding: '6px 12px', fontSize: 13, color: C.accent, fontFamily: fn, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
-                      Abrir
+                      style={{ color: C.accent, fontWeight: 600, fontSize: 14, textDecoration: 'none', flex: 1 }}>
+                      {l.label}
+                      <span style={{ fontSize: 12, color: C.soft, fontWeight: 400, marginLeft: 8 }}>{new URL(l.url).hostname}</span>
                     </a>
+                    {isAdmin && <ActionRow onEdit={() => openEdit(l)} onDelete={() => handleDelete(l)} />}
                   </div>
                 ))}
               </div>
-            </Card>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Links Tab ─────────────────────────────────────────────────
-
-function LinksTab({ slug }: { slug: string }) {
-  const [links, setLinks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [copied, setCopied] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/portal/links?slug=${slug}`).then(r => r.json()).then(d => { setLinks(d.links || []); setLoading(false); }).catch(() => setLoading(false));
-  }, [slug]);
-
-  function copyUrl(url: string, id: string) {
-    navigator.clipboard.writeText(url).then(() => { setCopied(id); setTimeout(() => setCopied(null), 2000); });
-  }
-
-  const filtered = search.trim()
-    ? links.filter(l => l.label.toLowerCase().includes(search.toLowerCase()) || l.url.toLowerCase().includes(search.toLowerCase()) || (l.description || '').toLowerCase().includes(search.toLowerCase()))
-    : links;
-
-  const groups = Array.from(new Set(filtered.map(l => l.group_name)));
-
-  if (loading) return <LoadingState />;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Search */}
-      <input
-        type="text"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Buscar links..."
-        style={{ width: '100%', padding: '11px 14px', border: `1px solid ${C.border}`, borderRadius: 10, fontFamily: fn, fontSize: 14, color: C.text, background: C.card, outline: 'none', boxSizing: 'border-box' as const }}
-      />
-
-      {filtered.length === 0 ? (
-        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>{search ? 'Nenhum resultado para esta busca.' : 'Nenhum link cadastrado ainda.'}</p></Card>
-      ) : (
-        groups.map(group => (
-          <div key={group}>
-            <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>{group}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filtered.filter(l => l.group_name === group).map(link => (
-                <Card key={link.id} style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: C.text }}>{link.label}</p>
-                        {link.tag && <span style={{ fontSize: 11, background: C.accentBg, color: C.accent, padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>{link.tag}</span>}
-                      </div>
-                      {link.description && <p style={{ margin: '2px 0 0', fontSize: 13, color: C.soft }}>{link.description}</p>}
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{link.url}</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => copyUrl(link.url, link.id)}
-                        style={{ background: copied === link.id ? C.okBg : C.secondary, border: `1px solid ${C.border}`, borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: copied === link.id ? C.ok : C.soft, fontFamily: fn, fontWeight: 600 }}>
-                        {copied === link.id ? 'Copiado' : 'Copiar'}
-                      </button>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer"
-                        style={{ background: C.accentBg, border: `1px solid ${C.accent}30`, borderRadius: 8, padding: '7px 12px', fontSize: 13, color: C.accent, fontFamily: fn, fontWeight: 600, textDecoration: 'none' }}>
-                        Abrir
-                      </a>
-                    </div>
-                  </div>
-                </Card>
-              ))}
             </div>
-          </div>
-        ))
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <Modal title={modal.editing ? 'Editar link' : 'Novo link'} onClose={() => setModal(null)} onSubmit={handleSubmit} saving={saving}>
+          <Field label="Grupo">
+            <input list="link-groups" type="text" value={form.group_name} onChange={e => setForm(f => ({ ...f, group_name: e.target.value }))} style={inputStyle} required placeholder="ex: Dashboards" />
+            <datalist id="link-groups">{LINK_GROUPS.map(g => <option key={g} value={g} />)}</datalist>
+          </Field>
+          <Field label="Título">
+            <input type="text" value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} style={inputStyle} required />
+          </Field>
+          <Field label="URL">
+            <input type="url" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} style={inputStyle} required placeholder="https://" />
+          </Field>
+        </Modal>
       )}
     </div>
   );
 }
 
-// ── Weekly Tab ────────────────────────────────────────────────
+// ── Tab: Lançamentos ──────────────────────────────────────────────────────────
+type LaunchForm = { name: string; period: string; status: string; metrics: string; content: string };
+const launchFormDefault: LaunchForm = { name: '', period: '', status: 'planejamento', metrics: '', content: '' };
 
-function WeeklyTab({ slug }: { slug: string }) {
-  const [reports, setReports] = useState<any[]>([]);
-  const [selId, setSelId] = useState<string | null>(null);
-  const [report, setReport] = useState<any>(null);
+function TabLaunches({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [launches, setLaunches] = useState<Launch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [modal, setModal] = useState<{ editing: Launch | null } | null>(null);
+  const [form, setForm] = useState<LaunchForm>(launchFormDefault);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetch(`/api/portal/weekly?slug=${slug}`)
-      .then(r => r.json())
-      .then(d => { const rs = d.reports || []; setReports(rs); if (rs.length > 0) setSelId(rs[0].id); setLoading(false); })
-      .catch(() => setLoading(false));
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { const d = await apiFetch('GET', 'launches', slug); setLaunches(d.launches || []); }
+    catch {} finally { setLoading(false); }
   }, [slug]);
 
-  useEffect(() => {
-    if (!selId) return;
-    setDetailLoading(true);
-    fetch(`/api/portal/weekly?slug=${slug}&id=${selId}`)
-      .then(r => r.json())
-      .then(d => { setReport(d.report || null); setDetailLoading(false); })
-      .catch(() => setDetailLoading(false));
-  }, [slug, selId]);
+  useEffect(() => { load(); }, [load]);
 
-  if (loading) return <LoadingState />;
-  if (reports.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum relatório semanal disponível.</p></Card>;
+  function openCreate() { setForm(launchFormDefault); setModal({ editing: null }); }
+  function openEdit(l: Launch) {
+    setForm({ name: l.name, period: l.period || '', status: l.status, metrics: l.metrics || '', content: l.content || '' });
+    setModal({ editing: l });
+  }
 
-  const METRIC_CARDS = [
-    { key: 'investimento', label: 'Investimento', fmt: fmtMoney },
-    { key: 'leads', label: 'Leads', fmt: fmtNum },
-    { key: 'cpl', label: 'CPL', fmt: fmtMoney },
-    { key: 'vendas', label: 'Vendas', fmt: fmtNum },
-  ];
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true);
+    try {
+      const payload = { ...form, period: form.period || null, metrics: form.metrics || null, content: form.content || null };
+      if (modal?.editing) await apiFetch('PUT', 'launches', slug, { id: modal.editing.id, ...payload });
+      else await apiFetch('POST', 'launches', slug, payload);
+      setModal(null); await load();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Erro'); }
+    finally { setSaving(false); }
+  }
 
-  function fmtWeek(start?: string | null, end?: string | null) {
-    if (!start) return '—';
-    return `${formatDate(start)} — ${formatDate(end)}`;
+  async function handleDelete(l: Launch) {
+    if (!confirm(`Excluir "${l.name}"?`)) return;
+    await apiFetch('DELETE', 'launches', slug, { id: l.id }); await load();
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-        {reports.map(r => (
-          <button key={r.id} onClick={() => setSelId(r.id)}
-            style={{ background: selId === r.id ? C.accentBg : C.card, border: `1px solid ${selId === r.id ? C.accent : C.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: fn, fontSize: 13, fontWeight: selId === r.id ? 600 : 500, color: selId === r.id ? C.accent : C.text }}>
-            {formatDate(r.week_start)}
-          </button>
-        ))}
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+        {isAdmin && <Btn onClick={openCreate}>+ Novo lançamento</Btn>}
       </div>
 
-      {detailLoading ? <LoadingState /> : !report ? (
-        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Relatório não encontrado.</p></Card>
+      {loading ? <p style={{ color: C.soft }}>Carregando...</p> : launches.length === 0 ? (
+        <p style={{ color: C.soft, fontSize: 14 }}>Nenhum lançamento ainda.</p>
       ) : (
-        <>
-          {report.metrics && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-              {METRIC_CARDS.map(m => (
-                <Card key={m.key} style={{ textAlign: 'center' as const, padding: '16px 12px' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: 12, color: C.soft, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
-                  <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, fontFamily: fnMono }}>{m.fmt(report.metrics[m.key])}</p>
-                </Card>
-              ))}
-            </div>
-          )}
-          {report.highlights && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Destaques</h3>
-              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.highlights}</p>
-            </Card>
-          )}
-          {report.note && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Observações</h3>
-              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.note}</p>
-            </Card>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Monthly Tab ───────────────────────────────────────────────
-
-function MonthlyTab({ slug }: { slug: string }) {
-  const [reports, setReports] = useState<any[]>([]);
-  const [selId, setSelId] = useState<string | null>(null);
-  const [report, setReport] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/portal/monthly?slug=${slug}`)
-      .then(r => r.json())
-      .then(d => { const rs = d.reports || []; setReports(rs); if (rs.length > 0) setSelId(rs[0].id); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [slug]);
-
-  useEffect(() => {
-    if (!selId) return;
-    setDetailLoading(true);
-    fetch(`/api/portal/monthly?slug=${slug}&id=${selId}`)
-      .then(r => r.json())
-      .then(d => { setReport(d.report || null); setDetailLoading(false); })
-      .catch(() => setDetailLoading(false));
-  }, [slug, selId]);
-
-  if (loading) return <LoadingState />;
-  if (reports.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum relatório mensal disponível.</p></Card>;
-
-  function fmtMonthKey(mk?: string | null) {
-    if (!mk) return '—';
-    const [y, m] = mk.split('-');
-    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    return `${months[parseInt(m) - 1]} ${y}`;
-  }
-
-  const METRIC_CARDS = [
-    { key: 'investimento', label: 'Investimento', fmt: fmtMoney },
-    { key: 'leads', label: 'Leads', fmt: fmtNum },
-    { key: 'cpl', label: 'CPL', fmt: fmtMoney },
-    { key: 'vendas', label: 'Vendas', fmt: fmtNum },
-  ];
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-        {reports.map(r => (
-          <button key={r.id} onClick={() => setSelId(r.id)}
-            style={{ background: selId === r.id ? C.accentBg : C.card, border: `1px solid ${selId === r.id ? C.accent : C.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: fn, fontSize: 13, fontWeight: selId === r.id ? 600 : 500, color: selId === r.id ? C.accent : C.text }}>
-            {fmtMonthKey(r.month_key)}
-          </button>
-        ))}
-      </div>
-
-      {detailLoading ? <LoadingState /> : !report ? (
-        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Relatório não encontrado.</p></Card>
-      ) : (
-        <>
-          {report.metrics && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-              {METRIC_CARDS.map(m => (
-                <Card key={m.key} style={{ textAlign: 'center' as const, padding: '16px 12px' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: 12, color: C.soft, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
-                  <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, fontFamily: fnMono }}>{m.fmt(report.metrics[m.key])}</p>
-                </Card>
-              ))}
-            </div>
-          )}
-          {report.highlights && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Destaques do mês</h3>
-              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.highlights}</p>
-            </Card>
-          )}
-          {report.note && (
-            <Card>
-              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Observações</h3>
-              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.note}</p>
-            </Card>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Optimizations Tab ─────────────────────────────────────────
-
-function OptimizationsTab({ slug }: { slug: string }) {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/portal/optimizations?slug=${slug}`)
-      .then(r => r.json())
-      .then(d => { setItems(d.optimizations || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [slug]);
-
-  if (loading) return <LoadingState />;
-  if (items.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhuma otimização disponível.</p></Card>;
-
-  const grouped: Record<string, any[]> = {};
-  for (const o of items) { if (!grouped[o.date]) grouped[o.date] = []; grouped[o.date].push(o); }
-  const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {dates.map(date => (
-        <div key={date}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: C.soft, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>{formatDate(date)}</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {grouped[date].map(o => (
-              <Card key={o.id} style={{ padding: '14px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, background: C.accentBg, color: C.accent, padding: '3px 10px', borderRadius: 8, flexShrink: 0, marginTop: 2 }}>{o.type}</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14, color: C.text }}>{o.what_done}</p>
-                    {o.campaign && <p style={{ margin: '0 0 4px', fontSize: 13, color: C.soft }}>Campanha: {o.campaign}</p>}
-                    {o.why && <p style={{ margin: '0 0 4px', fontSize: 13, color: C.soft }}>Por quê: {o.why}</p>}
-                    {o.result && <p style={{ margin: 0, fontSize: 13, color: C.soft }}>Resultado: {o.result}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {launches.map(l => (
+            <div key={l.id} style={{ background: C.card, borderRadius: 12, padding: 20, border: `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+                <div>
+                  <h3 style={{ fontFamily: fnTitle, fontSize: 18, fontWeight: 600, color: C.text, margin: '0 0 6px' }}>{l.name}</h3>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Badge label={LSTATUS_LABEL[l.status] || l.status} color={LSTATUS_COLOR[l.status] || { bg: C.secondary, text: C.soft }} />
+                    {l.period && <span style={{ fontSize: 13, color: C.soft }}>{l.period}</span>}
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Content Tab ───────────────────────────────────────────────
-
-const CONTENT_STATUS_COLOR: Record<string, { bg: string; text: string }> = {
-  pendente: { bg: '#FEF3C7', text: '#92400E' },
-  aprovado: { bg: '#EEF2FF', text: '#3730A3' },
-  publicado: { bg: '#E4F5EC', text: '#1E7F47' },
-  reprovado: { bg: '#FBEAE7', text: '#B93B28' },
-};
-const CONTENT_STATUS_LABEL: Record<string, string> = { pendente: 'Pendente', aprovado: 'Aprovado', publicado: 'Publicado', reprovado: 'Reprovado' };
-
-function ContentTab({ slug }: { slug: string }) {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/portal/content?slug=${slug}`)
-      .then(r => r.json())
-      .then(d => { setItems(d.content || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [slug]);
-
-  if (loading) return <LoadingState />;
-  if (items.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum conteúdo disponível.</p></Card>;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {items.map(c => {
-        const sc = CONTENT_STATUS_COLOR[c.status] || CONTENT_STATUS_COLOR.pendente;
-        return (
-          <Card key={c.id} style={{ padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: c.notes ? 6 : 0 }}>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{c.name}</span>
-                  <Badge label={c.format} bg={C.secondary} text={C.soft} />
-                  {c.send_date && <span style={{ fontSize: 12, color: C.soft, fontFamily: fnMono }}>{formatDate(c.send_date)}</span>}
-                </div>
-                {c.notes && <p style={{ margin: 0, fontSize: 13, color: C.soft }}>{c.notes}</p>}
+                {isAdmin && <ActionRow onEdit={() => openEdit(l)} onDelete={() => handleDelete(l)} />}
               </div>
-              <Badge label={CONTENT_STATUS_LABEL[c.status] || c.status} bg={sc.bg} text={sc.text} />
+              {l.metrics && (
+                <div style={{ background: C.secondary, borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 14, color: C.text, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                  {l.metrics}
+                </div>
+              )}
+              {l.content && <Markdown text={l.content} />}
             </div>
-          </Card>
-        );
-      })}
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <Modal title={modal.editing ? 'Editar lançamento' : 'Novo lançamento'} onClose={() => setModal(null)} onSubmit={handleSubmit} saving={saving}>
+          <Field label="Nome">
+            <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} required />
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Período (ex: set/2026)">
+              <input type="text" value={form.period} onChange={e => setForm(f => ({ ...f, period: e.target.value }))} style={inputStyle} />
+            </Field>
+            <Field label="Status">
+              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
+                <option value="planejamento">Planejamento</option>
+                <option value="em_andamento">Em andamento</option>
+                <option value="concluido">Concluído</option>
+                <option value="pausado">Pausado</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Números (métricas, resultados)">
+            <textarea value={form.metrics} onChange={e => setForm(f => ({ ...f, metrics: e.target.value }))} style={{ ...taStyle, minHeight: 80 }} placeholder="Investimento: R$ 5.000&#10;Faturamento: R$ 22.000&#10;ROAS: 4,4x" />
+          </Field>
+          <Field label="Otimizações, ideias e aprendizados (markdown)">
+            <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} style={taStyle} />
+          </Field>
+        </Modal>
+      )}
     </div>
   );
 }
 
-// ── Nav ───────────────────────────────────────────────────────
+// ── Main PortalClient ─────────────────────────────────────────────────────────
+interface PortalProps {
+  portal: { clients: { name: string } | { name: string }[] };
+  isLoggedIn: boolean;
+  isAdmin: boolean;
+  slug: string;
+  clientId: string;
+}
 
-const NAV = [
-  { id: 'overview', label: 'Visão Geral', section: 'overview' as const },
-  { id: 'daily', label: 'Diário', section: 'daily' as const },
-  { id: 'activities', label: 'Atividades', section: 'activities' as const },
-  { id: 'requests', label: 'Solicitações', section: 'requests' as const },
-  { id: 'weekly', label: 'Relatório Semanal', section: 'weekly' as const },
-  { id: 'monthly', label: 'Relatório Mensal', section: 'monthly' as const },
-  { id: 'optimizations', label: 'Otimizações', section: 'optimizations' as const },
-  { id: 'content', label: 'Conteúdo', section: 'content' as const },
-  { id: 'launches', label: 'Lançamentos', section: 'launches' as const },
-  { id: 'links', label: 'Links e Arquivos', section: 'links' as const },
-];
-
-// ── Main Portal Shell ─────────────────────────────────────────
-
-export default function PortalClient({ portal, isLoggedIn, slug }: { portal: Portal; isLoggedIn: boolean; slug: string }) {
+export default function PortalClient({ portal, isLoggedIn, isAdmin, slug }: PortalProps) {
+  const [tab, setTab] = useState<'relatorios' | 'tarefas' | 'links' | 'lancamentos'>('relatorios');
   const router = useRouter();
-  const clientName = (portal.clients as any)?.name || slug;
-  const sections = portal.sections || {};
 
-  const [tab, setTab] = useState('overview');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const clientName = (() => {
+    const c = portal.clients;
+    if (Array.isArray(c)) return c[0]?.name || 'Portal';
+    return (c as { name: string })?.name || 'Portal';
+  })();
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  if (!isLoggedIn) return <LoginScreen slug={slug} clientName={clientName} />;
 
-  async function handleLogout() {
+  const TABS = [
+    { id: 'relatorios' as const,   label: 'Relatórios' },
+    { id: 'tarefas' as const,      label: 'Tarefas' },
+    { id: 'links' as const,        label: 'Links' },
+    { id: 'lancamentos' as const,  label: 'Lançamentos' },
+  ];
+
+  async function logout() {
     await fetch('/api/portal/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug }) });
     router.refresh();
   }
 
-  if (!isLoggedIn) return <LoginScreen slug={slug} clientName={clientName} />;
-
-  // Filter nav by enabled sections
-  const visibleNav = NAV.filter(n => {
-    if (!n.section) return true;
-    return sections[n.section] !== false;
-  });
-
-  const currentTab = visibleNav.find(n => n.id === tab) ? tab : (visibleNav[0]?.id || 'overview');
-
-  function NavItem({ item }: { item: typeof NAV[0] }) {
-    const isActive = currentTab === item.id;
-    return (
-      <button
-        onClick={() => { setTab(item.id); setMenuOpen(false); }}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 14px', borderRadius: 10, width: '100%',
-          background: isActive ? C.accentBg : 'transparent',
-          border: isActive ? `1px solid ${C.accent}30` : '1px solid transparent',
-          color: isActive ? C.accent : C.text,
-          cursor: 'pointer',
-          fontFamily: fn, fontSize: 14, fontWeight: isActive ? 600 : 500,
-          textAlign: 'left' as const,
-        }}
-      >
-        <span style={{ flex: 1 }}>{item.label}</span>
-      </button>
-    );
-  }
-
-  const sidebarContent = (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '20px 16px 16px', borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5H22L16 14L18.5 21.5L12 17L5.5 21.5L8 14L2 9.5H9.5L12 2Z" fill="white" /></svg>
-          </div>
-          <div>
-            <div style={{ fontFamily: fnTitle, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>Portal do Cliente</div>
-            <div style={{ fontSize: 12, color: C.soft, marginTop: 1 }}>{clientName}</div>
-          </div>
-        </div>
-      </div>
-
-      <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' as const }}>
-        {visibleNav.map(item => <NavItem key={item.id} item={item} />)}
-      </nav>
-
-      <div style={{ padding: '12px 10px', borderTop: `1px solid ${C.border}` }}>
-        <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', width: '100%', background: 'transparent', border: '1px solid transparent', borderRadius: 10, cursor: 'pointer', fontFamily: fn, fontSize: 13, color: C.soft, textAlign: 'left' as const }}>
-          Sair
-        </button>
-      </div>
-    </div>
-  );
-
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: fn, display: 'flex' }}>
-      {!isMobile && (
-        <aside style={{ width: 240, minHeight: '100vh', background: C.card, borderRight: `1px solid ${C.border}`, flexShrink: 0, position: 'sticky', top: 0, height: '100vh' }}>
-          {sidebarContent}
-        </aside>
-      )}
-
-      {isMobile && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, background: C.card, borderBottom: `1px solid ${C.border}`, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5H22L16 14L18.5 21.5L12 17L5.5 21.5L8 14L2 9.5H9.5L12 2Z" fill="white" /></svg>
-            </div>
-            <span style={{ fontFamily: fnTitle, fontSize: 14, fontWeight: 600, color: C.text }}>Portal do Cliente</span>
+    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: fn }}>
+      {/* Header */}
+      <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: '0 24px' }}>
+        <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 56 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span style={{ fontFamily: fnTitle, fontSize: 18, fontWeight: 600, color: C.text }}>{clientName}</span>
+            {isAdmin && <span style={{ fontSize: 11, fontWeight: 700, color: C.accent, background: C.accentBg, padding: '2px 8px', borderRadius: 10, letterSpacing: '0.04em' }}>ADMIN</span>}
           </div>
-          <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: C.text, fontSize: 18 }}>
-            {menuOpen ? 'X' : '='}
-          </button>
+          <button onClick={logout} style={{ background: 'none', border: 'none', fontFamily: fn, fontSize: 13, color: C.soft, cursor: 'pointer' }}>Sair</button>
         </div>
-      )}
-
-      {isMobile && menuOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)}>
-          <div style={{ position: 'absolute', top: 60, left: 0, bottom: 0, width: 260, background: C.card, borderRight: `1px solid ${C.border}` }} onClick={e => e.stopPropagation()}>
-            {sidebarContent}
-          </div>
+        {/* Tabs */}
+        <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', gap: 0 }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              style={{ background: 'none', border: 'none', fontFamily: fn, fontSize: 14, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.accent : C.soft, padding: '12px 16px', cursor: 'pointer', borderBottom: tab === t.id ? `2px solid ${C.accent}` : '2px solid transparent', marginBottom: -1 }}>
+              {t.label}
+            </button>
+          ))}
         </div>
-      )}
+      </header>
 
-      <main style={{ flex: 1, padding: isMobile ? '76px 16px 24px' : '32px 32px 32px', maxWidth: 760, minWidth: 0 }}>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontFamily: fnTitle, fontSize: isMobile ? 22 : 26, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>
-            {visibleNav.find(n => n.id === currentTab)?.label || 'Visão Geral'}
-          </h1>
-          <p style={{ color: C.soft, fontSize: 13, margin: 0 }}>{clientName}</p>
-        </div>
-
-        {currentTab === 'overview' && <OverviewTab slug={slug} />}
-        {currentTab === 'daily' && <DailyTab slug={slug} />}
-        {currentTab === 'activities' && <ActivitiesTab slug={slug} />}
-        {currentTab === 'requests' && <RequestsTab slug={slug} />}
-        {currentTab === 'weekly' && <WeeklyTab slug={slug} />}
-        {currentTab === 'monthly' && <MonthlyTab slug={slug} />}
-        {currentTab === 'optimizations' && <OptimizationsTab slug={slug} />}
-        {currentTab === 'content' && <ContentTab slug={slug} />}
-        {currentTab === 'launches' && <LaunchesTab slug={slug} />}
-        {currentTab === 'links' && <LinksTab slug={slug} />}
+      {/* Content */}
+      <main style={{ maxWidth: 860, margin: '0 auto', padding: '28px 24px' }}>
+        {tab === 'relatorios'  && <TabReports   slug={slug} isAdmin={isAdmin} />}
+        {tab === 'tarefas'     && <TabTasks      slug={slug} isAdmin={isAdmin} />}
+        {tab === 'links'       && <TabLinks      slug={slug} isAdmin={isAdmin} />}
+        {tab === 'lancamentos' && <TabLaunches   slug={slug} isAdmin={isAdmin} />}
       </main>
     </div>
   );

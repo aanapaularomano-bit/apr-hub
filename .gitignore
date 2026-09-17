@@ -11,3 +11,5 @@ apr-financeiro-update/
 # Dados locais sensíveis
 backups/
 extratos/
+.vercel
+.env*.local

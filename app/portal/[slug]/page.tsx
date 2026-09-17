@@ -1,10 +1,10 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
-import { verifyPortalToken, portalCookieName } from '@/lib/portalAuth';
+import { getPortalRole, portalCookieName } from '@/lib/portalAuth';
 import PortalClient from './PortalClient';
 
-export default async function PortalPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+export default async function PortalPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,9 +28,11 @@ export default async function PortalPage({ params }: { params: { slug: string } 
     );
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(portalCookieName(slug))?.value;
-  const isLoggedIn = token ? await verifyPortalToken(slug, token) : false;
+  const role = token ? await getPortalRole(slug, token) : null;
+  const isLoggedIn = role !== null;
+  const isAdmin = role === 'admin';
 
   return (
     <>
@@ -40,7 +42,9 @@ export default async function PortalPage({ params }: { params: { slug: string } 
       <PortalClient
         portal={portal as any}
         isLoggedIn={isLoggedIn}
+        isAdmin={isAdmin}
         slug={slug}
+        clientId={portal.client_id}
       />
     </>
   );

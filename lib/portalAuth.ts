@@ -48,8 +48,10 @@ export async function verifyPassword(password: string, stored: string): Promise<
 }
 
 // ── Session token (HMAC-SHA256) ───────────────────────────────────────────────
+// Cookie value format: "${role}:${base64_hmac}"
+// HMAC is signed over "${slug}:${role}"
 
-export async function makePortalToken(slug: string): Promise<string> {
+export async function makePortalToken(slug: string, role: 'client' | 'admin' = 'client'): Promise<string> {
   const secret = (process.env.APR_AUTH_SECRET || 'apr-hub-token') + ':portal';
   const key = await globalThis.crypto.subtle.importKey(
     'raw',
@@ -61,18 +63,29 @@ export async function makePortalToken(slug: string): Promise<string> {
   const sig = await globalThis.crypto.subtle.sign(
     'HMAC',
     key,
-    new TextEncoder().encode(slug)
+    new TextEncoder().encode(`${slug}:${role}`)
   );
-  return btoa(String.fromCharCode(...Array.from(new Uint8Array(sig))));
+  const hmac = btoa(String.fromCharCode(...Array.from(new Uint8Array(sig))));
+  return `${role}:${hmac}`;
 }
 
-export async function verifyPortalToken(slug: string, token: string): Promise<boolean> {
+export async function getPortalRole(slug: string, cookieValue: string): Promise<'client' | 'admin' | null> {
   try {
-    const expected = await makePortalToken(slug);
-    return expected === token;
+    const colonIdx = cookieValue.indexOf(':');
+    if (colonIdx === -1) return null;
+    const role = cookieValue.slice(0, colonIdx) as 'client' | 'admin';
+    if (role !== 'client' && role !== 'admin') return null;
+    const hmac = cookieValue.slice(colonIdx + 1);
+    const expected = await makePortalToken(slug, role);
+    const expectedHmac = expected.slice(expected.indexOf(':') + 1);
+    return hmac === expectedHmac ? role : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function verifyPortalToken(slug: string, cookieValue: string): Promise<boolean> {
+  return (await getPortalRole(slug, cookieValue)) !== null;
 }
 
 // Cookie name per portal slug (slug chars: a-z, 0-9, -)
