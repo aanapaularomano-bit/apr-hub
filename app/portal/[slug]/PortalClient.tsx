@@ -674,15 +674,20 @@ function LoginScreen({ slug, onLogin }: { slug:string; onLogin:(admin:boolean)=>
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setErr('');
-    const r = await fetch(`/api/portal/login?slug=${encodeURIComponent(slug)}`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ slug, password:pw }),
-      credentials:'include',
-    });
-    const d = await r.json();
-    if (d.role) { onLogin(d.role==='admin'); }
-    else { setErr(d.error ?? 'Senha incorreta'); }
+    try {
+      const r = await fetch(`/api/portal/login?slug=${encodeURIComponent(slug)}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ slug, password:pw }),
+        credentials:'include',
+      });
+      const d = await r.json();
+      if (d.role) { onLogin(d.role==='admin'); }
+      else { setErr(d.error ?? 'Senha incorreta'); }
+    } catch(ex) {
+      setErr('Erro de conexão. Tente novamente.');
+      console.error('login error', ex);
+    }
     setBusy(false);
   }
 
