@@ -710,14 +710,265 @@ function LinksTab({ slug }: { slug: string }) {
   );
 }
 
-// ── Coming Soon ───────────────────────────────────────────────
+// ── Weekly Tab ────────────────────────────────────────────────
 
-function ComingSoon({ label }: { label: string }) {
+function WeeklyTab({ slug }: { slug: string }) {
+  const [reports, setReports] = useState<any[]>([]);
+  const [selId, setSelId] = useState<string | null>(null);
+  const [report, setReport] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/portal/weekly?slug=${slug}`)
+      .then(r => r.json())
+      .then(d => { const rs = d.reports || []; setReports(rs); if (rs.length > 0) setSelId(rs[0].id); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [slug]);
+
+  useEffect(() => {
+    if (!selId) return;
+    setDetailLoading(true);
+    fetch(`/api/portal/weekly?slug=${slug}&id=${selId}`)
+      .then(r => r.json())
+      .then(d => { setReport(d.report || null); setDetailLoading(false); })
+      .catch(() => setDetailLoading(false));
+  }, [slug, selId]);
+
+  if (loading) return <LoadingState />;
+  if (reports.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum relatório semanal disponível.</p></Card>;
+
+  const METRIC_CARDS = [
+    { key: 'investimento', label: 'Investimento', fmt: fmtMoney },
+    { key: 'leads', label: 'Leads', fmt: fmtNum },
+    { key: 'cpl', label: 'CPL', fmt: fmtMoney },
+    { key: 'vendas', label: 'Vendas', fmt: fmtNum },
+  ];
+
+  function fmtWeek(start?: string | null, end?: string | null) {
+    if (!start) return '—';
+    return `${formatDate(start)} — ${formatDate(end)}`;
+  }
+
   return (
-    <Card style={{ textAlign: 'center', padding: '48px 24px' }}>
-      <h3 style={{ fontFamily: fnTitle, fontSize: 18, color: C.text, margin: '0 0 8px' }}>{label}</h3>
-      <p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Esta seção estará disponível em breve.</p>
-    </Card>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+        {reports.map(r => (
+          <button key={r.id} onClick={() => setSelId(r.id)}
+            style={{ background: selId === r.id ? C.accentBg : C.card, border: `1px solid ${selId === r.id ? C.accent : C.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: fn, fontSize: 13, fontWeight: selId === r.id ? 600 : 500, color: selId === r.id ? C.accent : C.text }}>
+            {formatDate(r.week_start)}
+          </button>
+        ))}
+      </div>
+
+      {detailLoading ? <LoadingState /> : !report ? (
+        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Relatório não encontrado.</p></Card>
+      ) : (
+        <>
+          {report.metrics && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+              {METRIC_CARDS.map(m => (
+                <Card key={m.key} style={{ textAlign: 'center' as const, padding: '16px 12px' }}>
+                  <p style={{ margin: '0 0 4px', fontSize: 12, color: C.soft, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
+                  <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, fontFamily: fnMono }}>{m.fmt(report.metrics[m.key])}</p>
+                </Card>
+              ))}
+            </div>
+          )}
+          {report.highlights && (
+            <Card>
+              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Destaques</h3>
+              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.highlights}</p>
+            </Card>
+          )}
+          {report.note && (
+            <Card>
+              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Observações</h3>
+              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.note}</p>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Monthly Tab ───────────────────────────────────────────────
+
+function MonthlyTab({ slug }: { slug: string }) {
+  const [reports, setReports] = useState<any[]>([]);
+  const [selId, setSelId] = useState<string | null>(null);
+  const [report, setReport] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/portal/monthly?slug=${slug}`)
+      .then(r => r.json())
+      .then(d => { const rs = d.reports || []; setReports(rs); if (rs.length > 0) setSelId(rs[0].id); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [slug]);
+
+  useEffect(() => {
+    if (!selId) return;
+    setDetailLoading(true);
+    fetch(`/api/portal/monthly?slug=${slug}&id=${selId}`)
+      .then(r => r.json())
+      .then(d => { setReport(d.report || null); setDetailLoading(false); })
+      .catch(() => setDetailLoading(false));
+  }, [slug, selId]);
+
+  if (loading) return <LoadingState />;
+  if (reports.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum relatório mensal disponível.</p></Card>;
+
+  function fmtMonthKey(mk?: string | null) {
+    if (!mk) return '—';
+    const [y, m] = mk.split('-');
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return `${months[parseInt(m) - 1]} ${y}`;
+  }
+
+  const METRIC_CARDS = [
+    { key: 'investimento', label: 'Investimento', fmt: fmtMoney },
+    { key: 'leads', label: 'Leads', fmt: fmtNum },
+    { key: 'cpl', label: 'CPL', fmt: fmtMoney },
+    { key: 'vendas', label: 'Vendas', fmt: fmtNum },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+        {reports.map(r => (
+          <button key={r.id} onClick={() => setSelId(r.id)}
+            style={{ background: selId === r.id ? C.accentBg : C.card, border: `1px solid ${selId === r.id ? C.accent : C.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: fn, fontSize: 13, fontWeight: selId === r.id ? 600 : 500, color: selId === r.id ? C.accent : C.text }}>
+            {fmtMonthKey(r.month_key)}
+          </button>
+        ))}
+      </div>
+
+      {detailLoading ? <LoadingState /> : !report ? (
+        <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Relatório não encontrado.</p></Card>
+      ) : (
+        <>
+          {report.metrics && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+              {METRIC_CARDS.map(m => (
+                <Card key={m.key} style={{ textAlign: 'center' as const, padding: '16px 12px' }}>
+                  <p style={{ margin: '0 0 4px', fontSize: 12, color: C.soft, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
+                  <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, fontFamily: fnMono }}>{m.fmt(report.metrics[m.key])}</p>
+                </Card>
+              ))}
+            </div>
+          )}
+          {report.highlights && (
+            <Card>
+              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Destaques do mês</h3>
+              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.highlights}</p>
+            </Card>
+          )}
+          {report.note && (
+            <Card>
+              <h3 style={{ fontFamily: fnTitle, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 10px' }}>Observações</h3>
+              <p style={{ margin: 0, color: C.text, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>{report.note}</p>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Optimizations Tab ─────────────────────────────────────────
+
+function OptimizationsTab({ slug }: { slug: string }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/portal/optimizations?slug=${slug}`)
+      .then(r => r.json())
+      .then(d => { setItems(d.optimizations || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [slug]);
+
+  if (loading) return <LoadingState />;
+  if (items.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhuma otimização disponível.</p></Card>;
+
+  const grouped: Record<string, any[]> = {};
+  for (const o of items) { if (!grouped[o.date]) grouped[o.date] = []; grouped[o.date].push(o); }
+  const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {dates.map(date => (
+        <div key={date}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.soft, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>{formatDate(date)}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {grouped[date].map(o => (
+              <Card key={o.id} style={{ padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, background: C.accentBg, color: C.accent, padding: '3px 10px', borderRadius: 8, flexShrink: 0, marginTop: 2 }}>{o.type}</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14, color: C.text }}>{o.what_done}</p>
+                    {o.campaign && <p style={{ margin: '0 0 4px', fontSize: 13, color: C.soft }}>Campanha: {o.campaign}</p>}
+                    {o.why && <p style={{ margin: '0 0 4px', fontSize: 13, color: C.soft }}>Por quê: {o.why}</p>}
+                    {o.result && <p style={{ margin: 0, fontSize: 13, color: C.soft }}>Resultado: {o.result}</p>}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Content Tab ───────────────────────────────────────────────
+
+const CONTENT_STATUS_COLOR: Record<string, { bg: string; text: string }> = {
+  pendente: { bg: '#FEF3C7', text: '#92400E' },
+  aprovado: { bg: '#EEF2FF', text: '#3730A3' },
+  publicado: { bg: '#E4F5EC', text: '#1E7F47' },
+  reprovado: { bg: '#FBEAE7', text: '#B93B28' },
+};
+const CONTENT_STATUS_LABEL: Record<string, string> = { pendente: 'Pendente', aprovado: 'Aprovado', publicado: 'Publicado', reprovado: 'Reprovado' };
+
+function ContentTab({ slug }: { slug: string }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/portal/content?slug=${slug}`)
+      .then(r => r.json())
+      .then(d => { setItems(d.content || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [slug]);
+
+  if (loading) return <LoadingState />;
+  if (items.length === 0) return <Card><p style={{ color: C.soft, fontSize: 14, margin: 0 }}>Nenhum conteúdo disponível.</p></Card>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {items.map(c => {
+        const sc = CONTENT_STATUS_COLOR[c.status] || CONTENT_STATUS_COLOR.pendente;
+        return (
+          <Card key={c.id} style={{ padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: c.notes ? 6 : 0 }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{c.name}</span>
+                  <Badge label={c.format} bg={C.secondary} text={C.soft} />
+                  {c.send_date && <span style={{ fontSize: 12, color: C.soft, fontFamily: fnMono }}>{formatDate(c.send_date)}</span>}
+                </div>
+                {c.notes && <p style={{ margin: 0, fontSize: 13, color: C.soft }}>{c.notes}</p>}
+              </div>
+              <Badge label={CONTENT_STATUS_LABEL[c.status] || c.status} bg={sc.bg} text={sc.text} />
+            </div>
+          </Card>
+        );
+      })}
+    </div>
   );
 }
 
@@ -728,10 +979,10 @@ const NAV = [
   { id: 'daily', label: 'Diário', section: 'daily' as const },
   { id: 'activities', label: 'Atividades', section: 'activities' as const },
   { id: 'requests', label: 'Solicitações', section: 'requests' as const },
-  { id: 'weekly', label: 'Relatório Semanal', soon: true },
-  { id: 'monthly', label: 'Relatório Mensal', soon: true },
-  { id: 'optimizations', label: 'Otimizações', soon: true },
-  { id: 'content', label: 'Conteúdo', soon: true },
+  { id: 'weekly', label: 'Relatório Semanal', section: 'weekly' as const },
+  { id: 'monthly', label: 'Relatório Mensal', section: 'monthly' as const },
+  { id: 'optimizations', label: 'Otimizações', section: 'optimizations' as const },
+  { id: 'content', label: 'Conteúdo', section: 'content' as const },
   { id: 'launches', label: 'Lançamentos', section: 'launches' as const },
   { id: 'links', label: 'Links e Arquivos', section: 'links' as const },
 ];
@@ -761,9 +1012,8 @@ export default function PortalClient({ portal, isLoggedIn, slug }: { portal: Por
 
   if (!isLoggedIn) return <LoginScreen slug={slug} clientName={clientName} />;
 
-  // Filter nav by enabled sections (soon items always shown)
+  // Filter nav by enabled sections
   const visibleNav = NAV.filter(n => {
-    if (n.soon) return true;
     if (!n.section) return true;
     return sections[n.section] !== false;
   });
@@ -774,21 +1024,19 @@ export default function PortalClient({ portal, isLoggedIn, slug }: { portal: Por
     const isActive = currentTab === item.id;
     return (
       <button
-        onClick={() => { if (!item.soon) { setTab(item.id); setMenuOpen(false); } }}
-        disabled={item.soon}
+        onClick={() => { setTab(item.id); setMenuOpen(false); }}
         style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '10px 14px', borderRadius: 10, width: '100%',
           background: isActive ? C.accentBg : 'transparent',
           border: isActive ? `1px solid ${C.accent}30` : '1px solid transparent',
-          color: item.soon ? C.border : isActive ? C.accent : C.text,
-          cursor: item.soon ? 'default' : 'pointer',
+          color: isActive ? C.accent : C.text,
+          cursor: 'pointer',
           fontFamily: fn, fontSize: 14, fontWeight: isActive ? 600 : 500,
           textAlign: 'left' as const,
         }}
       >
         <span style={{ flex: 1 }}>{item.label}</span>
-        {item.soon && <span style={{ fontSize: 10, fontWeight: 600, color: C.soft, background: C.secondary, padding: '2px 7px', borderRadius: 10 }}>breve</span>}
       </button>
     );
   }
@@ -861,12 +1109,12 @@ export default function PortalClient({ portal, isLoggedIn, slug }: { portal: Por
         {currentTab === 'daily' && <DailyTab slug={slug} />}
         {currentTab === 'activities' && <ActivitiesTab slug={slug} />}
         {currentTab === 'requests' && <RequestsTab slug={slug} />}
+        {currentTab === 'weekly' && <WeeklyTab slug={slug} />}
+        {currentTab === 'monthly' && <MonthlyTab slug={slug} />}
+        {currentTab === 'optimizations' && <OptimizationsTab slug={slug} />}
+        {currentTab === 'content' && <ContentTab slug={slug} />}
         {currentTab === 'launches' && <LaunchesTab slug={slug} />}
         {currentTab === 'links' && <LinksTab slug={slug} />}
-        {currentTab === 'weekly' && <ComingSoon label="Relatório Semanal" />}
-        {currentTab === 'monthly' && <ComingSoon label="Relatório Mensal" />}
-        {currentTab === 'optimizations' && <ComingSoon label="Otimizações" />}
-        {currentTab === 'content' && <ComingSoon label="Conteúdo" />}
       </main>
     </div>
   );

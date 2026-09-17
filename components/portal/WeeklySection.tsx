@@ -15,16 +15,30 @@ const btnG = { background: 'transparent', border: '1px solid rgba(255,255,255,0.
 function today() { return new Date().toISOString().slice(0, 10); }
 function fmtDate(d?: string | null) { if (!d) return '—'; const [y, m, day] = d.split('-'); return `${day}/${m}/${y}`; }
 
-export default function DailySection({ clientId }: { clientId: string }) {
+function currentWeekStart() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function weekEnd(start: string) {
+  const d = new Date(start + 'T12:00:00');
+  d.setDate(d.getDate() + 6);
+  return d.toISOString().slice(0, 10);
+}
+
+export default function WeeklySection({ clientId }: { clientId: string }) {
   const [reports, setReports] = useState<any[]>([]);
-  const [selDate, setSelDate] = useState(today());
+  const [selWeek, setSelWeek] = useState(currentWeekStart());
   const [report, setReport] = useState<any>(null);
   const [metrics, setMetrics] = useState<Record<string, string>>({});
+  const [highlights, setHighlights] = useState('');
   const [note, setNote] = useState('');
   const [published, setPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [building, setBuilding] = useState(false);
   const [msg, setMsg] = useState('');
 
   const api = useCallback(async (body: any) => {
@@ -33,23 +47,24 @@ export default function DailySection({ clientId }: { clientId: string }) {
   }, []);
 
   const loadList = useCallback(async () => {
-    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=daily`).then(r => r.json());
+    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=weekly`).then(r => r.json());
     setReports(d.reports || []);
   }, [clientId]);
 
-  const loadReport = useCallback(async (date: string) => {
+  const loadReport = useCallback(async (week_start: string) => {
     setLoading(true);
-    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=daily&date=${date}`).then(r => r.json());
+    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=weekly&week_start=${week_start}`).then(r => r.json());
     const r = d.report;
     setReport(r ?? null);
     setMetrics(r?.metrics ? Object.fromEntries(Object.entries(r.metrics).map(([k, v]) => [k, v != null ? String(v) : ''])) : {});
+    setHighlights(r?.highlights || '');
     setNote(r?.note || '');
     setPublished(r?.published || false);
     setLoading(false);
   }, [clientId]);
 
   useEffect(() => { loadList(); }, [loadList]);
-  useEffect(() => { loadReport(selDate); }, [selDate, loadReport]);
+  useEffect(() => { loadReport(selWeek); }, [selWeek, loadReport]);
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(''), 2500); }
 
@@ -60,7 +75,7 @@ export default function DailySection({ clientId }: { clientId: string }) {
       const v = metrics[f.key];
       numMetrics[f.key] = v !== '' && v !== undefined ? parseFloat(v) : null;
     }
-    const d = await api({ action: 'upsert_daily_report', client_id: clientId, date: selDate, metrics: numMetrics, note: note || null, published });
+    const d = await api({ action: 'upsert_weekly_report', client_id: clientId, week_start: selWeek, week_end: weekEnd(selWeek), metrics: numMetrics, highlights: highlights || null, note: note || null, published });
     setSaving(false);
     if (d.error) { flash(d.error); return; }
     setReport(d.report);
@@ -72,27 +87,20 @@ export default function DailySection({ clientId }: { clientId: string }) {
     const newPub = !published;
     if (!report) { setPublished(newPub); await save(); return; }
     setPublished(newPub);
-    await api({ action: 'publish_daily_report', report_id: report.id, client_id: clientId, published: newPub });
+    await api({ action: 'publish_weekly_report', report_id: report.id, client_id: clientId, published: newPub });
     flash(newPub ? 'Publicado.' : 'Despublicado.');
     loadList();
   }
 
-  async function autoBuild() {
-    setBuilding(true);
-    const d = await api({ action: 'auto_build_daily', client_id: clientId, date: selDate });
-    setBuilding(false);
-    if (d.note) { setNote(d.note); flash('Nota montada a partir das atividades e otimizações do dia.'); }
-    else flash('Nenhuma atividade ou otimização encontrada para esta data.');
-  }
-
   async function duplicatePrev() {
-    const d = await api({ action: 'duplicate_daily_report', client_id: clientId, target_date: selDate });
+    const d = await api({ action: 'duplicate_weekly_report', client_id: clientId, target_week_start: selWeek });
     if (d.source) {
       const src = d.source;
       setMetrics(src.metrics ? Object.fromEntries(Object.entries(src.metrics).map(([k, v]) => [k, v != null ? String(v) : ''])) : {});
+      setHighlights(src.highlights || '');
       setNote(src.note || '');
       setPublished(false);
-      flash(`Dados copiados de ${fmtDate(src.date)}. Salve para confirmar.`);
+      flash(`Dados copiados da semana de ${fmtDate(src.week_start)}. Salve para confirmar.`);
     } else {
       flash('Nenhum relatório anterior encontrado.');
     }
@@ -100,20 +108,24 @@ export default function DailySection({ clientId }: { clientId: string }) {
 
   return (
     <div style={{ display: 'flex', gap: 20 }}>
-      {/* Date list */}
-      <div style={{ width: 160, flexShrink: 0 }}>
+      {/* Week list */}
+      <div style={{ width: 170, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Relatórios</span>
-          <button onClick={() => setSelDate(today())} style={{ ...btnG, padding: '3px 8px', fontSize: 11 }}>Hoje</button>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Semanas</span>
+          <button onClick={() => setSelWeek(currentWeekStart())} style={{ ...btnG, padding: '3px 8px', fontSize: 11 }}>Atual</button>
         </div>
         <div style={{ marginBottom: 8 }}>
-          <input type="date" value={selDate} onChange={e => setSelDate(e.target.value)} style={{ ...inp, fontSize: 12 }} />
+          <input type="date" value={selWeek} onChange={e => setSelWeek(e.target.value)} style={{ ...inp, fontSize: 12 }} />
+          <p style={{ margin: '3px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Início da semana (seg.)</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 400, overflowY: 'auto' as const }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 360, overflowY: 'auto' as const }}>
           {reports.map(r => (
-            <button key={r.date} onClick={() => setSelDate(r.date)}
-              style={{ background: selDate === r.date ? 'rgba(167,139,250,0.12)' : 'transparent', border: selDate === r.date ? '1px solid rgba(167,139,250,0.25)' : '1px solid transparent', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-              <span style={{ fontSize: 12, color: selDate === r.date ? '#a5b4fc' : 'rgba(255,255,255,0.5)' }}>{fmtDate(r.date)}</span>
+            <button key={r.week_start} onClick={() => setSelWeek(r.week_start)}
+              style={{ background: selWeek === r.week_start ? 'rgba(167,139,250,0.12)' : 'transparent', border: selWeek === r.week_start ? '1px solid rgba(167,139,250,0.25)' : '1px solid transparent', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+              <div>
+                <span style={{ fontSize: 11, color: selWeek === r.week_start ? '#a5b4fc' : 'rgba(255,255,255,0.5)', display: 'block' }}>{fmtDate(r.week_start)}</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{fmtDate(r.week_end)}</span>
+              </div>
               {r.published && <span style={{ fontSize: 9, fontWeight: 700, color: '#22c55e', background: '#22c55e15', borderRadius: 4, padding: '1px 5px' }}>PUB</span>}
             </button>
           ))}
@@ -126,22 +138,16 @@ export default function DailySection({ clientId }: { clientId: string }) {
           <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Carregando...</p>
         ) : (
           <>
-            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{fmtDate(selDate)}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>Semana {fmtDate(selWeek)} — {fmtDate(weekEnd(selWeek))}</span>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
                 {msg && <span style={{ fontSize: 12, color: msg.includes('Nenhum') ? '#f59e0b' : '#22c55e' }}>{msg}</span>}
-                <button onClick={autoBuild} disabled={building} style={{ ...btnG, opacity: building ? 0.7 : 1 }}>
-                  {building ? 'Montando...' : 'Montar nota automaticamente'}
-                </button>
                 <button onClick={duplicatePrev} style={btnG}>Duplicar anterior</button>
                 <button onClick={togglePublish}
                   style={{ background: published ? '#22c55e20' : 'rgba(255,255,255,0.05)', border: `1px solid ${published ? '#22c55e40' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, padding: '6px 14px', color: published ? '#22c55e' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
                   {published ? 'Despublicar' : 'Publicar'}
                 </button>
-                <button onClick={save} disabled={saving} style={{ ...btnP, opacity: saving ? 0.7 : 1 }}>
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <button onClick={save} disabled={saving} style={{ ...btnP, opacity: saving ? 0.7 : 1 }}>{saving ? 'Salvando...' : 'Salvar'}</button>
               </div>
             </div>
 
@@ -158,12 +164,20 @@ export default function DailySection({ clientId }: { clientId: string }) {
               </div>
             </div>
 
+            {/* Highlights */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 18px' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Destaques</p>
+              <textarea value={highlights} onChange={e => setHighlights(e.target.value)}
+                style={{ ...inp, resize: 'vertical' as const, minHeight: 80, fontFamily: 'inherit' }}
+                placeholder="Principais entregas, campanhas, resultados da semana..." rows={3} />
+            </div>
+
             {/* Note */}
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 18px' }}>
               <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Observação</p>
               <textarea value={note} onChange={e => setNote(e.target.value)}
-                style={{ ...inp, resize: 'vertical' as const, minHeight: 100, fontFamily: 'inherit' }}
-                placeholder="Contexto do dia, destaques, observações para o cliente..." rows={4} />
+                style={{ ...inp, resize: 'vertical' as const, minHeight: 80, fontFamily: 'inherit' }}
+                placeholder="Contexto, observações para o cliente..." rows={3} />
             </div>
           </>
         )}

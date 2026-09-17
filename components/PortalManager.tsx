@@ -3,17 +3,30 @@
 import { useState, useEffect, useCallback } from 'react';
 import { slugify } from '@/lib/portalAuth';
 import DailySection from './portal/DailySection';
+import WeeklySection from './portal/WeeklySection';
+import MonthlySection from './portal/MonthlySection';
 import ActivitiesSection from './portal/ActivitiesSection';
+import OptimizationsSection from './portal/OptimizationsSection';
+import ContentSection from './portal/ContentSection';
 import LaunchesSection from './portal/LaunchesSection';
+import LinksSection from './portal/LinksSection';
+import RequestsSection from './portal/RequestsSection';
+import HistorySection from './portal/HistorySection';
 
-const LINK_GROUPS = ['Páginas', 'Pastas e arquivos', 'Dashboards e planilhas', 'Referências'];
-const REQUEST_STATUS = ['pendente', 'em_andamento', 'concluido', 'cancelado'];
-const STATUS_LABEL: Record<string, string> = {
-  pendente: 'Pendente',
-  em_andamento: 'Em andamento',
-  concluido: 'Concluído',
-  cancelado: 'Cancelado',
-};
+type Tab = 'requests' | 'links' | 'activities' | 'daily' | 'weekly' | 'monthly' | 'optimizations' | 'content' | 'launches' | 'history';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'requests', label: 'Solicitações' },
+  { key: 'links', label: 'Links' },
+  { key: 'activities', label: 'Atividades' },
+  { key: 'daily', label: 'Diário' },
+  { key: 'weekly', label: 'Semanal' },
+  { key: 'monthly', label: 'Mensal' },
+  { key: 'optimizations', label: 'Otimizações' },
+  { key: 'content', label: 'Conteúdo' },
+  { key: 'launches', label: 'Lançamentos' },
+  { key: 'history', label: 'Histórico' },
+];
 
 function formatDate(d?: string | null) {
   if (!d) return '—';
@@ -21,20 +34,13 @@ function formatDate(d?: string | null) {
   return `${day}/${m}/${y}`;
 }
 
-export default function PortalManager({
-  clients,
-  T,
-}: {
-  clients: any[];
-  T: any;
-  user?: any;
-}) {
+export default function PortalManager({ clients, T }: { clients: any[]; T: any; user?: any }) {
   const [selClient, setSelClient] = useState<any>(null);
   const [portal, setPortal] = useState<any>(null);
   const [links, setLinks] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'requests' | 'links' | 'activities' | 'daily' | 'launches'>('requests');
+  const [tab, setTab] = useState<Tab>('requests');
 
   // Create/edit form
   const [showSetup, setShowSetup] = useState(false);
@@ -47,16 +53,6 @@ export default function PortalManager({
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [genLoading, setGenLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  // Link form
-  const [showLinkForm, setShowLinkForm] = useState(false);
-  const [linkForm, setLinkForm] = useState({ group_name: 'Referências', label: '', url: '', description: '', tag: '', visible_to_client: true });
-  const [linkSaving, setLinkSaving] = useState(false);
-
-  // Request form
-  const [showReqForm, setShowReqForm] = useState(false);
-  const [reqForm, setReqForm] = useState({ title: '', details: '', due_date: '' });
-  const [reqSaving, setReqSaving] = useState(false);
 
   const loadPortal = useCallback(async (clientId: string) => {
     setLoading(true);
@@ -145,65 +141,6 @@ export default function PortalManager({
     if (res.ok) setPortal({ ...portal, sections: newSections });
   }
 
-  async function addLink() {
-    if (!linkForm.label.trim() || !linkForm.url.trim()) return;
-    setLinkSaving(true);
-    const res = await fetch('/api/portal/manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'add_link', client_id: selClient.id, ...linkForm, description: linkForm.description || null, tag: linkForm.tag || null }),
-    });
-    setLinkSaving(false);
-    if (res.ok) {
-      setLinkForm({ group_name: 'Referências', label: '', url: '', description: '', tag: '', visible_to_client: true });
-      setShowLinkForm(false);
-      loadPortal(selClient.id);
-    }
-  }
-
-  async function removeLink(id: string) {
-    await fetch('/api/portal/manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'remove_link', link_id: id }),
-    });
-    setLinks(links.filter(l => l.id !== id));
-  }
-
-  async function addRequest() {
-    if (!reqForm.title.trim()) return;
-    setReqSaving(true);
-    const res = await fetch('/api/portal/manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'add_request', client_id: selClient.id, ...reqForm }),
-    });
-    setReqSaving(false);
-    if (res.ok) {
-      setReqForm({ title: '', details: '', due_date: '' });
-      setShowReqForm(false);
-      loadPortal(selClient.id);
-    }
-  }
-
-  async function updateReqStatus(reqId: string, status: string) {
-    await fetch('/api/portal/manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'update_request', request_id: reqId, status }),
-    });
-    setRequests(requests.map(r => r.id === reqId ? { ...r, status } : r));
-  }
-
-  async function removeRequest(reqId: string) {
-    await fetch('/api/portal/manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'remove_request', request_id: reqId }),
-    });
-    setRequests(requests.filter(r => r.id !== reqId));
-  }
-
   function copyPassword() {
     if (!revealedPassword) return;
     navigator.clipboard.writeText(revealedPassword);
@@ -212,12 +149,11 @@ export default function PortalManager({
   }
 
   const portalUrl = portal ? `${window?.location?.origin || ''}/portal/${portal.slug}` : '';
-  const sections = portal?.sections || { overview: true, requests: true, links: true };
+  const sections = portal?.sections || {};
 
   const inp = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '9px 12px', color: '#e2e8f0', fontSize: 13, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' as const };
   const cardS = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 18px' };
   const btnPrimary = { background: '#a78bfa20', border: '1px solid #a78bfa40', borderRadius: 9, padding: '9px 16px', color: '#a78bfa', cursor: 'pointer' as const, fontSize: 13, fontWeight: 600 as const, fontFamily: 'inherit' };
-  const btnDanger = { background: '#ef444415', border: '1px solid #ef444430', borderRadius: 8, padding: '6px 12px', color: '#ef4444', cursor: 'pointer' as const, fontSize: 12, fontWeight: 600 as const, fontFamily: 'inherit' };
   const btnGhost = { background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 14px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' as const, fontSize: 12, fontFamily: 'inherit' };
 
   return (
@@ -262,23 +198,17 @@ export default function PortalManager({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>{selClient.name}</h2>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-                  Portal do cliente
-                </p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Portal do cliente</p>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {portal && (
-                  <a
-                    href={`/portal/${portal.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ ...btnPrimary, textDecoration: 'none', fontSize: 12 }}
-                  >
-                    👁 Ver como cliente
+                  <a href={`/portal/${portal.slug}`} target="_blank" rel="noopener noreferrer"
+                    style={{ ...btnPrimary, textDecoration: 'none', fontSize: 12 }}>
+                    Ver como cliente
                   </a>
                 )}
                 <button onClick={openSetup} style={btnPrimary}>
-                  {portal ? '✏️ Editar portal' : '+ Criar portal'}
+                  {portal ? 'Editar portal' : '+ Criar portal'}
                 </button>
               </div>
             </div>
@@ -317,7 +247,6 @@ export default function PortalManager({
               <div style={cardS}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-                  {/* Status + link */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <button onClick={toggleEnabled} style={{ background: portal.enabled ? '#22c55e20' : '#ef444420', border: `1px solid ${portal.enabled ? '#22c55e40' : '#ef444440'}`, borderRadius: 20, padding: '4px 14px', color: portal.enabled ? '#22c55e' : '#ef4444', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}>
@@ -332,18 +261,14 @@ export default function PortalManager({
                     )}
                   </div>
 
-                  {/* URL */}
                   <div>
                     <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'block', marginBottom: 6 }}>LINK DO PORTAL</label>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input readOnly value={portalUrl} style={{ ...inp, color: 'rgba(255,255,255,0.5)', cursor: 'text' }} />
-                      <button onClick={() => { navigator.clipboard.writeText(portalUrl); }} style={{ ...btnPrimary, flexShrink: 0, fontSize: 12 }}>
-                        Copiar
-                      </button>
+                      <button onClick={() => navigator.clipboard.writeText(portalUrl)} style={{ ...btnPrimary, flexShrink: 0, fontSize: 12 }}>Copiar</button>
                     </div>
                   </div>
 
-                  {/* Password */}
                   <div>
                     <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'block', marginBottom: 6 }}>SENHA</label>
                     {revealedPassword ? (
@@ -352,23 +277,22 @@ export default function PortalManager({
                           {revealedPassword}
                         </code>
                         <button onClick={copyPassword} style={{ ...btnPrimary, flexShrink: 0, fontSize: 12 }}>
-                          {copied ? '✓ Copiado' : 'Copiar'}
+                          {copied ? 'Copiado' : 'Copiar'}
                         </button>
                         <button onClick={() => setRevealedPassword(null)} style={btnGhost}>Fechar</button>
                       </div>
                     ) : (
                       <button onClick={generatePassword} disabled={genLoading} style={{ ...btnPrimary, opacity: genLoading ? 0.7 : 1 }}>
-                        {genLoading ? 'Gerando...' : '🔑 Gerar nova senha'}
+                        {genLoading ? 'Gerando...' : 'Gerar nova senha'}
                       </button>
                     )}
                     {revealedPassword && (
                       <p style={{ margin: '6px 0 0', fontSize: 11, color: '#f59e0b' }}>
-                        ⚠ Esta senha só aparece uma vez. Copie e repasse ao cliente.
+                        Esta senha só aparece uma vez. Copie e repasse ao cliente.
                       </p>
                     )}
                   </div>
 
-                  {/* Sections */}
                   <div>
                     <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'block', marginBottom: 8 }}>SEÇÕES VISÍVEIS</label>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -376,11 +300,18 @@ export default function PortalManager({
                         { key: 'overview', label: 'Visão Geral' },
                         { key: 'requests', label: 'Solicitações' },
                         { key: 'links', label: 'Links e Arquivos' },
+                        { key: 'activities', label: 'Atividades' },
+                        { key: 'daily', label: 'Diário' },
+                        { key: 'weekly', label: 'Semanal' },
+                        { key: 'monthly', label: 'Mensal' },
+                        { key: 'optimizations', label: 'Otimizações' },
+                        { key: 'content', label: 'Conteúdo' },
+                        { key: 'launches', label: 'Lançamentos' },
                       ].map(s => (
                         <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
                           <input
                             type="checkbox"
-                            checked={sections[s.key as keyof typeof sections] !== false}
+                            checked={sections[s.key] !== false}
                             onChange={e => updateSections(s.key, e.target.checked)}
                             style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#a78bfa' }}
                           />
@@ -403,140 +334,29 @@ export default function PortalManager({
               </div>
             )}
 
-            {/* Tabs: Links & Requests */}
+            {/* Tabs */}
             {portal && (
               <>
-                <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 0, flexWrap: 'wrap' as const }}>
-                  {([
-                    { key: 'requests', label: 'Solicitações' },
-                    { key: 'links', label: 'Links' },
-                    { key: 'activities', label: 'Atividades' },
-                    { key: 'daily', label: 'Diário' },
-                    { key: 'launches', label: 'Lançamentos' },
-                  ] as const).map(t => (
-                    <button key={t.key} onClick={() => setTab(t.key)} style={{ background: 'transparent', border: 'none', borderBottom: tab === t.key ? '2px solid #a78bfa' : '2px solid transparent', padding: '8px 16px', color: tab === t.key ? '#a78bfa' : 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+                <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' as const }}>
+                  {TABS.map(t => (
+                    <button key={t.key} onClick={() => setTab(t.key)} style={{ background: 'transparent', border: 'none', borderBottom: tab === t.key ? '2px solid #a78bfa' : '2px solid transparent', padding: '8px 14px', color: tab === t.key ? '#a78bfa' : 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
                       {t.label}
                     </button>
                   ))}
                 </div>
 
-                {/* Requests tab */}
-                {tab === 'requests' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button onClick={() => setShowReqForm(!showReqForm)} style={btnPrimary}>
-                        + Novo pedido ao cliente
-                      </button>
-                    </div>
-
-                    {showReqForm && (
-                      <div style={{ ...cardS, border: '1px solid rgba(167,139,250,0.3)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <input value={reqForm.title} onChange={e => setReqForm(f => ({ ...f, title: e.target.value }))} style={inp} placeholder="Título da solicitação *" />
-                          <textarea value={reqForm.details} onChange={e => setReqForm(f => ({ ...f, details: e.target.value }))} style={{ ...inp, resize: 'vertical' as const }} rows={2} placeholder="Detalhes (opcional)" />
-                          <input type="date" value={reqForm.due_date} onChange={e => setReqForm(f => ({ ...f, due_date: e.target.value }))} style={inp} />
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                          <button onClick={addRequest} disabled={reqSaving} style={{ ...btnPrimary, opacity: reqSaving ? 0.7 : 1 }}>
-                            {reqSaving ? 'Salvando...' : 'Salvar'}
-                          </button>
-                          <button onClick={() => setShowReqForm(false)} style={btnGhost}>Cancelar</button>
-                        </div>
-                      </div>
-                    )}
-
-                    {requests.length === 0 ? (
-                      <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Nenhuma solicitação ainda.</p>
-                    ) : (
-                      requests.map(req => (
-                        <div key={req.id} style={cardS}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{req.title}</span>
-                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: req.from === 'agency' ? 'rgba(167,139,250,0.15)' : 'rgba(34,197,94,0.12)', color: req.from === 'agency' ? '#a78bfa' : '#22c55e' }}>
-                                  {req.from === 'agency' ? 'Agência → Cliente' : 'Cliente → Agência'}
-                                </span>
-                              </div>
-                              {req.details && <p style={{ margin: '0 0 4px', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{req.details}</p>}
-                              {req.due_date && <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>Prazo: {formatDate(req.due_date)}</p>}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-                              <select
-                                value={req.status}
-                                onChange={e => updateReqStatus(req.id, e.target.value)}
-                                style={{ ...inp, width: 'auto', fontSize: 11, padding: '5px 8px' }}
-                              >
-                                {REQUEST_STATUS.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                              </select>
-                              <button onClick={() => removeRequest(req.id)} style={btnDanger}>Remover</button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {tab === 'activities' && <ActivitiesSection clientId={selClient.id} />}
-                {tab === 'daily' && <DailySection clientId={selClient.id} />}
-                {tab === 'launches' && <LaunchesSection clientId={selClient.id} />}
-
-                {/* Links tab */}
-                {tab === 'links' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button onClick={() => setShowLinkForm(!showLinkForm)} style={btnPrimary}>
-                        + Adicionar link
-                      </button>
-                    </div>
-
-                    {showLinkForm && (
-                      <div style={{ ...cardS, border: '1px solid rgba(167,139,250,0.3)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <select value={linkForm.group_name} onChange={e => setLinkForm(f => ({ ...f, group_name: e.target.value }))} style={inp}>
-                            {LINK_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
-                          </select>
-                          <input value={linkForm.label} onChange={e => setLinkForm(f => ({ ...f, label: e.target.value }))} style={inp} placeholder="Nome do link *" />
-                          <input value={linkForm.url} onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))} style={inp} placeholder="URL *" />
-                          <input value={linkForm.description} onChange={e => setLinkForm(f => ({ ...f, description: e.target.value }))} style={inp} placeholder="Descrição (opcional)" />
-                          <input value={linkForm.tag} onChange={e => setLinkForm(f => ({ ...f, tag: e.target.value }))} style={inp} placeholder="Tag (opcional)" />
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-                            <input type="checkbox" checked={linkForm.visible_to_client} onChange={e => setLinkForm(f => ({ ...f, visible_to_client: e.target.checked }))} style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#a78bfa' }} />
-                            Visível para o cliente
-                          </label>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                          <button onClick={addLink} disabled={linkSaving} style={{ ...btnPrimary, opacity: linkSaving ? 0.7 : 1 }}>
-                            {linkSaving ? 'Salvando...' : 'Salvar'}
-                          </button>
-                          <button onClick={() => setShowLinkForm(false)} style={btnGhost}>Cancelar</button>
-                        </div>
-                      </div>
-                    )}
-
-                    {links.length === 0 ? (
-                      <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Nenhum link cadastrado.</p>
-                    ) : (
-                      LINK_GROUPS.filter(g => links.some(l => l.group_name === g)).map(group => (
-                        <div key={group}>
-                          <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>{group}</p>
-                          {links.filter(l => l.group_name === group).map(link => (
-                            <div key={link.id} style={{ ...cardS, marginBottom: 6, padding: '10px 14px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{link.label}</p>
-                                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{link.url}</p>
-                                </div>
-                                <button onClick={() => removeLink(link.id)} style={btnDanger}>Remover</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                <div style={{ minHeight: 200 }}>
+                  {tab === 'requests' && <RequestsSection clientId={selClient.id} requests={requests} onReload={() => loadPortal(selClient.id)} />}
+                  {tab === 'links' && <LinksSection clientId={selClient.id} links={links} onReload={() => loadPortal(selClient.id)} />}
+                  {tab === 'activities' && <ActivitiesSection clientId={selClient.id} />}
+                  {tab === 'daily' && <DailySection clientId={selClient.id} />}
+                  {tab === 'weekly' && <WeeklySection clientId={selClient.id} />}
+                  {tab === 'monthly' && <MonthlySection clientId={selClient.id} />}
+                  {tab === 'optimizations' && <OptimizationsSection clientId={selClient.id} />}
+                  {tab === 'content' && <ContentSection clientId={selClient.id} />}
+                  {tab === 'launches' && <LaunchesSection clientId={selClient.id} />}
+                  {tab === 'history' && <HistorySection clientId={selClient.id} />}
+                </div>
               </>
             )}
           </div>

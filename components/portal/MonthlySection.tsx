@@ -12,19 +12,24 @@ const inp = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,
 const btnP = { background: '#a78bfa20', border: '1px solid #a78bfa40', borderRadius: 9, padding: '8px 16px', color: '#a78bfa', cursor: 'pointer' as const, fontSize: 12, fontWeight: 600 as const, fontFamily: 'inherit' };
 const btnG = { background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 14px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' as const, fontSize: 12, fontFamily: 'inherit' };
 
-function today() { return new Date().toISOString().slice(0, 10); }
-function fmtDate(d?: string | null) { if (!d) return '—'; const [y, m, day] = d.split('-'); return `${day}/${m}/${y}`; }
+function currentMonthKey() { return new Date().toISOString().slice(0, 7); }
+function fmtMonth(mk?: string | null) {
+  if (!mk) return '—';
+  const [y, m] = mk.split('-');
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  return `${months[parseInt(m) - 1]}/${y}`;
+}
 
-export default function DailySection({ clientId }: { clientId: string }) {
+export default function MonthlySection({ clientId }: { clientId: string }) {
   const [reports, setReports] = useState<any[]>([]);
-  const [selDate, setSelDate] = useState(today());
+  const [selMonth, setSelMonth] = useState(currentMonthKey());
   const [report, setReport] = useState<any>(null);
   const [metrics, setMetrics] = useState<Record<string, string>>({});
+  const [highlights, setHighlights] = useState('');
   const [note, setNote] = useState('');
   const [published, setPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [building, setBuilding] = useState(false);
   const [msg, setMsg] = useState('');
 
   const api = useCallback(async (body: any) => {
@@ -33,23 +38,24 @@ export default function DailySection({ clientId }: { clientId: string }) {
   }, []);
 
   const loadList = useCallback(async () => {
-    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=daily`).then(r => r.json());
+    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=monthly`).then(r => r.json());
     setReports(d.reports || []);
   }, [clientId]);
 
-  const loadReport = useCallback(async (date: string) => {
+  const loadReport = useCallback(async (month_key: string) => {
     setLoading(true);
-    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=daily&date=${date}`).then(r => r.json());
+    const d = await fetch(`/api/portal/manage?client_id=${clientId}&section=monthly&month_key=${month_key}`).then(r => r.json());
     const r = d.report;
     setReport(r ?? null);
     setMetrics(r?.metrics ? Object.fromEntries(Object.entries(r.metrics).map(([k, v]) => [k, v != null ? String(v) : ''])) : {});
+    setHighlights(r?.highlights || '');
     setNote(r?.note || '');
     setPublished(r?.published || false);
     setLoading(false);
   }, [clientId]);
 
   useEffect(() => { loadList(); }, [loadList]);
-  useEffect(() => { loadReport(selDate); }, [selDate, loadReport]);
+  useEffect(() => { loadReport(selMonth); }, [selMonth, loadReport]);
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(''), 2500); }
 
@@ -60,7 +66,7 @@ export default function DailySection({ clientId }: { clientId: string }) {
       const v = metrics[f.key];
       numMetrics[f.key] = v !== '' && v !== undefined ? parseFloat(v) : null;
     }
-    const d = await api({ action: 'upsert_daily_report', client_id: clientId, date: selDate, metrics: numMetrics, note: note || null, published });
+    const d = await api({ action: 'upsert_monthly_report', client_id: clientId, month_key: selMonth, metrics: numMetrics, highlights: highlights || null, note: note || null, published });
     setSaving(false);
     if (d.error) { flash(d.error); return; }
     setReport(d.report);
@@ -72,27 +78,20 @@ export default function DailySection({ clientId }: { clientId: string }) {
     const newPub = !published;
     if (!report) { setPublished(newPub); await save(); return; }
     setPublished(newPub);
-    await api({ action: 'publish_daily_report', report_id: report.id, client_id: clientId, published: newPub });
+    await api({ action: 'publish_monthly_report', report_id: report.id, client_id: clientId, published: newPub });
     flash(newPub ? 'Publicado.' : 'Despublicado.');
     loadList();
   }
 
-  async function autoBuild() {
-    setBuilding(true);
-    const d = await api({ action: 'auto_build_daily', client_id: clientId, date: selDate });
-    setBuilding(false);
-    if (d.note) { setNote(d.note); flash('Nota montada a partir das atividades e otimizações do dia.'); }
-    else flash('Nenhuma atividade ou otimização encontrada para esta data.');
-  }
-
   async function duplicatePrev() {
-    const d = await api({ action: 'duplicate_daily_report', client_id: clientId, target_date: selDate });
+    const d = await api({ action: 'duplicate_monthly_report', client_id: clientId, target_month_key: selMonth });
     if (d.source) {
       const src = d.source;
       setMetrics(src.metrics ? Object.fromEntries(Object.entries(src.metrics).map(([k, v]) => [k, v != null ? String(v) : ''])) : {});
+      setHighlights(src.highlights || '');
       setNote(src.note || '');
       setPublished(false);
-      flash(`Dados copiados de ${fmtDate(src.date)}. Salve para confirmar.`);
+      flash(`Dados copiados de ${fmtMonth(src.month_key)}. Salve para confirmar.`);
     } else {
       flash('Nenhum relatório anterior encontrado.');
     }
@@ -100,20 +99,20 @@ export default function DailySection({ clientId }: { clientId: string }) {
 
   return (
     <div style={{ display: 'flex', gap: 20 }}>
-      {/* Date list */}
-      <div style={{ width: 160, flexShrink: 0 }}>
+      {/* Month list */}
+      <div style={{ width: 150, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Relatórios</span>
-          <button onClick={() => setSelDate(today())} style={{ ...btnG, padding: '3px 8px', fontSize: 11 }}>Hoje</button>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Meses</span>
+          <button onClick={() => setSelMonth(currentMonthKey())} style={{ ...btnG, padding: '3px 8px', fontSize: 11 }}>Atual</button>
         </div>
         <div style={{ marginBottom: 8 }}>
-          <input type="date" value={selDate} onChange={e => setSelDate(e.target.value)} style={{ ...inp, fontSize: 12 }} />
+          <input type="month" value={selMonth} onChange={e => setSelMonth(e.target.value)} style={{ ...inp, fontSize: 12 }} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 400, overflowY: 'auto' as const }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 360, overflowY: 'auto' as const }}>
           {reports.map(r => (
-            <button key={r.date} onClick={() => setSelDate(r.date)}
-              style={{ background: selDate === r.date ? 'rgba(167,139,250,0.12)' : 'transparent', border: selDate === r.date ? '1px solid rgba(167,139,250,0.25)' : '1px solid transparent', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-              <span style={{ fontSize: 12, color: selDate === r.date ? '#a5b4fc' : 'rgba(255,255,255,0.5)' }}>{fmtDate(r.date)}</span>
+            <button key={r.month_key} onClick={() => setSelMonth(r.month_key)}
+              style={{ background: selMonth === r.month_key ? 'rgba(167,139,250,0.12)' : 'transparent', border: selMonth === r.month_key ? '1px solid rgba(167,139,250,0.25)' : '1px solid transparent', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+              <span style={{ fontSize: 12, color: selMonth === r.month_key ? '#a5b4fc' : 'rgba(255,255,255,0.5)' }}>{fmtMonth(r.month_key)}</span>
               {r.published && <span style={{ fontSize: 9, fontWeight: 700, color: '#22c55e', background: '#22c55e15', borderRadius: 4, padding: '1px 5px' }}>PUB</span>}
             </button>
           ))}
@@ -126,26 +125,19 @@ export default function DailySection({ clientId }: { clientId: string }) {
           <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Carregando...</p>
         ) : (
           <>
-            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{fmtDate(selDate)}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{fmtMonth(selMonth)}</span>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
                 {msg && <span style={{ fontSize: 12, color: msg.includes('Nenhum') ? '#f59e0b' : '#22c55e' }}>{msg}</span>}
-                <button onClick={autoBuild} disabled={building} style={{ ...btnG, opacity: building ? 0.7 : 1 }}>
-                  {building ? 'Montando...' : 'Montar nota automaticamente'}
-                </button>
                 <button onClick={duplicatePrev} style={btnG}>Duplicar anterior</button>
                 <button onClick={togglePublish}
                   style={{ background: published ? '#22c55e20' : 'rgba(255,255,255,0.05)', border: `1px solid ${published ? '#22c55e40' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, padding: '6px 14px', color: published ? '#22c55e' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
                   {published ? 'Despublicar' : 'Publicar'}
                 </button>
-                <button onClick={save} disabled={saving} style={{ ...btnP, opacity: saving ? 0.7 : 1 }}>
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <button onClick={save} disabled={saving} style={{ ...btnP, opacity: saving ? 0.7 : 1 }}>{saving ? 'Salvando...' : 'Salvar'}</button>
               </div>
             </div>
 
-            {/* Metrics */}
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 18px' }}>
               <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Métricas</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -158,12 +150,18 @@ export default function DailySection({ clientId }: { clientId: string }) {
               </div>
             </div>
 
-            {/* Note */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 18px' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Destaques do mês</p>
+              <textarea value={highlights} onChange={e => setHighlights(e.target.value)}
+                style={{ ...inp, resize: 'vertical' as const, minHeight: 80, fontFamily: 'inherit' }}
+                placeholder="Principais conquistas, campanhas e marcos do mês..." rows={3} />
+            </div>
+
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 18px' }}>
               <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Observação</p>
               <textarea value={note} onChange={e => setNote(e.target.value)}
-                style={{ ...inp, resize: 'vertical' as const, minHeight: 100, fontFamily: 'inherit' }}
-                placeholder="Contexto do dia, destaques, observações para o cliente..." rows={4} />
+                style={{ ...inp, resize: 'vertical' as const, minHeight: 80, fontFamily: 'inherit' }}
+                placeholder="Contexto, observações para o cliente..." rows={3} />
             </div>
           </>
         )}

@@ -29,10 +29,11 @@ export default function LaunchesSection({ clientId }: { clientId: string }) {
   const [editLaunchId, setEditLaunchId] = useState<string | null>(null);
   const [lSaving, setLSaving] = useState(false);
 
-  // Goals / Results / Debrief editing
+  // Goals / Results / Debrief / Ideas editing
   const [goalsText, setGoalsText] = useState('');
   const [resultsText, setResultsText] = useState('');
   const [debriefText, setDebriefText] = useState('');
+  const [ideasText, setIdeasText] = useState('');
   const [jrSaving, setJrSaving] = useState(false);
 
   // Phase form
@@ -74,6 +75,7 @@ export default function LaunchesSection({ clientId }: { clientId: string }) {
       setGoalsText(JSON.stringify(data.launch.goals || {}, null, 2));
       setResultsText(JSON.stringify(data.launch.results || {}, null, 2));
       setDebriefText(JSON.stringify(data.launch.debrief || {}, null, 2));
+      setIdeasText(data.launch.ideas || '');
     }
     setDetailLoading(false);
   }, [clientId]);
@@ -132,7 +134,7 @@ export default function LaunchesSection({ clientId }: { clientId: string }) {
     try { goals = JSON.parse(goalsText); } catch {}
     try { results = JSON.parse(resultsText); } catch {}
     try { debrief = JSON.parse(debriefText); } catch {}
-    await api({ action: 'update_launch', launch_id: selLaunch.id, name: launchDetail.name, start_date: launchDetail.start_date || null, end_date: launchDetail.end_date || null, status: launchDetail.status, sort_order: launchDetail.sort_order, goals, results, debrief });
+    await api({ action: 'update_launch', launch_id: selLaunch.id, name: launchDetail.name, start_date: launchDetail.start_date || null, end_date: launchDetail.end_date || null, status: launchDetail.status, sort_order: launchDetail.sort_order, goals, results, debrief, ideas: ideasText || null });
     setJrSaving(false);
   }
 
@@ -304,13 +306,14 @@ export default function LaunchesSection({ clientId }: { clientId: string }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { label: 'Metas (JSON)', val: goalsText, set: setGoalsText },
-                  { label: 'Resultados (JSON)', val: resultsText, set: setResultsText },
-                  { label: 'Debrief (JSON)', val: debriefText, set: setDebriefText },
+                  { label: 'Metas (JSON)', val: goalsText, set: setGoalsText, mono: true },
+                  { label: 'Resultados (JSON)', val: resultsText, set: setResultsText, mono: true },
+                  { label: 'Debrief (JSON)', val: debriefText, set: setDebriefText, mono: true },
+                  { label: 'Ideias e notas internas', val: ideasText, set: setIdeasText, mono: false },
                 ].map(f => (
                   <div key={f.label}>
                     <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'block', marginBottom: 4 }}>{f.label}</label>
-                    <textarea value={f.val} onChange={e => f.set(e.target.value)} style={{ ...inp, fontFamily: 'monospace', fontSize: 11, resize: 'vertical' as const }} rows={3} />
+                    <textarea value={f.val} onChange={e => f.set(e.target.value)} style={{ ...inp, fontFamily: f.mono ? 'monospace' : 'inherit', fontSize: 12, resize: 'vertical' as const }} rows={3} />
                   </div>
                 ))}
               </div>
