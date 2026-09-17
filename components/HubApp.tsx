@@ -10,6 +10,7 @@ import DashboardManager from './DashboardManager';
 import ProximasAcoes from './ProximasAcoes';
 import Dossies from './Dossies';
 import CentralDeControle from './CentralDeControle';
+import PortalManager from './PortalManager';
 
 const btnS = (color: string, extra?: any) => ({
   background: color + '15', border: '1px solid ' + color + '30', borderRadius: 10,
@@ -331,6 +332,7 @@ export default function HubApp({ user }: { user: any }) {
       {navBtn('agenda', '📅', 'Agenda', todayMeetings.length)}
       {navBtn('estrategias', '📚', 'Estratégias')}
       {navBtn('dashboards', '📊', 'Dashboards')}
+      {navBtn('portal', '🔗', 'Portal do Cliente')}
 
       <div style={{ borderTop: '1px solid ' + T.bdr, margin: '8px 0' }} />
       {navBtn('financeiro', '💰', 'Financeiro')}
@@ -783,6 +785,9 @@ Responda a pergunta da Ana Paula sobre a agência.`;
             </div></div>);
         })}</div></div>))}</div>
   </main></div>);
+
+  // ═══ PORTAL DO CLIENTE ═══
+  if (page === 'portal') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}><PortalManager clients={clients} T={T} user={user} /></main></div>);
 
   // ═══ FINANCEIRO ═══
   if (page === 'financeiro') return (<div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>{sidebar}<main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}><Financeiro clients={clients} user={user} /></main></div>);
