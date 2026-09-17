@@ -89,8 +89,8 @@ async function apiFetch(
 }
 
 // ─── UI Atoms ─────────────────────────────────────────────────────────────────
-function Btn({ children, onClick, variant='primary', small=false, style:xStyle }:
-  { children:React.ReactNode; onClick?:()=>void; variant?:'primary'|'ghost'|'danger'; small?:boolean; style?:React.CSSProperties }) {
+function Btn({ children, onClick, variant='primary', small=false, style:xStyle, type='button' }:
+  { children:React.ReactNode; onClick?:()=>void; variant?:'primary'|'ghost'|'danger'; small?:boolean; style?:React.CSSProperties; type?:'button'|'submit' }) {
   const base: React.CSSProperties = {
     display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer',
     borderRadius:10, fontFamily:sans, fontWeight:500, border:'none',
@@ -104,7 +104,7 @@ function Btn({ children, onClick, variant='primary', small=false, style:xStyle }
     danger:  { background:C.badBg, color:C.bad },
   };
   return (
-    <button type="button" onClick={onClick}
+    <button type={type} onClick={onClick}
       style={{...base, ...variants[variant], ...xStyle}}>
       {children}
     </button>
@@ -697,7 +697,7 @@ function LoginScreen({ slug, onLogin }: { slug:string; onLogin:(admin:boolean)=>
         <form onSubmit={submit} style={{background:C.surface,borderRadius:14,padding:'28px 24px',border:`1px solid ${C.line}`}}>
           <Input label="Senha de acesso" type="password" value={pw} onChange={setPw} required/>
           {err && <p style={{color:C.bad,fontSize:13,margin:'-8px 0 12px',fontFamily:sans}}>{err}</p>}
-          <Btn onClick={undefined} style={{width:'100%',justifyContent:'center'}}>
+          <Btn type="submit" style={{width:'100%',justifyContent:'center'}}>
             {busy ? 'Verificando...' : 'Entrar'}
           </Btn>
         </form>
