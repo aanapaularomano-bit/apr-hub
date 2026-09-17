@@ -1,83 +1,41 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-
-// ─── Design tokens (matches prototipo-referencia.html) ───────────────────────
-const C = {
-  bg:       '#F2F4F1',
-  surface:  '#FFFFFF',
-  surface2: '#EBEFE9',
-  line:     '#D7DDD6',
-  text:     '#121714',
-  muted:    '#6B7C74',
-  accent:   '#3F6B00',
-  accentBg: '#EBF2E0',
-  ok:       '#1E7F47',
-  okBg:     '#E4F5EC',
-  warn:     '#92400E',
-  warnBg:   '#FEF3C7',
-  bad:      '#B93B28',
-  badBg:    '#FBEAE7',
-  info:     '#1e40af',
-  infoBg:   '#EEF2FF',
-};
-
-const sans  = "'Space Grotesk', system-ui, sans-serif";
-const serif = "'Fraunces', Georgia, serif";
-const mono  = "'JetBrains Mono', 'Fira Mono', monospace";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Report = { id: string; kind: string; ref_date: string; title: string; content: string | null };
-type Task   = { id: string; title: string; owner: string; status: string; note: string | null; due_date: string | null };
-type Link   = { id: string; group_name: string; label: string; url: string };
-type Launch = { id: string; name: string; period: string | null; status: string; metrics: string | null; content: string | null };
+type Report       = { id: string; kind: string; ref_date: string; title: string; content: string | null };
+type Task         = { id: string; title: string; owner: string; status: string; note: string | null; due_date: string | null };
+type Link         = { id: string; group_name: string; label: string; url: string };
+type Launch       = { id: string; name: string; period: string | null; status: string; metrics: string | null; content: string | null };
+type Optimization = { id: string; date: string; type: string; campaign: string | null; action: string; reason: string | null; result: string };
+type Request      = { id: string; from_who: string; title: string; status: string; note: string | null; created_at: string };
+type Content      = { id: string; title: string; format: string | null; sent_date: string | null; status: string; hook_rate: string | null; ctr: string | null; cpl: string | null; notes: string | null };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const KIND_LBL: Record<string,string> = { diario:'Diário', semanal:'Semanal', mensal:'Mensal' };
-const TS_LBL:  Record<string,string>  = { a_fazer:'A fazer', fazendo:'Fazendo', feito:'Feito', nao_feito:'Não feito' };
+const TS_LBL:   Record<string,string> = { a_fazer:'A fazer', fazendo:'Fazendo', feito:'Feito', nao_feito:'Não feito' };
 const TS_CYCLE: Record<string,string> = { a_fazer:'fazendo', fazendo:'feito', feito:'nao_feito', nao_feito:'a_fazer' };
 const TS_ORDER = ['a_fazer','fazendo','feito','nao_feito'];
-const OW_LBL:  Record<string,string>  = { agencia:'Agência', cliente:'Cliente' };
-const LS_LBL:  Record<string,string>  = { planejamento:'Planejamento', em_andamento:'Em andamento', concluido:'Concluído', pausado:'Pausado' };
+const OW_LBL:   Record<string,string> = { agencia:'Agência', cliente:'Cliente' };
+const KIND_LBL: Record<string,string> = { diario:'Diário', semanal:'Semanal', mensal:'Mensal' };
+const LS_LBL:   Record<string,string> = { planejamento:'Planejamento', em_andamento:'Em andamento', concluido:'Concluído', pausado:'Pausado' };
+const RS_LBL:   Record<string,string> = { em_andamento:'Em andamento', aguardando_voce:'Aguardando você', concluido:'Concluído', recebido:'Recebido' };
+const CS_LBL:   Record<string,string> = { no_ar:'No ar', pausado:'Pausado', recebido:'Recebido', aguardando_envio:'Aguardando envio' };
+const OPT_TYPES = ['Orçamento','Criativo','Público','Pausa','Teste','Página','Outro'];
 
-// ─── Tag / pill styles ────────────────────────────────────────────────────────
-type TagVariant = ''|'ok'|'bad'|'warn'|'acc'|'info';
-function tagStyle(v: TagVariant): React.CSSProperties {
-  const map: Record<TagVariant,[string,string]> = {
-    '':    [C.surface2, C.muted],
-    ok:    [C.okBg,     C.ok],
-    bad:   [C.badBg,    C.bad],
-    warn:  [C.warnBg,   C.warn],
-    acc:   [C.accentBg, C.accent],
-    info:  [C.infoBg,   C.info],
-  };
-  const [bg, color] = map[v];
-  return { display:'inline-flex', alignItems:'center', padding:'3px 10px', borderRadius:99,
-           fontSize:12, fontWeight:500, background:bg, color, fontFamily:sans,
-           whiteSpace:'nowrap' as const };
-}
+function rsTag(s: string)  { return s==='concluido'?'ok':s==='aguardando_voce'?'warn':s==='em_andamento'?'acc':''; }
+function csTag(s: string)  { return s==='no_ar'?'ok':s==='pausado'?'bad':s==='recebido'?'acc':'warn'; }
+function lsTag(s: string)  { return s==='concluido'?'ok':s==='pausado'?'bad':s==='em_andamento'?'warn':'acc'; }
+function resTag(r: string) { return r==='ok'?'ok':r==='bad'?'bad':'warn'; }
+function resLbl(r: string) { return r==='ok'?'Funcionou':r==='bad'?'Não funcionou':'Em observação'; }
+function kindTag(k: string) { return k==='mensal'?'ok':k==='semanal'?'acc':''; }
 
-function taskTag(s: string): React.ReactElement {
-  const v: TagVariant = s==='feito'?'ok':s==='nao_feito'?'bad':s==='fazendo'?'warn':'';
-  return <span style={tagStyle(v)}>{TS_LBL[s]??s}</span>;
-}
-function launchTag(s: string): React.ReactElement {
-  const v: TagVariant = s==='concluido'?'ok':s==='pausado'?'bad':s==='em_andamento'?'warn':'info';
-  return <span style={tagStyle(v)}>{LS_LBL[s]??s}</span>;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDate(iso: string | null) {
-  if (!iso) return '';
+  if (!iso) return '—';
   const [y,m,d] = iso.slice(0,10).split('-');
   return `${d}/${m}/${y}`;
 }
 
-async function apiFetch(
-  method: string, resource: string, slug: string,
-  body?: Record<string,unknown>, extra?: Record<string,string>
-) {
+async function apiFetch(method: string, resource: string, slug: string, body?: Record<string,unknown>, extra?: Record<string,string>) {
   const qs = new URLSearchParams({ slug, ...extra });
   const r = await fetch(`/api/portal/${resource}?${qs}`, {
     method,
@@ -88,587 +46,40 @@ async function apiFetch(
   return r.json();
 }
 
-// ─── UI Atoms ─────────────────────────────────────────────────────────────────
-function Btn({ children, onClick, variant='primary', small=false, style:xStyle, type='button' }:
-  { children:React.ReactNode; onClick?:()=>void; variant?:'primary'|'ghost'|'danger'; small?:boolean; style?:React.CSSProperties; type?:'button'|'submit' }) {
-  const base: React.CSSProperties = {
-    display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer',
-    borderRadius:10, fontFamily:sans, fontWeight:500, border:'none',
-    padding: small ? '6px 12px' : '9px 18px',
-    fontSize: small ? 13 : 14,
-    transition:'opacity .15s',
-  };
-  const variants = {
-    primary: { background:C.text, color:C.bg },
-    ghost:   { background:'transparent', color:C.muted, border:`1px solid ${C.line}` },
-    danger:  { background:C.badBg, color:C.bad },
-  };
-  return (
-    <button type={type} onClick={onClick}
-      style={{...base, ...variants[variant], ...xStyle}}>
-      {children}
-    </button>
-  );
+// ─── Shared UI Primitives ─────────────────────────────────────────────────────
+function Tag({ v, children }: { v?: string; children: React.ReactNode }) {
+  return <span className={`tag${v?' '+v:''}`}>{children}</span>;
 }
 
-function Input({ label, value, onChange, type='text', placeholder='', required=false, rows }:
-  { label:string; value:string; onChange:(v:string)=>void; type?:string;
-    placeholder?:string; required?:boolean; rows?:number }) {
-  const s: React.CSSProperties = {
-    width:'100%', padding:'10px 12px', borderRadius:10, fontFamily:sans, fontSize:14,
-    border:`1px solid ${C.line}`, background:C.surface, color:C.text, outline:'none',
-    boxSizing:'border-box' as const,
-  };
+function EmptyState({ msg, action }: { msg: string; action?: React.ReactNode }) {
   return (
-    <div style={{marginBottom:14}}>
-      <label style={{display:'block', fontSize:12, color:C.muted, marginBottom:4, fontFamily:sans}}>
-        {label}{required && <span style={{color:C.bad}}> *</span>}
-      </label>
-      {rows
-        ? <textarea rows={rows} value={value} onChange={e=>onChange(e.target.value)}
-            placeholder={placeholder} style={{...s, resize:'vertical', lineHeight:1.5}}/>
-        : <input type={type} value={value} onChange={e=>onChange(e.target.value)}
-            placeholder={placeholder} style={s}/>
-      }
-    </div>
-  );
-}
-
-function Select({ label, value, onChange, options }:
-  { label:string; value:string; onChange:(v:string)=>void; options:{value:string;label:string}[] }) {
-  return (
-    <div style={{marginBottom:14}}>
-      <label style={{display:'block', fontSize:12, color:C.muted, marginBottom:4, fontFamily:sans}}>{label}</label>
-      <select value={value} onChange={e=>onChange(e.target.value)}
-        style={{width:'100%', padding:'10px 12px', borderRadius:10, fontFamily:sans, fontSize:14,
-                border:`1px solid ${C.line}`, background:C.surface, color:C.text, outline:'none'}}>
-        {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </div>
-  );
-}
-
-// Connected list pattern from prototype
-function Rows({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{border:`1px solid ${C.line}`, borderRadius:14, overflow:'hidden', background:C.surface}}>
-      {children}
-    </div>
-  );
-}
-function Row({ children, first=false }: { children: React.ReactNode; first?: boolean }) {
-  return (
-    <div style={{padding:'14px 18px', borderTop: first ? 'none' : `1px solid ${C.line}`}}>
-      {children}
-    </div>
-  );
-}
-function RowTop({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' as const}}>
-      {children}
-    </div>
-  );
-}
-
-// Connected KPI strip
-function KpiStrip({ items }: { items: { label:string; value:string; delta?:string }[] }) {
-  if (!items.length) return null;
-  return (
-    <div style={{
-      display:'grid', gridTemplateColumns:`repeat(${items.length}, minmax(100px, 1fr))`,
-      border:`1px solid ${C.line}`, borderRadius:14, overflow:'hidden',
-      background:C.surface, marginBottom:20,
-    }}>
-      {items.map((item, i) => (
-        <div key={i} style={{
-          padding:'16px 18px',
-          borderRight: i < items.length-1 ? `1px solid ${C.line}` : 'none',
-        }}>
-          <div style={{fontSize:12, color:C.muted, fontFamily:sans, marginBottom:4}}>{item.label}</div>
-          <div style={{fontSize:22, fontWeight:600, fontFamily:mono, color:C.text, lineHeight:1}}>{item.value}</div>
-          {item.delta && <div style={{fontSize:11, fontFamily:mono, color:C.muted, marginTop:2}}>{item.delta}</div>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Page header (period above title)
-function PageHead({ period, title, action }:
-  { period?:string; title:string; action?:React.ReactNode }) {
-  return (
-    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:20, gap:12, flexWrap:'wrap' as const}}>
-      <div>
-        {period && <div style={{fontSize:13, color:C.muted, fontFamily:sans, marginBottom:4}}>{period}</div>}
-        <h1 style={{margin:0, fontFamily:serif, fontWeight:400, fontSize:'clamp(28px,4vw,40px)', color:C.text, lineHeight:1.1}}>
-          {title}
-        </h1>
-      </div>
-      {action && <div>{action}</div>}
-    </div>
-  );
-}
-
-// Empty state as a card
-function EmptyState({ message, action }: { message: string; action?: React.ReactNode }) {
-  return (
-    <div style={{
-      border:`1px dashed ${C.line}`, borderRadius:14, background:C.surface,
-      padding:'40px 24px', textAlign:'center' as const,
-    }}>
-      <p style={{margin:'0 0 12px', fontSize:14, color:C.muted, fontFamily:sans}}>{message}</p>
+    <div className="panel" style={{ textAlign:'center', padding:'40px 24px' }}>
+      <p className="muted" style={{ marginBottom: action ? 14 : 0 }}>{msg}</p>
       {action}
     </div>
   );
 }
 
-// Modal overlay
-function Modal({ title, onClose, children }: { title:string; onClose:()=>void; children:React.ReactNode }) {
+function InlineForm({ children, onSubmit }: { children: React.ReactNode; onSubmit: (e:React.FormEvent)=>void }) {
   return (
-    <div style={{position:'fixed',inset:0,zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div onClick={onClose} style={{position:'absolute',inset:0,background:'rgba(0,0,0,.35)'}}/>
-      <div style={{position:'relative',background:C.surface,borderRadius:16,padding:28,width:'100%',maxWidth:480,
-                   maxHeight:'90vh',overflowY:'auto',boxShadow:'0 8px 32px rgba(0,0,0,.15)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-          <h2 style={{margin:0,fontFamily:serif,fontWeight:400,fontSize:22,color:C.text}}>{title}</h2>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:C.muted}}>✕</button>
-        </div>
-        {children}
-      </div>
+    <div className="panel" style={{ marginBottom:20 }}>
+      <form className="form-grid" onSubmit={onSubmit}>{children}</form>
     </div>
   );
 }
 
-// ─── Section: Relatórios ──────────────────────────────────────────────────────
-type ReportModal = { editing: Report | null };
-const rfD = { kind:'mensal', ref_date:'', title:'', content:'' };
-
-function ReportsSection({ slug, isAdmin }: { slug:string; isAdmin:boolean }) {
-  const [reports, setReports]   = useState<Report[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [filter, setFilter]     = useState('');
-  const [modal, setModal]       = useState<ReportModal|null>(null);
-  const [form, setForm]         = useState(rfD);
-  const [saving, setSaving]     = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const d = await apiFetch('GET','reports',slug);
-    setReports(d.reports ?? []);
-    setLoading(false);
-  }, [slug]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const visible = filter ? reports.filter(r=>r.kind===filter) : reports;
-
-  async function save() {
-    if (!form.title || !form.ref_date) return;
-    setSaving(true);
-    if (modal?.editing) {
-      await apiFetch('PUT','reports',slug,{ id:modal.editing.id, ...form });
-    } else {
-      await apiFetch('POST','reports',slug, form);
-    }
-    setSaving(false); setModal(null); await load();
-  }
-
-  async function del(r: Report) {
-    if (!confirm(`Excluir "${r.title}"?`)) return;
-    await apiFetch('DELETE','reports',slug,{id:r.id}); await load();
-  }
-
-  const chips = ['diario','semanal','mensal'];
-
-  return (
-    <div>
-      <PageHead period="Relatórios publicados pela agência" title="Relatórios"
-        action={isAdmin ? <Btn onClick={()=>{setForm(rfD);setModal({editing:null})}}>+ Novo relatório</Btn> : undefined}/>
-
-      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
-        {chips.map(v=>(
-          <button key={v} type="button" onClick={()=>setFilter(f=>f===v?'':v)}
-            aria-pressed={filter===v}
-            style={{
-              border:`1px solid ${filter===v?C.text:C.line}`,
-              borderRadius:20, padding:'5px 12px', fontSize:13,
-              color: filter===v ? C.bg : C.muted,
-              background: filter===v ? C.text : C.surface,
-              cursor:'pointer', fontFamily:sans,
-            }}>
-            {KIND_LBL[v]}
-          </button>
-        ))}
-      </div>
-
-      {loading ? <p style={{color:C.muted,fontSize:14,fontFamily:sans}}>Carregando...</p>
-        : visible.length===0 ? (
-          <EmptyState message={`Nenhum relatório${filter?' '+KIND_LBL[filter]?.toLowerCase():''} publicado ainda.`}
-            action={isAdmin?<Btn onClick={()=>{setForm(rfD);setModal({editing:null})}}>+ Novo relatório</Btn>:undefined}/>
-        ) : (
-          <Rows>
-            {visible.map((r,i)=>(
-              <Row key={r.id} first={i===0}>
-                <RowTop>
-                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <span style={tagStyle(r.kind==='mensal'?'ok':r.kind==='semanal'?'acc':'info')}>{KIND_LBL[r.kind]}</span>
-                    <span style={{fontFamily:sans,fontWeight:500,fontSize:14,color:C.text}}>{r.title}</span>
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{fontSize:13,color:C.muted,fontFamily:mono}}>{fmtDate(r.ref_date)}</span>
-                    {isAdmin && <>
-                      <Btn small variant="ghost" onClick={()=>{setForm({kind:r.kind,ref_date:r.ref_date,title:r.title,content:r.content??''});setModal({editing:r});}}>Editar</Btn>
-                      <Btn small variant="danger" onClick={()=>del(r)}>Excluir</Btn>
-                    </>}
-                  </div>
-                </RowTop>
-                {r.content && <p style={{margin:'8px 0 0',fontSize:14,color:C.muted,fontFamily:sans,lineHeight:1.6,whiteSpace:'pre-wrap'}}>{r.content}</p>}
-              </Row>
-            ))}
-          </Rows>
-        )
-      }
-
-      {modal!==null && (
-        <Modal title={modal.editing?'Editar relatório':'Novo relatório'} onClose={()=>setModal(null)}>
-          <Select label="Tipo" value={form.kind} onChange={v=>setForm(f=>({...f,kind:v}))}
-            options={[{value:'diario',label:'Diário'},{value:'semanal',label:'Semanal'},{value:'mensal',label:'Mensal'}]}/>
-          <Input label="Data de referência" type="date" value={form.ref_date} onChange={v=>setForm(f=>({...f,ref_date:v}))} required/>
-          <Input label="Título" value={form.title} onChange={v=>setForm(f=>({...f,title:v}))} required placeholder="Ex: Relatório de agosto"/>
-          <Input label="Conteúdo" value={form.content} onChange={v=>setForm(f=>({...f,content:v}))} rows={5} placeholder="Resumo, observações ou link..."/>
-          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:4}}>
-            <Btn variant="ghost" onClick={()=>setModal(null)}>Cancelar</Btn>
-            <Btn onClick={save}>{saving?'Salvando...':'Salvar'}</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="field">{label && <label>{label}</label>}{children}</div>;
 }
 
-// ─── Section: Tarefas (kanban) ────────────────────────────────────────────────
-function TasksSection({ slug, isAdmin }: { slug:string; isAdmin:boolean }) {
-  const [tasks, setTasks]   = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal]   = useState<{editing:Task|null}|null>(null);
-  const [form, setForm]     = useState({ title:'', owner:'agencia', status:'a_fazer', note:'', due_date:'' });
-  const [saving, setSaving] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const d = await apiFetch('GET','tasks',slug);
-    setTasks(d.tasks ?? []);
-    setLoading(false);
-  }, [slug]);
-
-  useEffect(()=>{ load(); },[load]);
-
-  async function cycleStatus(t: Task) {
-    await apiFetch('PUT','tasks',slug,{ id:t.id, status:TS_CYCLE[t.status]??'a_fazer' });
-    await load();
-  }
-
-  async function save() {
-    if (!form.title) return;
-    setSaving(true);
-    if (modal?.editing) {
-      await apiFetch('PUT','tasks',slug,{ id:modal.editing.id, ...form, due_date:form.due_date||null });
-    } else {
-      await apiFetch('POST','tasks',slug,{ ...form, due_date:form.due_date||null });
-    }
-    setSaving(false); setModal(null); await load();
-  }
-
-  async function del(t: Task) {
-    if (!confirm(`Excluir "${t.title}"?`)) return;
-    await apiFetch('DELETE','tasks',slug,{id:t.id}); await load();
-  }
-
-  const byStatus = TS_ORDER.reduce<Record<string,Task[]>>((acc,s)=>{
-    acc[s] = tasks.filter(t=>t.status===s);
-    return acc;
-  },{});
-
-  const counts = TS_ORDER.map(s=>byStatus[s].length);
-
-  return (
-    <div>
-      <PageHead period="Status das entregas e responsabilidades" title="Tarefas"
-        action={isAdmin?<Btn onClick={()=>{setForm({title:'',owner:'agencia',status:'a_fazer',note:'',due_date:''});setModal({editing:null})}}>+ Nova tarefa</Btn>:undefined}/>
-
-      {tasks.length>0 && (
-        <KpiStrip items={[
-          { label:'Total', value:String(tasks.length) },
-          { label:'A fazer', value:String(byStatus.a_fazer.length) },
-          { label:'Fazendo', value:String(byStatus.fazendo.length) },
-          { label:'Feito', value:String(byStatus.feito.length) },
-        ]}/>
-      )}
-
-      {loading ? <p style={{color:C.muted,fontSize:14,fontFamily:sans}}>Carregando...</p>
-        : tasks.length===0 ? (
-          <EmptyState message="Nenhuma tarefa ainda."
-            action={isAdmin?<Btn onClick={()=>{setForm({title:'',owner:'agencia',status:'a_fazer',note:'',due_date:''});setModal({editing:null})}}>+ Nova tarefa</Btn>:undefined}/>
-        ) : (
-          <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12}}>
-            {TS_ORDER.map(s=>(
-              <div key={s}>
-                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
-                  {taskTag(s)}
-                  <span style={{fontSize:12,color:C.muted,fontFamily:mono}}>{counts[TS_ORDER.indexOf(s)]}</span>
-                </div>
-                <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {byStatus[s].length===0
-                    ? <div style={{border:`1px dashed ${C.line}`,borderRadius:10,padding:12,textAlign:'center'}}>
-                        <span style={{fontSize:12,color:C.muted,fontFamily:sans}}>Vazio</span>
-                      </div>
-                    : byStatus[s].map(t=>(
-                        <div key={t.id} style={{background:C.surface,border:`1px solid ${C.line}`,borderRadius:10,padding:'12px 14px'}}>
-                          <div style={{fontSize:13,fontWeight:500,color:C.text,fontFamily:sans,marginBottom:4,lineHeight:1.4}}>{t.title}</div>
-                          <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                            <span style={tagStyle('')}>{OW_LBL[t.owner]??t.owner}</span>
-                            {t.due_date && <span style={{fontSize:11,color:C.muted,fontFamily:mono}}>{fmtDate(t.due_date)}</span>}
-                          </div>
-                          {t.note && <p style={{margin:'8px 0 0',fontSize:12,color:C.muted,fontFamily:sans,lineHeight:1.5}}>{t.note}</p>}
-                          <div style={{display:'flex',gap:6,marginTop:10}}>
-                            {isAdmin && (
-                              <>
-                                <Btn small variant="ghost" onClick={()=>cycleStatus(t)}>Avançar</Btn>
-                                <Btn small variant="ghost" onClick={()=>{setForm({title:t.title,owner:t.owner,status:t.status,note:t.note??'',due_date:t.due_date??''});setModal({editing:t});}}>Editar</Btn>
-                                <Btn small variant="danger" onClick={()=>del(t)}>✕</Btn>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                    ))
-                  }
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      }
-
-      {modal!==null && (
-        <Modal title={modal.editing?'Editar tarefa':'Nova tarefa'} onClose={()=>setModal(null)}>
-          <Input label="Título" value={form.title} onChange={v=>setForm(f=>({...f,title:v}))} required placeholder="Descreva a tarefa"/>
-          <Select label="Responsável" value={form.owner} onChange={v=>setForm(f=>({...f,owner:v}))}
-            options={[{value:'agencia',label:'Agência'},{value:'cliente',label:'Cliente'}]}/>
-          <Select label="Status" value={form.status} onChange={v=>setForm(f=>({...f,status:v}))}
-            options={TS_ORDER.map(s=>({value:s,label:TS_LBL[s]}))}/>
-          <Input label="Data limite" type="date" value={form.due_date} onChange={v=>setForm(f=>({...f,due_date:v}))}/>
-          <Input label="Observação" value={form.note} onChange={v=>setForm(f=>({...f,note:v}))} rows={3} placeholder="Detalhes adicionais..."/>
-          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:4}}>
-            <Btn variant="ghost" onClick={()=>setModal(null)}>Cancelar</Btn>
-            <Btn onClick={save}>{saving?'Salvando...':'Salvar'}</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
+function FullField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="field full">{label && <label>{label}</label>}{children}</div>;
 }
 
-// ─── Section: Links ───────────────────────────────────────────────────────────
-function LinksSection({ slug, isAdmin }: { slug:string; isAdmin:boolean }) {
-  const [links, setLinks]   = useState<Link[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal]   = useState<{editing:Link|null}|null>(null);
-  const [form, setForm]     = useState({ group_name:'', label:'', url:'' });
-  const [saving, setSaving] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const d = await apiFetch('GET','links',slug);
-    setLinks(d.links ?? []);
-    setLoading(false);
-  }, [slug]);
-
-  useEffect(()=>{ load(); },[load]);
-
-  async function save() {
-    if (!form.group_name||!form.label||!form.url) return;
-    setSaving(true);
-    if (modal?.editing) {
-      await apiFetch('PUT','links',slug,{ id:modal.editing.id, ...form });
-    } else {
-      await apiFetch('POST','links',slug, form);
-    }
-    setSaving(false); setModal(null); await load();
-  }
-
-  async function del(l: Link) {
-    if (!confirm(`Excluir "${l.label}"?`)) return;
-    await apiFetch('DELETE','links',slug,{id:l.id}); await load();
-  }
-
-  // Group by group_name
-  const groups = links.reduce<Record<string,Link[]>>((acc,l)=>{
-    (acc[l.group_name]??=[]).push(l);
-    return acc;
-  },{});
-
-  return (
-    <div>
-      <PageHead period="Acessos e recursos importantes" title="Links"
-        action={isAdmin?<Btn onClick={()=>{setForm({group_name:'',label:'',url:''});setModal({editing:null})}}>+ Novo link</Btn>:undefined}/>
-
-      {loading ? <p style={{color:C.muted,fontSize:14,fontFamily:sans}}>Carregando...</p>
-        : links.length===0 ? (
-          <EmptyState message="Nenhum link cadastrado ainda."
-            action={isAdmin?<Btn onClick={()=>{setForm({group_name:'',label:'',url:''});setModal({editing:null})}}>+ Novo link</Btn>:undefined}/>
-        ) : (
-          Object.entries(groups).map(([gName, items])=>(
-            <div key={gName} style={{marginBottom:24}}>
-              <h2 style={{fontFamily:serif,fontWeight:400,fontSize:18,color:C.text,margin:'0 0 10px'}}>{gName}</h2>
-              <Rows>
-                {items.map((l,i)=>(
-                  <Row key={l.id} first={i===0}>
-                    <RowTop>
-                      <a href={l.url} target="_blank" rel="noopener noreferrer"
-                        style={{fontSize:14,fontWeight:500,color:C.accent,fontFamily:sans,textDecoration:'none'}}>
-                        {l.label}
-                        <span style={{fontSize:11,color:C.muted,marginLeft:6,fontFamily:mono}}>↗</span>
-                      </a>
-                      {isAdmin && (
-                        <div style={{display:'flex',gap:6}}>
-                          <Btn small variant="ghost" onClick={()=>{setForm({group_name:l.group_name,label:l.label,url:l.url});setModal({editing:l});}}>Editar</Btn>
-                          <Btn small variant="danger" onClick={()=>del(l)}>Excluir</Btn>
-                        </div>
-                      )}
-                    </RowTop>
-                    <div style={{fontSize:12,color:C.muted,fontFamily:mono,marginTop:4,wordBreak:'break-all' as const}}>{l.url}</div>
-                  </Row>
-                ))}
-              </Rows>
-            </div>
-          ))
-        )
-      }
-
-      {modal!==null && (
-        <Modal title={modal.editing?'Editar link':'Novo link'} onClose={()=>setModal(null)}>
-          <Input label="Grupo" value={form.group_name} onChange={v=>setForm(f=>({...f,group_name:v}))} required placeholder="Ex: Páginas e checkout"/>
-          <Input label="Nome do link" value={form.label} onChange={v=>setForm(f=>({...f,label:v}))} required placeholder="Ex: Página de vendas"/>
-          <Input label="URL" value={form.url} onChange={v=>setForm(f=>({...f,url:v}))} required placeholder="https://..."/>
-          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:4}}>
-            <Btn variant="ghost" onClick={()=>setModal(null)}>Cancelar</Btn>
-            <Btn onClick={save}>{saving?'Salvando...':'Salvar'}</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ─── Section: Lançamentos ─────────────────────────────────────────────────────
-function LaunchesSection({ slug, isAdmin }: { slug:string; isAdmin:boolean }) {
-  const [launches, setLaunches] = useState<Launch[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [modal, setModal]       = useState<{editing:Launch|null}|null>(null);
-  const [form, setForm]         = useState({ name:'', period:'', status:'planejamento', metrics:'', content:'' });
-  const [saving, setSaving]     = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const d = await apiFetch('GET','launches',slug);
-    setLaunches(d.launches ?? []);
-    setLoading(false);
-  }, [slug]);
-
-  useEffect(()=>{ load(); },[load]);
-
-  async function save() {
-    if (!form.name) return;
-    setSaving(true);
-    if (modal?.editing) {
-      await apiFetch('PUT','launches',slug,{ id:modal.editing.id, ...form, period:form.period||null, metrics:form.metrics||null, content:form.content||null });
-    } else {
-      await apiFetch('POST','launches',slug,{ ...form, period:form.period||null, metrics:form.metrics||null, content:form.content||null });
-    }
-    setSaving(false); setModal(null); await load();
-  }
-
-  async function del(l: Launch) {
-    if (!confirm(`Excluir "${l.name}"?`)) return;
-    await apiFetch('DELETE','launches',slug,{id:l.id}); await load();
-  }
-
-  const counts = {
-    total: launches.length,
-    em_andamento: launches.filter(l=>l.status==='em_andamento').length,
-    concluido: launches.filter(l=>l.status==='concluido').length,
-  };
-
-  return (
-    <div>
-      <PageHead period="Histórico e planejamento de lançamentos" title="Lançamentos"
-        action={isAdmin?<Btn onClick={()=>{setForm({name:'',period:'',status:'planejamento',metrics:'',content:''});setModal({editing:null})}}>+ Novo lançamento</Btn>:undefined}/>
-
-      {launches.length>0 && (
-        <KpiStrip items={[
-          { label:'Total', value:String(counts.total) },
-          { label:'Em andamento', value:String(counts.em_andamento) },
-          { label:'Concluídos', value:String(counts.concluido) },
-        ]}/>
-      )}
-
-      {loading ? <p style={{color:C.muted,fontSize:14,fontFamily:sans}}>Carregando...</p>
-        : launches.length===0 ? (
-          <EmptyState message="Nenhum lançamento cadastrado ainda."
-            action={isAdmin?<Btn onClick={()=>{setForm({name:'',period:'',status:'planejamento',metrics:'',content:''});setModal({editing:null})}}>+ Novo lançamento</Btn>:undefined}/>
-        ) : (
-          <Rows>
-            {launches.map((l,i)=>(
-              <Row key={l.id} first={i===0}>
-                <RowTop>
-                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    {launchTag(l.status)}
-                    <span style={{fontFamily:sans,fontWeight:500,fontSize:14,color:C.text}}>{l.name}</span>
-                    {l.period && <span style={{fontSize:12,color:C.muted,fontFamily:mono}}>{l.period}</span>}
-                  </div>
-                  {isAdmin && (
-                    <div style={{display:'flex',gap:6}}>
-                      <Btn small variant="ghost" onClick={()=>{setForm({name:l.name,period:l.period??'',status:l.status,metrics:l.metrics??'',content:l.content??''});setModal({editing:l});}}>Editar</Btn>
-                      <Btn small variant="danger" onClick={()=>del(l)}>Excluir</Btn>
-                    </div>
-                  )}
-                </RowTop>
-                {l.metrics && <p style={{margin:'8px 0 0',fontSize:13,color:C.muted,fontFamily:mono,lineHeight:1.6}}>{l.metrics}</p>}
-                {l.content && <p style={{margin:'6px 0 0',fontSize:13,color:C.text,fontFamily:sans,lineHeight:1.6,whiteSpace:'pre-wrap'}}>{l.content}</p>}
-              </Row>
-            ))}
-          </Rows>
-        )
-      }
-
-      {modal!==null && (
-        <Modal title={modal.editing?'Editar lançamento':'Novo lançamento'} onClose={()=>setModal(null)}>
-          <Input label="Nome do lançamento" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} required placeholder="Ex: Lançamento maio 2026"/>
-          <Input label="Período" value={form.period} onChange={v=>setForm(f=>({...f,period:v}))} placeholder="Ex: 05/2026 ou Mai–Jun 2026"/>
-          <Select label="Status" value={form.status} onChange={v=>setForm(f=>({...f,status:v}))}
-            options={[
-              {value:'planejamento',label:'Planejamento'},
-              {value:'em_andamento',label:'Em andamento'},
-              {value:'concluido',label:'Concluído'},
-              {value:'pausado',label:'Pausado'},
-            ]}/>
-          <Input label="Métricas" value={form.metrics} onChange={v=>setForm(f=>({...f,metrics:v}))} rows={2} placeholder="Resultados, números-chave..."/>
-          <Input label="Observações" value={form.content} onChange={v=>setForm(f=>({...f,content:v}))} rows={4} placeholder="Contexto, links, notas..."/>
-          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:4}}>
-            <Btn variant="ghost" onClick={()=>setModal(null)}>Cancelar</Btn>
-            <Btn onClick={save}>{saving?'Salvando...':'Salvar'}</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ─── Login screen ─────────────────────────────────────────────────────────────
-function LoginScreen({ slug, onLogin }: { slug:string; onLogin:(admin:boolean)=>void }) {
-  const [pw, setPw]   = useState('');
-  const [err, setErr] = useState('');
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+function LoginScreen({ slug, onLogin }: { slug: string; onLogin: (role: string) => void }) {
+  const [pw, setPw]     = useState('');
+  const [err, setErr]   = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -676,151 +87,1014 @@ function LoginScreen({ slug, onLogin }: { slug:string; onLogin:(admin:boolean)=>
     setBusy(true); setErr('');
     try {
       const r = await fetch(`/api/portal/login?slug=${encodeURIComponent(slug)}`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ slug, password:pw }),
-        credentials:'include',
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ slug, password: pw }),
+        credentials: 'include',
       });
       const d = await r.json();
-      if (d.role) { onLogin(d.role==='admin'); }
+      if (d.role) { onLogin(d.role); }
       else { setErr(d.error ?? 'Senha incorreta'); }
-    } catch(ex) {
-      setErr('Erro de conexão. Tente novamente.');
-      console.error('login error', ex);
-    }
+    } catch { setErr('Erro de conexão. Tente novamente.'); }
     setBusy(false);
   }
 
   return (
-    <div style={{minHeight:'100vh',background:C.bg,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:sans}}>
-      <div style={{width:'100%',maxWidth:380}}>
-        <div style={{textAlign:'center',marginBottom:32}}>
-          <div style={{fontSize:13,color:C.muted,marginBottom:8,letterSpacing:.5,textTransform:'uppercase' as const}}>APR Digital</div>
-          <h1 style={{fontFamily:serif,fontWeight:400,fontSize:32,color:C.text,margin:0}}>Portal do Cliente</h1>
-          <p style={{fontSize:14,color:C.muted,margin:'10px 0 0',lineHeight:1.6}}>Acompanhe relatórios, tarefas e lançamentos do seu projeto.</p>
-        </div>
-        <form onSubmit={submit} style={{background:C.surface,borderRadius:14,padding:'28px 24px',border:`1px solid ${C.line}`}}>
-          <Input label="Senha de acesso" type="password" value={pw} onChange={setPw} required/>
-          {err && <p style={{color:C.bad,fontSize:13,margin:'-8px 0 12px',fontFamily:sans}}>{err}</p>}
-          <Btn type="submit" style={{width:'100%',justifyContent:'center'}}>
-            {busy ? 'Verificando...' : 'Entrar'}
-          </Btn>
+    <div className="login">
+      <div className="login-card">
+        <div className="brand">APR Digital</div>
+        <h1>Portal do cliente</h1>
+        <p className="muted">Acompanhe relatórios, tarefas, solicitações e lançamentos do seu projeto.</p>
+        <form onSubmit={submit}>
+          <div className="field">
+            <label htmlFor="pw">Senha de acesso</label>
+            <input className="input" id="pw" type="password" value={pw} onChange={e=>setPw(e.target.value)} required placeholder="Senha enviada pela agência"/>
+          </div>
+          {err && <p className="small" style={{ color:'var(--bad)', margin:0 }}>{err}</p>}
+          <button className="btn" type="submit">{busy ? 'Verificando...' : 'Entrar na central'}</button>
         </form>
       </div>
     </div>
   );
 }
 
-// ─── Sidebar nav item ─────────────────────────────────────────────────────────
-function NavItem({ label, active, onClick }: { label:string; active:boolean; onClick:()=>void }) {
+// ─── Section: Visão Geral ─────────────────────────────────────────────────────
+function OverviewSection({ slug }: { slug: string }) {
+  const [tasks,    setTasks]    = useState<Task[]>([]);
+  const [reports,  setReports]  = useState<Report[]>([]);
+  const [launches, setLaunches] = useState<Launch[]>([]);
+  const [loading,  setLoading]  = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch('GET','tasks',slug),
+      apiFetch('GET','reports',slug),
+      apiFetch('GET','launches',slug),
+    ]).then(([t,r,l]) => {
+      setTasks(t.tasks ?? []);
+      setReports(r.reports ?? []);
+      setLaunches(l.launches ?? []);
+      setLoading(false);
+    });
+  }, [slug]);
+
+  if (loading) return <p className="muted small">Carregando...</p>;
+
+  const needs  = tasks.filter(t => t.owner==='cliente' && ['a_fazer','fazendo'].includes(t.status));
+  const activeL = launches.filter(l => l.status==='em_andamento');
+  const recentR = reports.slice(0,3);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? 'page' : undefined}
-      style={{
-        display:'block', width:'100%', textAlign:'left', padding:'9px 12px',
-        borderRadius:8, border:'none', cursor:'pointer',
-        background: active ? C.surface2 : 'transparent',
-        color: active ? C.text : C.muted,
-        fontFamily:sans, fontSize:14, fontWeight: active ? 500 : 400,
-        transition:'background .15s, color .15s',
-      }}>
-      {label}
-    </button>
+    <>
+      <div className="page-head">
+        <div>
+          <div className="period">Resumo da sua conta</div>
+          <h1>Visão geral</h1>
+        </div>
+      </div>
+
+      <div className="kpis">
+        <div className="kpi"><div className="l">Tarefas pendentes</div><div className="v">{tasks.filter(t=>['a_fazer','fazendo'].includes(t.status)).length}</div></div>
+        <div className="kpi"><div className="l">Precisa de você</div><div className="v">{needs.length}</div></div>
+        <div className="kpi"><div className="l">Lançamentos ativos</div><div className="v">{activeL.length}</div></div>
+        <div className="kpi"><div className="l">Relatórios</div><div className="v">{reports.length}</div></div>
+      </div>
+
+      {needs.length > 0 && (
+        <section className="needs" style={{ marginTop:28 }}>
+          <h2>O que precisamos de você</h2>
+          <p className="small muted">Esses itens estão aguardando a sua ação para avançarmos.</p>
+          {needs.map(n => (
+            <div key={n.id} className="need">
+              <div>
+                <h3>{n.title}</h3>
+                {n.note && <p className="small muted">{n.note}</p>}
+              </div>
+              <div style={{ textAlign:'right' }}>
+                {n.due_date && <div className="due">{fmtDate(n.due_date)}</div>}
+                <Tag v="warn">{TS_LBL[n.status]}</Tag>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {activeL.length > 0 && (
+        <section style={{ marginTop:28 }}>
+          <div className="section-head"><h2>Lançamento em andamento</h2></div>
+          <div className="rows">
+            {activeL.map(l => (
+              <div key={l.id} className="row">
+                <div className="row-top">
+                  <h3>{l.name}</h3>
+                  <Tag v="warn">Em andamento</Tag>
+                </div>
+                {l.period && <p className="small muted">{l.period}</p>}
+                {l.metrics && <p className="small muted mono">{l.metrics}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recentR.length > 0 && (
+        <section style={{ marginTop:28 }}>
+          <div className="section-head"><h2>Últimos relatórios</h2></div>
+          <div className="rows">
+            {recentR.map(r => (
+              <div key={r.id} className="row">
+                <div className="row-top">
+                  <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                    <Tag v={kindTag(r.kind)}>{KIND_LBL[r.kind]}</Tag>
+                    <span>{r.title}</span>
+                  </div>
+                  <span className="small muted mono">{fmtDate(r.ref_date)}</span>
+                </div>
+                {r.content && <p className="small muted">{r.content.slice(0,120)}{r.content.length>120?'…':''}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {needs.length===0 && activeL.length===0 && recentR.length===0 && (
+        <EmptyState msg="Nenhum dado disponível ainda. A agência publicará relatórios e tarefas em breve."/>
+      )}
+    </>
   );
 }
 
-// ─── Main Portal Client ───────────────────────────────────────────────────────
-type Tab = 'relatorios' | 'tarefas' | 'links' | 'lancamentos';
+// ─── Section: Relatórios (filtra por kind) ────────────────────────────────────
+function ReportsSection({ slug, isAdmin, kind, title, period }: {
+  slug: string; isAdmin: boolean; kind: string; title: string; period: string;
+}) {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Report|null>(null);
+  const [form, setForm] = useState({ ref_date:'', title:'', content:'' });
+  const [saving, setSaving] = useState(false);
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    const d = await apiFetch('GET','reports',slug);
+    const all: Report[] = d.reports ?? [];
+    setReports(all.filter(r => r.kind === kind));
+    setLoading(false);
+  }, [slug, kind]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function openNew() { setForm({ ref_date:'', title:'', content:'' }); setEditing(null); setShowForm(true); }
+  function openEdit(r: Report) { setForm({ ref_date:r.ref_date, title:r.title, content:r.content??'' }); setEditing(r); setShowForm(true); }
+  function cancel() { setShowForm(false); setEditing(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.title||!form.ref_date) return;
+    setSaving(true);
+    if (editing) { await apiFetch('PUT','reports',slug,{id:editing.id,kind,...form}); }
+    else { await apiFetch('POST','reports',slug,{kind,...form}); }
+    setSaving(false); cancel(); await load();
+  }
+
+  async function del(r: Report) {
+    if (!confirm(`Excluir "${r.title}"?`)) return;
+    await apiFetch('DELETE','reports',slug,{id:r.id}); await load();
+  }
+
+  return (
+    <>
+      <div className="page-head">
+        <div><div className="period">{period}</div><h1>{title}</h1></div>
+        {isAdmin && !showForm && <button className="btn btn-sm" onClick={openNew}>+ Novo</button>}
+      </div>
+
+      {showForm && (
+        <InlineForm onSubmit={save}>
+          <FullField label="Título *">
+            <input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required placeholder={`Ex.: ${title} de agosto`}/>
+          </FullField>
+          <Field label="Data de referência *">
+            <input className="input" type="date" value={form.ref_date} onChange={e=>setForm(f=>({...f,ref_date:e.target.value}))} required/>
+          </Field>
+          <FullField label="Conteúdo">
+            <textarea className="input" value={form.content} onChange={e=>setForm(f=>({...f,content:e.target.value}))} rows={5} placeholder="Resumo, observações ou link..."/>
+          </FullField>
+          <div className="full" style={{ display:'flex',gap:8 }}>
+            <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
+            <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+          </div>
+        </InlineForm>
+      )}
+
+      {loading ? <p className="muted small">Carregando...</p>
+        : reports.length===0
+          ? <EmptyState msg={`Nenhum ${title.toLowerCase()} publicado ainda.`} action={isAdmin&&!showForm?<button className="btn btn-sm" onClick={openNew}>+ Novo</button>:undefined}/>
+          : (
+            <div className="rows">
+              {reports.map(r=>(
+                <div key={r.id} className="row">
+                  <div className="row-top">
+                    <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
+                      <span className="small muted mono">{fmtDate(r.ref_date)}</span>
+                      <strong>{r.title}</strong>
+                    </div>
+                    {isAdmin && (
+                      <div style={{ display:'flex',gap:6 }}>
+                        <button className="btn-ghost btn-sm" onClick={()=>openEdit(r)}>Editar</button>
+                        <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(r)}>Excluir</button>
+                      </div>
+                    )}
+                  </div>
+                  {r.content && <p className="small muted" style={{ marginTop:6,whiteSpace:'pre-wrap' }}>{r.content}</p>}
+                </div>
+              ))}
+            </div>
+          )
+      }
+    </>
+  );
+}
+
+// ─── Section: Diário de Otimizações ──────────────────────────────────────────
+function OptimizationsSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [items, setItems]   = useState<Optimization[]>([]);
+  const [loading, setLoad]  = useState(true);
+  const [filter, setFilter] = useState('Todos');
+  const [showForm, setShow] = useState(false);
+  const [editing, setEdit]  = useState<Optimization|null>(null);
+  const [form, setForm]     = useState({ date:'', type:OPT_TYPES[0], campaign:'', action:'', reason:'', result:'obs' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoad(true);
+    const d = await apiFetch('GET','optimizations',slug);
+    setItems(d.optimizations ?? []);
+    setLoad(false);
+  }, [slug]);
+
+  useEffect(()=>{ load(); },[load]);
+
+  function openNew() { setForm({date:'',type:OPT_TYPES[0],campaign:'',action:'',reason:'',result:'obs'}); setEdit(null); setShow(true); }
+  function openEdit(o: Optimization) { setForm({date:o.date,type:o.type,campaign:o.campaign??'',action:o.action,reason:o.reason??'',result:o.result}); setEdit(o); setShow(true); }
+  function cancel() { setShow(false); setEdit(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.date||!form.action) return;
+    setSaving(true);
+    const body = {...form,campaign:form.campaign||null,reason:form.reason||null};
+    if (editing) { await apiFetch('PUT','optimizations',slug,{id:editing.id,...body}); }
+    else { await apiFetch('POST','optimizations',slug,body); }
+    setSaving(false); cancel(); await load();
+  }
+
+  async function del(o: Optimization) {
+    if (!confirm('Excluir esta otimização?')) return;
+    await apiFetch('DELETE','optimizations',slug,{id:o.id}); await load();
+  }
+
+  const types = ['Todos',...OPT_TYPES];
+  const visible = filter==='Todos' ? items : items.filter(o=>o.type===filter);
+  const byDate: Record<string,Optimization[]> = {};
+  visible.forEach(o=>{ (byDate[o.date]=byDate[o.date]||[]).push(o); });
+
+  return (
+    <>
+      <div className="page-head">
+        <div><div className="period">Registro de tudo que mexemos na sua conta</div><h1>Diário de otimizações</h1></div>
+        {isAdmin && !showForm && <button className="btn btn-sm" onClick={openNew}>+ Registrar</button>}
+      </div>
+
+      {showForm && (
+        <InlineForm onSubmit={save}>
+          <Field label="Data *"><input className="input" type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} required/></Field>
+          <Field label="Tipo">
+            <select className="input" value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
+              {OPT_TYPES.map(t=><option key={t}>{t}</option>)}
+            </select>
+          </Field>
+          <FullField label="Campanha / Conjunto">
+            <input className="input" value={form.campaign} onChange={e=>setForm(f=>({...f,campaign:e.target.value}))} placeholder="Nome da campanha ou conjunto"/>
+          </FullField>
+          <FullField label="O que foi feito *">
+            <input className="input" value={form.action} onChange={e=>setForm(f=>({...f,action:e.target.value}))} required placeholder="Ex.: Aumentamos o orçamento de R$ 600 para R$ 780/dia"/>
+          </FullField>
+          <FullField label="Por quê">
+            <input className="input" value={form.reason} onChange={e=>setForm(f=>({...f,reason:e.target.value}))} placeholder="Motivo da decisão"/>
+          </FullField>
+          <Field label="Resultado">
+            <select className="input" value={form.result} onChange={e=>setForm(f=>({...f,result:e.target.value}))}>
+              <option value="obs">Em observação</option>
+              <option value="ok">Funcionou</option>
+              <option value="bad">Não funcionou</option>
+            </select>
+          </Field>
+          <div className="full" style={{ display:'flex',gap:8 }}>
+            <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
+            <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+          </div>
+        </InlineForm>
+      )}
+
+      <div className="filters" role="group">
+        {types.map(t=>(
+          <button key={t} className="chip" aria-pressed={filter===t} onClick={()=>setFilter(t)}>{t}</button>
+        ))}
+      </div>
+
+      {loading ? <p className="muted small">Carregando...</p>
+        : visible.length===0
+          ? <EmptyState msg="Nenhuma otimização registrada ainda."/>
+          : (
+            <div className="timeline">
+              {Object.entries(byDate).map(([date,opts])=>(
+                <React.Fragment key={date}>
+                  <div className="tl-day mono">{fmtDate(date)}</div>
+                  {opts.map(o=>(
+                    <div key={o.id} className="tl-item">
+                      <div className="row-top">
+                        <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}>
+                          <Tag>{o.type}</Tag>
+                          {o.campaign && <span className="small muted">{o.campaign}</span>}
+                        </div>
+                        <div style={{ display:'flex',gap:6,alignItems:'center' }}>
+                          <Tag v={resTag(o.result)}>{resLbl(o.result)}</Tag>
+                          {isAdmin && <>
+                            <button className="btn-ghost btn-sm" onClick={()=>openEdit(o)}>Editar</button>
+                            <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(o)}>Excluir</button>
+                          </>}
+                        </div>
+                      </div>
+                      <h3>{o.action}</h3>
+                      {o.reason && <p className="why">{o.reason}</p>}
+                    </div>
+                  ))}
+                </React.Fragment>
+              ))}
+            </div>
+          )
+      }
+    </>
+  );
+}
+
+// ─── Section: Tarefas ─────────────────────────────────────────────────────────
+function TasksSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [tasks, setTasks]   = useState<Task[]>([]);
+  const [loading, setLoad]  = useState(true);
+  const [showForm, setShow] = useState(false);
+  const [editing, setEdit]  = useState<Task|null>(null);
+  const [form, setForm]     = useState({ title:'', owner:'agencia', status:'a_fazer', note:'', due_date:'' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoad(true);
+    const d = await apiFetch('GET','tasks',slug);
+    setTasks(d.tasks ?? []); setLoad(false);
+  }, [slug]);
+
+  useEffect(()=>{ load(); },[load]);
+
+  function openNew() { setForm({title:'',owner:'agencia',status:'a_fazer',note:'',due_date:''}); setEdit(null); setShow(true); }
+  function openEdit(t: Task) { setForm({title:t.title,owner:t.owner,status:t.status,note:t.note??'',due_date:t.due_date??''}); setEdit(t); setShow(true); }
+  function cancel() { setShow(false); setEdit(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.title) return;
+    setSaving(true);
+    const body = {...form,due_date:form.due_date||null,note:form.note||null};
+    if (editing) { await apiFetch('PUT','tasks',slug,{id:editing.id,...body}); }
+    else { await apiFetch('POST','tasks',slug,body); }
+    setSaving(false); cancel(); await load();
+  }
+
+  async function cycle(t: Task) {
+    await apiFetch('PUT','tasks',slug,{id:t.id,status:TS_CYCLE[t.status]??'a_fazer'}); await load();
+  }
+
+  async function del(t: Task) {
+    if (!confirm(`Excluir "${t.title}"?`)) return;
+    await apiFetch('DELETE','tasks',slug,{id:t.id}); await load();
+  }
+
+  const byStatus: Record<string,Task[]> = {};
+  TS_ORDER.forEach(s=>{ byStatus[s]=tasks.filter(t=>t.status===s); });
+
+  return (
+    <>
+      <div className="page-head">
+        <div><div className="period">Quem faz o quê e até quando</div><h1>Tarefas</h1></div>
+        {isAdmin && !showForm && <button className="btn btn-sm" onClick={openNew}>+ Nova tarefa</button>}
+      </div>
+
+      {showForm && (
+        <InlineForm onSubmit={save}>
+          <FullField label="Tarefa *">
+            <input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required placeholder="Descreva a tarefa"/>
+          </FullField>
+          <Field label="Responsável">
+            <select className="input" value={form.owner} onChange={e=>setForm(f=>({...f,owner:e.target.value}))}>
+              <option value="agencia">Agência</option>
+              <option value="cliente">Cliente</option>
+            </select>
+          </Field>
+          <Field label="Status">
+            <select className="input" value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+              {TS_ORDER.map(s=><option key={s} value={s}>{TS_LBL[s]}</option>)}
+            </select>
+          </Field>
+          <Field label="Data limite">
+            <input className="input" type="date" value={form.due_date} onChange={e=>setForm(f=>({...f,due_date:e.target.value}))}/>
+          </Field>
+          <FullField label="Observação">
+            <textarea className="input" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={2} placeholder="Detalhes adicionais..."/>
+          </FullField>
+          <div className="full" style={{ display:'flex',gap:8 }}>
+            <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
+            <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+          </div>
+        </InlineForm>
+      )}
+
+      {loading ? <p className="muted small">Carregando...</p>
+        : tasks.length===0
+          ? <EmptyState msg="Nenhuma tarefa cadastrada ainda." action={isAdmin&&!showForm?<button className="btn btn-sm" onClick={openNew}>+ Nova tarefa</button>:undefined}/>
+          : (
+            <div className="kanban">
+              {TS_ORDER.map(s=>(
+                <div key={s} className="col">
+                  <h3>{TS_LBL[s]}<span>{byStatus[s].length}</span></h3>
+                  {byStatus[s].map(t=>(
+                    <div key={t.id} className="card">
+                      <div>{t.title}</div>
+                      <div className="foot">
+                        <Tag v={t.owner==='agencia'?'acc':'warn'}>{OW_LBL[t.owner]}</Tag>
+                        {t.due_date && <span className="small muted mono">{fmtDate(t.due_date)}</span>}
+                      </div>
+                      {t.note && <p className="small muted">{t.note}</p>}
+                      {isAdmin && (
+                        <div style={{ display:'flex',gap:4,marginTop:4 }}>
+                          <button className="btn-ghost btn-sm" onClick={()=>cycle(t)}>Avançar</button>
+                          <button className="btn-ghost btn-sm" onClick={()=>openEdit(t)}>Editar</button>
+                          <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(t)}>✕</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )
+      }
+    </>
+  );
+}
+
+// ─── Section: Solicitações ────────────────────────────────────────────────────
+function RequestsSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [items, setItems]   = useState<Request[]>([]);
+  const [loading, setLoad]  = useState(true);
+  const [showForm, setShow] = useState(false);
+  const [editing, setEdit]  = useState<Request|null>(null);
+  const [form, setForm]     = useState({ from_who:'cliente', title:'', status:'em_andamento', note:'' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoad(true);
+    const d = await apiFetch('GET','requests',slug);
+    setItems(d.requests ?? []); setLoad(false);
+  }, [slug]);
+
+  useEffect(()=>{ load(); },[load]);
+
+  function openNew()       { setForm({from_who:isAdmin?'agencia':'cliente',title:'',status:'em_andamento',note:''}); setEdit(null); setShow(true); }
+  function openEdit(r: Request) { setForm({from_who:r.from_who,title:r.title,status:r.status,note:r.note??''}); setEdit(r); setShow(true); }
+  function cancel()        { setShow(false); setEdit(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.title) return;
+    setSaving(true);
+    const body = {...form,note:form.note||null};
+    if (editing) { await apiFetch('PUT','requests',slug,{id:editing.id,...body}); }
+    else { await apiFetch('POST','requests',slug,body); }
+    setSaving(false); cancel(); await load();
+  }
+
+  async function del(r: Request) {
+    if (!confirm(`Excluir "${r.title}"?`)) return;
+    await apiFetch('DELETE','requests',slug,{id:r.id}); await load();
+  }
+
+  const agency = items.filter(r=>r.from_who==='agencia');
+  const client = items.filter(r=>r.from_who==='cliente');
+
+  return (
+    <>
+      <div className="page-head">
+        <div><div className="period">Pedidos entre a sua equipe e a agência</div><h1>Solicitações</h1></div>
+        <button className="btn btn-sm" onClick={()=>showForm?cancel():openNew()}>{showForm?'Fechar':'Nova solicitação'}</button>
+      </div>
+
+      {showForm && (
+        <InlineForm onSubmit={save}>
+          {isAdmin && (
+            <Field label="De quem">
+              <select className="input" value={form.from_who} onChange={e=>setForm(f=>({...f,from_who:e.target.value}))}>
+                <option value="agencia">Agência pediu ao cliente</option>
+                <option value="cliente">Cliente pediu à agência</option>
+              </select>
+            </Field>
+          )}
+          <FullField label="O que você precisa? *">
+            <input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required placeholder="Ex.: Anúncio para a live de quinta"/>
+          </FullField>
+          {isAdmin && (
+            <Field label="Status">
+              <select className="input" value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+                <option value="em_andamento">Em andamento</option>
+                <option value="aguardando_voce">Aguardando você</option>
+                <option value="concluido">Concluído</option>
+                <option value="recebido">Recebido</option>
+              </select>
+            </Field>
+          )}
+          <FullField label="Detalhes">
+            <textarea className="input" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={2} placeholder="Links, referências, prazo desejado..."/>
+          </FullField>
+          <div className="full" style={{ display:'flex',gap:8 }}>
+            <button className="btn btn-sm" type="submit">{saving?'Enviando...':'Enviar'}</button>
+            <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+          </div>
+        </InlineForm>
+      )}
+
+      {loading ? <p className="muted small">Carregando...</p>
+        : items.length===0
+          ? <EmptyState msg="Nenhuma solicitação ainda." action={!showForm?<button className="btn btn-sm" onClick={openNew}>Nova solicitação</button>:undefined}/>
+          : (
+            <div className="grid g2">
+              <div>
+                <h2 style={{ marginBottom:16 }}>Nós pedimos a você</h2>
+                {agency.length===0 ? <p className="muted small">Sem pedidos da agência.</p> : (
+                  <div className="rows">
+                    {agency.map(r=>(
+                      <div key={r.id} className="row">
+                        <div className="row-top">
+                          <h3>{r.title}</h3>
+                          <Tag v={rsTag(r.status)}>{RS_LBL[r.status]}</Tag>
+                        </div>
+                        {r.note && <p className="small muted">{r.note}</p>}
+                        {isAdmin && (
+                          <div style={{ display:'flex',gap:6,marginTop:8 }}>
+                            <button className="btn-ghost btn-sm" onClick={()=>openEdit(r)}>Editar</button>
+                            <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(r)}>Excluir</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h2 style={{ marginBottom:16 }}>Você pediu à agência</h2>
+                {client.length===0 ? <p className="muted small">Sem pedidos do cliente.</p> : (
+                  <div className="rows">
+                    {client.map(r=>(
+                      <div key={r.id} className="row">
+                        <div className="row-top">
+                          <h3>{r.title}</h3>
+                          <Tag v={rsTag(r.status)}>{RS_LBL[r.status]}</Tag>
+                        </div>
+                        {r.note && <p className="small muted">{r.note}</p>}
+                        {isAdmin && (
+                          <div style={{ display:'flex',gap:6,marginTop:8 }}>
+                            <button className="btn-ghost btn-sm" onClick={()=>openEdit(r)}>Editar</button>
+                            <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(r)}>Excluir</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+      }
+    </>
+  );
+}
+
+// ─── Section: Conteúdo ────────────────────────────────────────────────────────
+function ContentSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [items, setItems]   = useState<Content[]>([]);
+  const [loading, setLoad]  = useState(true);
+  const [showForm, setShow] = useState(false);
+  const [editing, setEdit]  = useState<Content|null>(null);
+  const [form, setForm]     = useState({ title:'', format:'', sent_date:'', status:'aguardando_envio', hook_rate:'', ctr:'', cpl:'', notes:'' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoad(true);
+    const d = await apiFetch('GET','content',slug);
+    setItems(d.content ?? []); setLoad(false);
+  }, [slug]);
+
+  useEffect(()=>{ load(); },[load]);
+
+  function openNew() { setForm({title:'',format:'',sent_date:'',status:'aguardando_envio',hook_rate:'',ctr:'',cpl:'',notes:''}); setEdit(null); setShow(true); }
+  function openEdit(c: Content) { setForm({title:c.title,format:c.format??'',sent_date:c.sent_date??'',status:c.status,hook_rate:c.hook_rate??'',ctr:c.ctr??'',cpl:c.cpl??'',notes:c.notes??''}); setEdit(c); setShow(true); }
+  function cancel() { setShow(false); setEdit(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.title) return;
+    setSaving(true);
+    const body = {...form,format:form.format||null,sent_date:form.sent_date||null,hook_rate:form.hook_rate||null,ctr:form.ctr||null,cpl:form.cpl||null,notes:form.notes||null};
+    if (editing) { await apiFetch('PUT','content',slug,{id:editing.id,...body}); }
+    else { await apiFetch('POST','content',slug,body); }
+    setSaving(false); cancel(); await load();
+  }
+
+  async function del(c: Content) {
+    if (!confirm(`Excluir "${c.title}"?`)) return;
+    await apiFetch('DELETE','content',slug,{id:c.id}); await load();
+  }
+
+  return (
+    <>
+      <div className="page-head">
+        <div><div className="period">Distribuição de conteúdo nos anúncios</div><h1>Conteúdo</h1></div>
+        {isAdmin && !showForm && <button className="btn btn-sm" onClick={openNew}>+ Nova peça</button>}
+      </div>
+
+      {showForm && (
+        <InlineForm onSubmit={save}>
+          <FullField label="Título da peça *">
+            <input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required placeholder="Ex.: Depoimento Marina"/>
+          </FullField>
+          <Field label="Formato">
+            <input className="input" value={form.format} onChange={e=>setForm(f=>({...f,format:e.target.value}))} placeholder="Ex.: Vídeo 30s, Carrossel"/>
+          </Field>
+          <Field label="Data de envio">
+            <input className="input" type="date" value={form.sent_date} onChange={e=>setForm(f=>({...f,sent_date:e.target.value}))}/>
+          </Field>
+          <Field label="Status">
+            <select className="input" value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+              <option value="aguardando_envio">Aguardando envio</option>
+              <option value="recebido">Recebido</option>
+              <option value="no_ar">No ar</option>
+              <option value="pausado">Pausado</option>
+            </select>
+          </Field>
+          <Field label="Hook rate">
+            <input className="input" value={form.hook_rate} onChange={e=>setForm(f=>({...f,hook_rate:e.target.value}))} placeholder="Ex.: 38%"/>
+          </Field>
+          <Field label="CTR">
+            <input className="input" value={form.ctr} onChange={e=>setForm(f=>({...f,ctr:e.target.value}))} placeholder="Ex.: 2,1%"/>
+          </Field>
+          <Field label="CPL / CPA">
+            <input className="input" value={form.cpl} onChange={e=>setForm(f=>({...f,cpl:e.target.value}))} placeholder="Ex.: R$ 5,40"/>
+          </Field>
+          <FullField label="Brief / Observações">
+            <textarea className="input" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} placeholder="Orientações de gravação, contexto, links..."/>
+          </FullField>
+          <div className="full" style={{ display:'flex',gap:8 }}>
+            <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
+            <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+          </div>
+        </InlineForm>
+      )}
+
+      {loading ? <p className="muted small">Carregando...</p>
+        : items.length===0
+          ? <EmptyState msg="Nenhuma peça de conteúdo cadastrada ainda." action={isAdmin&&!showForm?<button className="btn btn-sm" onClick={openNew}>+ Nova peça</button>:undefined}/>
+          : (
+            <div className="table-wrap">
+              <table className="t">
+                <thead>
+                  <tr>
+                    <th>Peça</th><th>Formato</th><th>Enviada em</th><th>Status</th>
+                    <th className="num">Hook rate</th><th className="num">CTR</th><th className="num">CPL</th>
+                    {isAdmin && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map(c=>(
+                    <tr key={c.id}>
+                      <td><div>{c.title}</div>{c.notes&&<div className="small muted">{c.notes}</div>}</td>
+                      <td className="muted">{c.format??'—'}</td>
+                      <td className="mono">{fmtDate(c.sent_date)}</td>
+                      <td><Tag v={csTag(c.status)}>{CS_LBL[c.status]}</Tag></td>
+                      <td className="num">{c.hook_rate??'—'}</td>
+                      <td className="num">{c.ctr??'—'}</td>
+                      <td className="num">{c.cpl??'—'}</td>
+                      {isAdmin && (
+                        <td>
+                          <div style={{ display:'flex',gap:4 }}>
+                            <button className="btn-ghost btn-sm" onClick={()=>openEdit(c)}>Editar</button>
+                            <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(c)}>✕</button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+      }
+    </>
+  );
+}
+
+// ─── Section: Lançamentos ─────────────────────────────────────────────────────
+function LaunchesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [items, setItems]   = useState<Launch[]>([]);
+  const [loading, setLoad]  = useState(true);
+  const [showForm, setShow] = useState(false);
+  const [editing, setEdit]  = useState<Launch|null>(null);
+  const [form, setForm]     = useState({ name:'', period:'', status:'planejamento', metrics:'', content:'' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoad(true);
+    const d = await apiFetch('GET','launches',slug);
+    setItems(d.launches ?? []); setLoad(false);
+  }, [slug]);
+
+  useEffect(()=>{ load(); },[load]);
+
+  function openNew() { setForm({name:'',period:'',status:'planejamento',metrics:'',content:''}); setEdit(null); setShow(true); }
+  function openEdit(l: Launch) { setForm({name:l.name,period:l.period??'',status:l.status,metrics:l.metrics??'',content:l.content??''}); setEdit(l); setShow(true); }
+  function cancel() { setShow(false); setEdit(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.name) return;
+    setSaving(true);
+    const body = {...form,period:form.period||null,metrics:form.metrics||null,content:form.content||null};
+    if (editing) { await apiFetch('PUT','launches',slug,{id:editing.id,...body}); }
+    else { await apiFetch('POST','launches',slug,body); }
+    setSaving(false); cancel(); await load();
+  }
+
+  async function del(l: Launch) {
+    if (!confirm(`Excluir "${l.name}"?`)) return;
+    await apiFetch('DELETE','launches',slug,{id:l.id}); await load();
+  }
+
+  return (
+    <>
+      <div className="page-head">
+        <div><div className="period">Histórico e planejamento de lançamentos</div><h1>Lançamentos</h1></div>
+        {isAdmin && !showForm && <button className="btn btn-sm" onClick={openNew}>+ Novo lançamento</button>}
+      </div>
+
+      {showForm && (
+        <InlineForm onSubmit={save}>
+          <FullField label="Nome *">
+            <input className="input" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} required placeholder="Ex.: Lançamento maio 2026"/>
+          </FullField>
+          <Field label="Período">
+            <input className="input" value={form.period} onChange={e=>setForm(f=>({...f,period:e.target.value}))} placeholder="Ex.: Mai–Jun 2026"/>
+          </Field>
+          <Field label="Status">
+            <select className="input" value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+              <option value="planejamento">Planejamento</option>
+              <option value="em_andamento">Em andamento</option>
+              <option value="concluido">Concluído</option>
+              <option value="pausado">Pausado</option>
+            </select>
+          </Field>
+          <FullField label="Métricas principais">
+            <input className="input" value={form.metrics} onChange={e=>setForm(f=>({...f,metrics:e.target.value}))} placeholder="Resultados, números-chave..."/>
+          </FullField>
+          <FullField label="Observações">
+            <textarea className="input" value={form.content} onChange={e=>setForm(f=>({...f,content:e.target.value}))} rows={3} placeholder="Contexto, links, aprendizados..."/>
+          </FullField>
+          <div className="full" style={{ display:'flex',gap:8 }}>
+            <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
+            <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+          </div>
+        </InlineForm>
+      )}
+
+      {loading ? <p className="muted small">Carregando...</p>
+        : items.length===0
+          ? <EmptyState msg="Nenhum lançamento cadastrado ainda." action={isAdmin&&!showForm?<button className="btn btn-sm" onClick={openNew}>+ Novo lançamento</button>:undefined}/>
+          : (
+            <div className="rows">
+              {items.map(l=>(
+                <div key={l.id} className="row">
+                  <div className="row-top">
+                    <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
+                      <Tag v={lsTag(l.status)}>{LS_LBL[l.status]}</Tag>
+                      <strong>{l.name}</strong>
+                      {l.period && <span className="small muted mono">{l.period}</span>}
+                    </div>
+                    {isAdmin && (
+                      <div style={{ display:'flex',gap:6 }}>
+                        <button className="btn-ghost btn-sm" onClick={()=>openEdit(l)}>Editar</button>
+                        <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(l)}>Excluir</button>
+                      </div>
+                    )}
+                  </div>
+                  {l.metrics && <p className="small muted mono" style={{ marginTop:4 }}>{l.metrics}</p>}
+                  {l.content && <p className="small muted" style={{ marginTop:4,whiteSpace:'pre-wrap' }}>{l.content}</p>}
+                </div>
+              ))}
+            </div>
+          )
+      }
+    </>
+  );
+}
+
+// ─── Section: Links ───────────────────────────────────────────────────────────
+function LinksSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [links, setLinks]   = useState<Link[]>([]);
+  const [loading, setLoad]  = useState(true);
+  const [showForm, setShow] = useState(false);
+  const [editing, setEdit]  = useState<Link|null>(null);
+  const [form, setForm]     = useState({ group_name:'', label:'', url:'' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoad(true);
+    const d = await apiFetch('GET','links',slug);
+    setLinks(d.links ?? []); setLoad(false);
+  }, [slug]);
+
+  useEffect(()=>{ load(); },[load]);
+
+  function openNew() { setForm({group_name:'',label:'',url:''}); setEdit(null); setShow(true); }
+  function openEdit(l: Link) { setForm({group_name:l.group_name,label:l.label,url:l.url}); setEdit(l); setShow(true); }
+  function cancel() { setShow(false); setEdit(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.group_name||!form.label||!form.url) return;
+    setSaving(true);
+    if (editing) { await apiFetch('PUT','links',slug,{id:editing.id,...form}); }
+    else { await apiFetch('POST','links',slug,form); }
+    setSaving(false); cancel(); await load();
+  }
+
+  async function del(l: Link) {
+    if (!confirm(`Excluir "${l.label}"?`)) return;
+    await apiFetch('DELETE','links',slug,{id:l.id}); await load();
+  }
+
+  const groups: Record<string,Link[]> = {};
+  links.forEach(l=>{ (groups[l.group_name]=groups[l.group_name]||[]).push(l); });
+
+  return (
+    <>
+      <div className="page-head">
+        <div><div className="period">Acessos e recursos importantes</div><h1>Links e arquivos</h1></div>
+        {isAdmin && !showForm && <button className="btn btn-sm" onClick={openNew}>+ Novo link</button>}
+      </div>
+
+      {showForm && (
+        <InlineForm onSubmit={save}>
+          <FullField label="Grupo *">
+            <input className="input" value={form.group_name} onChange={e=>setForm(f=>({...f,group_name:e.target.value}))} required placeholder="Ex.: Páginas e checkout"/>
+          </FullField>
+          <FullField label="Nome do link *">
+            <input className="input" value={form.label} onChange={e=>setForm(f=>({...f,label:e.target.value}))} required placeholder="Ex.: Página de vendas"/>
+          </FullField>
+          <FullField label="URL *">
+            <input className="input" value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} required placeholder="https://..."/>
+          </FullField>
+          <div className="full" style={{ display:'flex',gap:8 }}>
+            <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
+            <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+          </div>
+        </InlineForm>
+      )}
+
+      {loading ? <p className="muted small">Carregando...</p>
+        : links.length===0
+          ? <EmptyState msg="Nenhum link cadastrado ainda." action={isAdmin&&!showForm?<button className="btn btn-sm" onClick={openNew}>+ Novo link</button>:undefined}/>
+          : (
+            <div className="grid g2">
+              {Object.entries(groups).map(([gName,items])=>(
+                <div key={gName}>
+                  <h2 style={{ marginBottom:16 }}>{gName}</h2>
+                  <div className="rows">
+                    {items.map(l=>(
+                      <div key={l.id} className="lib-item">
+                        <div style={{ minWidth:0 }}>
+                          <a href={l.url} target="_blank" rel="noopener noreferrer">{l.label}</a>
+                          <div className="u">{l.url}</div>
+                        </div>
+                        <div style={{ display:'flex',gap:4,flexShrink:0 }}>
+                          {isAdmin && <>
+                            <button className="btn-ghost btn-sm" onClick={()=>openEdit(l)}>Editar</button>
+                            <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(l)}>✕</button>
+                          </>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+      }
+    </>
+  );
+}
+
+// ─── Nav type ─────────────────────────────────────────────────────────────────
+type Tab = 'overview'|'mensal'|'semanal'|'diarios'|'otimizacoes'|'tarefas'|'solicitacoes'|'conteudo'|'lancamentos'|'links';
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PortalClient({
   slug, clientName, isLoggedIn: initLoggedIn, isAdmin: initAdmin,
 }: {
   slug: string; clientName: string; isLoggedIn: boolean; isAdmin: boolean;
 }) {
-  const router = useRouter();
   const [loggedIn, setLoggedIn] = useState(initLoggedIn);
   const [isAdmin, setIsAdmin]   = useState(initAdmin);
-  const [tab, setTab]           = useState<Tab>('relatorios');
+  const [tab, setTab]           = useState<Tab>('overview');
+
+  // Confirm role from server (fixes cases where state was set before cookie was readable)
+  useEffect(() => {
+    if (!loggedIn) return;
+    apiFetch('GET','me',slug).then(d => {
+      if (d.role) setIsAdmin(d.role === 'admin');
+    }).catch(()=>{});
+  }, [loggedIn, slug]);
 
   async function logout() {
     await fetch(`/api/portal/logout?slug=${encodeURIComponent(slug)}`, { method:'POST', credentials:'include' });
     setLoggedIn(false); setIsAdmin(false);
-    router.refresh();
   }
 
   if (!loggedIn) {
-    return <LoginScreen slug={slug} onLogin={(admin) => { setLoggedIn(true); setIsAdmin(admin); }}/>;
+    return <LoginScreen slug={slug} onLogin={role => { setLoggedIn(true); setIsAdmin(role==='admin'); }}/>;
   }
 
-  const tabs: { id:Tab; label:string }[] = [
-    { id:'relatorios',  label:'Relatórios' },
-    { id:'tarefas',     label:'Tarefas' },
-    { id:'links',       label:'Links' },
-    { id:'lancamentos', label:'Lançamentos' },
+  type NavEntry = { id: Tab; label: string } | { group: string };
+
+  const nav: NavEntry[] = [
+    { id:'overview',     label:'Visão geral' },
+    { group:'Relatórios' },
+    { id:'mensal',       label:'Relatório mensal' },
+    { id:'semanal',      label:'Relatório semanal' },
+    { id:'diarios',      label:'Relatórios diários' },
+    { group:'Na sua conta' },
+    { id:'otimizacoes',  label:'Diário de otimizações' },
+    { id:'tarefas',      label:'Tarefas' },
+    { id:'solicitacoes', label:'Solicitações' },
+    { id:'conteudo',     label:'Conteúdo' },
+    { id:'lancamentos',  label:'Lançamentos' },
+    { id:'links',        label:'Links e arquivos' },
   ];
 
   return (
-    <div style={{minHeight:'100vh',background:C.bg,display:'flex',fontFamily:sans}}>
-      {/* Sidebar */}
-      <aside style={{
-        width:260, flexShrink:0, background:C.surface,
-        borderRight:`1px solid ${C.line}`,
-        display:'flex', flexDirection:'column',
-        padding:'28px 20px',
-        position:'sticky', top:0, height:'100vh', overflowY:'auto',
-      }}>
-        {/* Client identity */}
-        <div style={{marginBottom:28}}>
-          <div style={{fontFamily:serif, fontWeight:400, fontSize:22, color:C.text, lineHeight:1.2, marginBottom:4}}>
-            {clientName}
-          </div>
-          <div style={{fontSize:13, color:C.muted}}>Portal do cliente</div>
+    <div className="app">
+      <aside className="side">
+        <div className="client-id">
+          <div className="name">{clientName}</div>
+          <div className="sub">Portal do cliente</div>
         </div>
 
-        {/* Nav */}
-        <nav style={{flex:1}}>
-          {tabs.map(t=>(
-            <NavItem key={t.id} label={t.label} active={tab===t.id} onClick={()=>setTab(t.id)}/>
-          ))}
+        <nav className="nav" aria-label="Seções da central">
+          {nav.map((item,i) => {
+            if ('group' in item) return <div key={i} className="nav-group">{item.group}</div>;
+            const active = tab === item.id;
+            return (
+              <button key={item.id} type="button"
+                aria-current={active ? 'page' : undefined}
+                onClick={()=>setTab(item.id)}>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Footer */}
-        <div style={{marginTop:'auto',paddingTop:20,borderTop:`1px solid ${C.line}`}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-            <div style={{
-              width:32, height:32, borderRadius:'50%',
-              background:C.text, color:C.bg,
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:13, fontWeight:600, flexShrink:0,
-            }}>AP</div>
+        <div className="side-foot">
+          <div className="who">
+            <div className="avatar">AP</div>
             <div>
-              <div style={{fontSize:13, fontWeight:500, color:C.text, fontFamily:sans}}>Ana Paula Romano</div>
-              <div style={{fontSize:11, color:C.muted}}>APR Digital</div>
+              Ana Paula Romano<br/>
+              <span className="small muted">APR Digital{isAdmin?' · Admin':''}</span>
             </div>
           </div>
-          {isAdmin && (
-            <div style={{fontSize:11,marginBottom:8,fontFamily:mono,
-                         background:C.accentBg,color:C.accent,padding:'3px 8px',borderRadius:99,display:'inline-block'}}>
-              Admin
-            </div>
-          )}
-          <button type="button" onClick={logout}
-            style={{display:'block',width:'100%',textAlign:'left',padding:'7px 12px',borderRadius:8,
-                    border:'none',cursor:'pointer',background:'transparent',color:C.muted,
-                    fontFamily:sans,fontSize:13,marginTop:4}}>
-            Sair
-          </button>
+          <button className="btn-ghost btn-sm" type="button" onClick={logout}>Sair</button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main style={{flex:1, padding:'40px 48px', maxWidth:900, minWidth:0}}>
-        {tab==='relatorios'  && <ReportsSection slug={slug} isAdmin={isAdmin}/>}
-        {tab==='tarefas'     && <TasksSection   slug={slug} isAdmin={isAdmin}/>}
-        {tab==='links'       && <LinksSection   slug={slug} isAdmin={isAdmin}/>}
-        {tab==='lancamentos' && <LaunchesSection slug={slug} isAdmin={isAdmin}/>}
+      <main>
+        {tab==='overview'     && <OverviewSection slug={slug}/>}
+        {tab==='mensal'       && <ReportsSection slug={slug} isAdmin={isAdmin} kind="mensal"  title="Relatório mensal"   period="Relatório mensal de performance"/>}
+        {tab==='semanal'      && <ReportsSection slug={slug} isAdmin={isAdmin} kind="semanal" title="Relatório semanal"  period="Relatório semanal de performance"/>}
+        {tab==='diarios'      && <ReportsSection slug={slug} isAdmin={isAdmin} kind="diario"  title="Relatórios diários" period="Atualizações do dia a dia"/>}
+        {tab==='otimizacoes'  && <OptimizationsSection slug={slug} isAdmin={isAdmin}/>}
+        {tab==='tarefas'      && <TasksSection slug={slug} isAdmin={isAdmin}/>}
+        {tab==='solicitacoes' && <RequestsSection slug={slug} isAdmin={isAdmin}/>}
+        {tab==='conteudo'     && <ContentSection slug={slug} isAdmin={isAdmin}/>}
+        {tab==='lancamentos'  && <LaunchesSection slug={slug} isAdmin={isAdmin}/>}
+        {tab==='links'        && <LinksSection slug={slug} isAdmin={isAdmin}/>}
       </main>
     </div>
   );
