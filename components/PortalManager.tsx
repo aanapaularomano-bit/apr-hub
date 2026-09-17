@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { slugify } from '@/lib/portalAuth';
+import DailySection from './portal/DailySection';
+import ActivitiesSection from './portal/ActivitiesSection';
+import LaunchesSection from './portal/LaunchesSection';
 
 const LINK_GROUPS = ['Páginas', 'Pastas e arquivos', 'Dashboards e planilhas', 'Referências'];
 const REQUEST_STATUS = ['pendente', 'em_andamento', 'concluido', 'cancelado'];
@@ -31,7 +34,7 @@ export default function PortalManager({
   const [links, setLinks] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'links' | 'requests'>('requests');
+  const [tab, setTab] = useState<'requests' | 'links' | 'activities' | 'daily' | 'launches'>('requests');
 
   // Create/edit form
   const [showSetup, setShowSetup] = useState(false);
@@ -47,7 +50,7 @@ export default function PortalManager({
 
   // Link form
   const [showLinkForm, setShowLinkForm] = useState(false);
-  const [linkForm, setLinkForm] = useState({ group_name: 'Referências', label: '', url: '' });
+  const [linkForm, setLinkForm] = useState({ group_name: 'Referências', label: '', url: '', description: '', tag: '', visible_to_client: true });
   const [linkSaving, setLinkSaving] = useState(false);
 
   // Request form
@@ -148,11 +151,11 @@ export default function PortalManager({
     const res = await fetch('/api/portal/manage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'add_link', client_id: selClient.id, ...linkForm }),
+      body: JSON.stringify({ action: 'add_link', client_id: selClient.id, ...linkForm, description: linkForm.description || null, tag: linkForm.tag || null }),
     });
     setLinkSaving(false);
     if (res.ok) {
-      setLinkForm({ group_name: 'Referências', label: '', url: '' });
+      setLinkForm({ group_name: 'Referências', label: '', url: '', description: '', tag: '', visible_to_client: true });
       setShowLinkForm(false);
       loadPortal(selClient.id);
     }
@@ -403,10 +406,16 @@ export default function PortalManager({
             {/* Tabs: Links & Requests */}
             {portal && (
               <>
-                <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 0 }}>
-                  {(['requests', 'links'] as const).map(t => (
-                    <button key={t} onClick={() => setTab(t)} style={{ background: 'transparent', border: 'none', borderBottom: tab === t ? '2px solid #a78bfa' : '2px solid transparent', padding: '8px 16px', color: tab === t ? '#a78bfa' : 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
-                      {t === 'requests' ? 'Solicitações' : 'Links'}
+                <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 0, flexWrap: 'wrap' as const }}>
+                  {([
+                    { key: 'requests', label: 'Solicitações' },
+                    { key: 'links', label: 'Links' },
+                    { key: 'activities', label: 'Atividades' },
+                    { key: 'daily', label: 'Diário' },
+                    { key: 'launches', label: 'Lançamentos' },
+                  ] as const).map(t => (
+                    <button key={t.key} onClick={() => setTab(t.key)} style={{ background: 'transparent', border: 'none', borderBottom: tab === t.key ? '2px solid #a78bfa' : '2px solid transparent', padding: '8px 16px', color: tab === t.key ? '#a78bfa' : 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+                      {t.label}
                     </button>
                   ))}
                 </div>
@@ -469,6 +478,10 @@ export default function PortalManager({
                   </div>
                 )}
 
+                {tab === 'activities' && <ActivitiesSection clientId={selClient.id} />}
+                {tab === 'daily' && <DailySection clientId={selClient.id} />}
+                {tab === 'launches' && <LaunchesSection clientId={selClient.id} />}
+
                 {/* Links tab */}
                 {tab === 'links' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -486,6 +499,12 @@ export default function PortalManager({
                           </select>
                           <input value={linkForm.label} onChange={e => setLinkForm(f => ({ ...f, label: e.target.value }))} style={inp} placeholder="Nome do link *" />
                           <input value={linkForm.url} onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))} style={inp} placeholder="URL *" />
+                          <input value={linkForm.description} onChange={e => setLinkForm(f => ({ ...f, description: e.target.value }))} style={inp} placeholder="Descrição (opcional)" />
+                          <input value={linkForm.tag} onChange={e => setLinkForm(f => ({ ...f, tag: e.target.value }))} style={inp} placeholder="Tag (opcional)" />
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                            <input type="checkbox" checked={linkForm.visible_to_client} onChange={e => setLinkForm(f => ({ ...f, visible_to_client: e.target.checked }))} style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#a78bfa' }} />
+                            Visível para o cliente
+                          </label>
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                           <button onClick={addLink} disabled={linkSaving} style={{ ...btnPrimary, opacity: linkSaving ? 0.7 : 1 }}>

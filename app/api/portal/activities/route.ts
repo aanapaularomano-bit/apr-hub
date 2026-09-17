@@ -24,14 +24,13 @@ export async function GET(request: NextRequest) {
 
   if (!portal) return NextResponse.json({ error: 'Portal não encontrado' }, { status: 404 });
 
-  const { data: links } = await supabase
-    .from('portal_links')
-    .select('id, group_name, label, url, description, tag, sort_order')
+  const { data: activities } = await supabase
+    .from('portal_activities')
+    .select('id, date, title, responsible, status, justification, sort_order')
     .eq('client_id', portal.client_id)
     .eq('visible_to_client', true)
-    .is('launch_id', null)
-    .order('sort_order')
-    .order('created_at');
+    .order('date', { ascending: false })
+    .order('sort_order');
 
-  return NextResponse.json({ links: links || [] });
+  return NextResponse.json({ activities: activities || [] });
 }
