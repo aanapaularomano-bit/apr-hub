@@ -677,7 +677,7 @@ function LoginScreen({ slug, onLogin }: { slug:string; onLogin:(admin:boolean)=>
     const r = await fetch(`/api/portal/login?slug=${encodeURIComponent(slug)}`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ password:pw }),
+      body: JSON.stringify({ slug, password:pw }),
       credentials:'include',
     });
     const d = await r.json();
