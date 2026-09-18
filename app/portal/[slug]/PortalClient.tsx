@@ -248,6 +248,7 @@ function MonthlyReportSection({ slug, isAdmin }: { slug: string; isAdmin: boolea
   const [editing, setEditing] = useState<Report|null>(null);
   const [form, setForm] = useState<MRForm>(emptyMR);
   const [saving, setSaving] = useState(false);
+  const [subReports, setSubReports] = useState<{diarios:Report[];semanais:Report[]}>({diarios:[],semanais:[]});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -259,6 +260,19 @@ function MonthlyReportSection({ slug, isAdmin }: { slug: string; isAdmin: boolea
   }, [slug, selected]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Load daily/weekly reports for the selected month
+  useEffect(() => {
+    const cur = reports.find(r => r.id === selected);
+    if (!cur) { setSubReports({diarios:[],semanais:[]}); return; }
+    const refMonth = cur.ref_date.slice(0,7); // YYYY-MM
+    apiFetch('GET','reports',slug).then(d => {
+      const all: Report[] = d.reports ?? [];
+      const diarios = all.filter(r => r.kind === 'diario' && r.ref_date.slice(0,7) === refMonth);
+      const semanais = all.filter(r => r.kind === 'semanal' && r.ref_date.slice(0,7) === refMonth);
+      setSubReports({ diarios, semanais });
+    });
+  }, [selected, reports, slug]);
 
   const cur = reports.find(r => r.id === selected);
 
@@ -567,6 +581,47 @@ function MonthlyReportSection({ slug, isAdmin }: { slug: string; isAdmin: boolea
         </section>
       )}
 
+      {/* Relatórios semanais do mês */}
+      {subReports.semanais.length > 0 && (
+        <section>
+          <h2>Relatórios semanais do mês</h2>
+          <div className="rows" style={{marginTop:12}}>
+            {subReports.semanais.map(r=>(
+              <div key={r.id} className="row">
+                <div className="row-top">
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                    <Tag v="acc">Semanal</Tag>
+                    <strong>{r.title}</strong>
+                  </div>
+                  <span className="small muted mono">{fmtDate(r.ref_date)}</span>
+                </div>
+                {r.content && <p className="small muted" style={{marginTop:6,whiteSpace:'pre-wrap'}}>{r.content}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Relatórios diários do mês */}
+      {subReports.diarios.length > 0 && (
+        <section>
+          <h2>Relatórios diários do mês</h2>
+          <div className="rows" style={{marginTop:12}}>
+            {subReports.diarios.map(r=>(
+              <div key={r.id} className="row">
+                <div className="row-top">
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                    <span className="small muted mono">{fmtDate(r.ref_date)}</span>
+                    <strong>{r.title}</strong>
+                  </div>
+                </div>
+                {r.content && <p className="small muted" style={{marginTop:6,whiteSpace:'pre-wrap'}}>{r.content}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Relatórios anteriores */}
       {others.length > 0 && (
         <section>
@@ -839,7 +894,7 @@ function TasksSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
 
   async function del(t: Task) {
     if (!confirm(`Excluir "${t.title}"?`)) return;
-    await apiFetch('DELETE','tasks',slug,{id:t.id}); await load();
+    await apiFetch('DELETE','tasks',slug,undefined,{id:t.id}); await load();
   }
 
   const byStatus: Record<string,Task[]> = {};
@@ -1049,78 +1104,57 @@ function RequestsSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
   );
 }
 
-// ─── Section: Conteúdo ────────────────────────────────────────────────────────
-function ContentSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
-  const [items, setItems]   = useState<Content[]>([]);
+// ─── Section: Ideias ──────────────────────────────────────────────────────────
+type Idea = { id: string; title: string; description: string | null; created_at: string };
+
+function IdeasSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [items, setItems]   = useState<Idea[]>([]);
   const [loading, setLoad]  = useState(true);
   const [showForm, setShow] = useState(false);
-  const [editing, setEdit]  = useState<Content|null>(null);
-  const [form, setForm]     = useState({ title:'', format:'', sent_date:'', status:'aguardando_envio', hook_rate:'', ctr:'', cpl:'', notes:'' });
+  const [editing, setEdit]  = useState<Idea|null>(null);
+  const [form, setForm]     = useState({ title:'', description:'' });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoad(true);
-    const d = await apiFetch('GET','content',slug);
-    setItems(d.content ?? []); setLoad(false);
+    const d = await apiFetch('GET','ideas',slug);
+    setItems(d.ideas ?? []); setLoad(false);
   }, [slug]);
 
   useEffect(()=>{ load(); },[load]);
 
-  function openNew() { setForm({title:'',format:'',sent_date:'',status:'aguardando_envio',hook_rate:'',ctr:'',cpl:'',notes:''}); setEdit(null); setShow(true); }
-  function openEdit(c: Content) { setForm({title:c.title,format:c.format??'',sent_date:c.sent_date??'',status:c.status,hook_rate:c.hook_rate??'',ctr:c.ctr??'',cpl:c.cpl??'',notes:c.notes??''}); setEdit(c); setShow(true); }
+  function openNew() { setForm({title:'',description:''}); setEdit(null); setShow(true); }
+  function openEdit(idea: Idea) { setForm({title:idea.title,description:idea.description??''}); setEdit(idea); setShow(true); }
   function cancel() { setShow(false); setEdit(null); }
 
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (!form.title) return;
     setSaving(true);
-    const body = {...form,format:form.format||null,sent_date:form.sent_date||null,hook_rate:form.hook_rate||null,ctr:form.ctr||null,cpl:form.cpl||null,notes:form.notes||null};
-    if (editing) { await apiFetch('PUT','content',slug,{id:editing.id,...body}); }
-    else { await apiFetch('POST','content',slug,body); }
+    const body = {...form,description:form.description||null};
+    if (editing) { await apiFetch('PUT','ideas',slug,{id:editing.id,...body}); }
+    else { await apiFetch('POST','ideas',slug,body); }
     setSaving(false); cancel(); await load();
   }
 
-  async function del(c: Content) {
-    if (!confirm(`Excluir "${c.title}"?`)) return;
-    await apiFetch('DELETE','content',slug,{id:c.id}); await load();
+  async function del(idea: Idea) {
+    if (!confirm(`Excluir "${idea.title}"?`)) return;
+    await apiFetch('DELETE','ideas',slug,undefined,{id:idea.id}); await load();
   }
 
   return (
     <>
       <div className="page-head">
-        <div><div className="period">Distribuição de conteúdo nos anúncios</div><h1>Conteúdo</h1></div>
-        {isAdmin && !showForm && <button className="btn btn-sm" onClick={openNew}>+ Nova peça</button>}
+        <div><div className="period">Sugestões, insights e brainstorms</div><h1>Ideias</h1></div>
+        <button className="btn btn-sm" onClick={()=>showForm?cancel():openNew()}>{showForm?'Fechar':'+ Nova ideia'}</button>
       </div>
 
       {showForm && (
         <InlineForm onSubmit={save}>
-          <FullField label="Título da peça *">
-            <input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required placeholder="Ex.: Depoimento Marina"/>
+          <FullField label="Título da ideia *">
+            <input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required placeholder="Ex.: Testar vídeo com depoimento"/>
           </FullField>
-          <Field label="Formato">
-            <input className="input" value={form.format} onChange={e=>setForm(f=>({...f,format:e.target.value}))} placeholder="Ex.: Vídeo 30s, Carrossel"/>
-          </Field>
-          <Field label="Data de envio">
-            <input className="input" type="date" value={form.sent_date} onChange={e=>setForm(f=>({...f,sent_date:e.target.value}))}/>
-          </Field>
-          <Field label="Status">
-            <select className="input" value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-              <option value="aguardando_envio">Aguardando envio</option>
-              <option value="recebido">Recebido</option>
-              <option value="no_ar">No ar</option>
-              <option value="pausado">Pausado</option>
-            </select>
-          </Field>
-          <Field label="Hook rate">
-            <input className="input" value={form.hook_rate} onChange={e=>setForm(f=>({...f,hook_rate:e.target.value}))} placeholder="Ex.: 38%"/>
-          </Field>
-          <Field label="CTR">
-            <input className="input" value={form.ctr} onChange={e=>setForm(f=>({...f,ctr:e.target.value}))} placeholder="Ex.: 2,1%"/>
-          </Field>
-          <Field label="CPL / CPA">
-            <input className="input" value={form.cpl} onChange={e=>setForm(f=>({...f,cpl:e.target.value}))} placeholder="Ex.: R$ 5,40"/>
-          </Field>
-          <FullField label="Brief / Observações">
-            <textarea className="input" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} placeholder="Orientações de gravação, contexto, links..."/>
+          <FullField label="Descrição / detalhes">
+            <textarea className="input" value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={3} placeholder="Contexto, referências, por que essa ideia faz sentido..."/>
           </FullField>
           <div className="full" style={{ display:'flex',gap:8 }}>
             <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
@@ -1131,39 +1165,24 @@ function ContentSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
 
       {loading ? <p className="muted small">Carregando...</p>
         : items.length===0
-          ? <EmptyState msg="Nenhuma peça de conteúdo cadastrada ainda." action={isAdmin&&!showForm?<button className="btn btn-sm" onClick={openNew}>+ Nova peça</button>:undefined}/>
+          ? <EmptyState msg="Nenhuma ideia registrada ainda." action={!showForm?<button className="btn btn-sm" onClick={openNew}>+ Nova ideia</button>:undefined}/>
           : (
-            <div className="table-wrap">
-              <table className="t">
-                <thead>
-                  <tr>
-                    <th>Peça</th><th>Formato</th><th>Enviada em</th><th>Status</th>
-                    <th className="num">Hook rate</th><th className="num">CTR</th><th className="num">CPL</th>
-                    {isAdmin && <th></th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(c=>(
-                    <tr key={c.id}>
-                      <td><div>{c.title}</div>{c.notes&&<div className="small muted">{c.notes}</div>}</td>
-                      <td className="muted">{c.format??'—'}</td>
-                      <td className="mono">{fmtDate(c.sent_date)}</td>
-                      <td><Tag v={csTag(c.status)}>{CS_LBL[c.status]}</Tag></td>
-                      <td className="num">{c.hook_rate??'—'}</td>
-                      <td className="num">{c.ctr??'—'}</td>
-                      <td className="num">{c.cpl??'—'}</td>
-                      {isAdmin && (
-                        <td>
-                          <div style={{ display:'flex',gap:4 }}>
-                            <button className="btn-ghost btn-sm" onClick={()=>openEdit(c)}>Editar</button>
-                            <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(c)}>✕</button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="rows">
+              {items.map(idea=>(
+                <div key={idea.id} className="row">
+                  <div className="row-top">
+                    <h3>{idea.title}</h3>
+                    <div style={{ display:'flex',gap:6,alignItems:'center' }}>
+                      <span className="small muted mono">{fmtDate(idea.created_at)}</span>
+                      {isAdmin && <>
+                        <button className="btn-ghost btn-sm" onClick={()=>openEdit(idea)}>Editar</button>
+                        <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(idea)}>Excluir</button>
+                      </>}
+                    </div>
+                  </div>
+                  {idea.description && <p className="small muted" style={{marginTop:4,whiteSpace:'pre-wrap'}}>{idea.description}</p>}
+                </div>
+              ))}
             </div>
           )
       }
@@ -1646,7 +1665,7 @@ function LinksSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
 }
 
 // ─── Nav type ─────────────────────────────────────────────────────────────────
-type Tab = 'overview'|'mensal'|'semanal'|'diarios'|'otimizacoes'|'tarefas'|'solicitacoes'|'conteudo'|'lancamentos'|'links';
+type Tab = 'overview'|'mensal'|'semanal'|'diarios'|'otimizacoes'|'tarefas'|'solicitacoes'|'ideias'|'lancamentos'|'links';
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PortalClient({
@@ -1687,7 +1706,7 @@ export default function PortalClient({
     { id:'otimizacoes',  label:'Diário de otimizações' },
     { id:'tarefas',      label:'Tarefas' },
     { id:'solicitacoes', label:'Solicitações' },
-    { id:'conteudo',     label:'Conteúdo' },
+    { id:'ideias',       label:'Ideias' },
     { id:'lancamentos',  label:'Lançamentos' },
     { id:'links',        label:'Links e arquivos' },
   ];
@@ -1734,7 +1753,7 @@ export default function PortalClient({
         {tab==='otimizacoes'  && <OptimizationsSection slug={slug} isAdmin={isAdmin}/>}
         {tab==='tarefas'      && <TasksSection slug={slug} isAdmin={isAdmin}/>}
         {tab==='solicitacoes' && <RequestsSection slug={slug} isAdmin={isAdmin}/>}
-        {tab==='conteudo'     && <ContentSection slug={slug} isAdmin={isAdmin}/>}
+        {tab==='ideias'       && <IdeasSection slug={slug} isAdmin={isAdmin}/>}
         {tab==='lancamentos'  && <LaunchesSection slug={slug} isAdmin={isAdmin}/>}
         {tab==='links'        && <LinksSection slug={slug} isAdmin={isAdmin}/>}
       </main>
