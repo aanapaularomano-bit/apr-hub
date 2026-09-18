@@ -10,13 +10,13 @@ html, body {
   min-height: 100vh;
 }
 
-body:not(.portal) {
+:where(html, body) {
   background: #08080f;
   color: #e2e8f0;
   font-family: 'DM Sans', system-ui, sans-serif;
 }
 
-::selection {
+:where(::selection) {
   background: rgba(99, 102, 241, 0.3);
 }
 
@@ -37,7 +37,7 @@ body:not(.portal) {
   background: rgba(255, 255, 255, 0.2);
 }
 
-a {
+:where(a) {
   color: inherit;
   text-decoration: none;
 }
