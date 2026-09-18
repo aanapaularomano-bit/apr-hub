@@ -679,7 +679,7 @@ function ReportsSection({ slug, isAdmin, kind, title, period }: {
 
   async function del(r: Report) {
     if (!confirm(`Excluir "${r.title}"?`)) return;
-    await apiFetch('DELETE','reports',slug,{id:r.id}); await load();
+    await apiFetch('DELETE','reports',slug,undefined,{id:r.id}); await load();
   }
 
   return (
@@ -770,7 +770,7 @@ function OptimizationsSection({ slug, isAdmin }: { slug: string; isAdmin: boolea
 
   async function del(o: Optimization) {
     if (!confirm('Excluir esta otimização?')) return;
-    await apiFetch('DELETE','optimizations',slug,{id:o.id}); await load();
+    await apiFetch('DELETE','optimizations',slug,undefined,{id:o.id}); await load();
   }
 
   const types = ['Todos',...OPT_TYPES];
@@ -1002,7 +1002,7 @@ function RequestsSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 
   async function del(r: Request) {
     if (!confirm(`Excluir "${r.title}"?`)) return;
-    await apiFetch('DELETE','requests',slug,{id:r.id}); await load();
+    await apiFetch('DELETE','requests',slug,undefined,{id:r.id}); await load();
   }
 
   const agency = items.filter(r=>r.from_who==='agencia');
@@ -1600,7 +1600,7 @@ function LinksSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
 
   async function del(l: Link) {
     if (!confirm(`Excluir "${l.label}"?`)) return;
-    await apiFetch('DELETE','links',slug,{id:l.id}); await load();
+    await apiFetch('DELETE','links',slug,undefined,{id:l.id}); await load();
   }
 
   const groups: Record<string,Link[]> = {};
