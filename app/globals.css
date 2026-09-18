@@ -8,6 +8,9 @@
 
 html, body {
   min-height: 100vh;
+}
+
+body:not(.portal) {
   background: #08080f;
   color: #e2e8f0;
   font-family: 'DM Sans', system-ui, sans-serif;
