@@ -16,6 +16,8 @@ async function auth(req: NextRequest, slug: string) {
   return data ? { clientId: data.client_id as string, role } : null;
 }
 
+const FIELDS = 'id, kind, ref_date, title, content, headline, period_label, author, services, comparison, verdict, suggestions, next_plan, sheet_url, created_at';
+
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get('slug') ?? '';
   const kind = req.nextUrl.searchParams.get('kind');
@@ -24,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   let query = sb
     .from('portal_reports')
-    .select('id, kind, ref_date, title, content, created_at')
+    .select(FIELDS)
     .eq('client_id', session.clientId)
     .order('ref_date', { ascending: false });
   if (kind) query = query.eq('kind', kind);
@@ -41,15 +43,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const body = await req.json();
-  const { kind, ref_date, title, content } = body;
-  if (!kind || !ref_date || !title)
+  if (!body.kind || !body.ref_date || !body.title)
     return NextResponse.json({ error: 'Campos obrigatórios: kind, ref_date, title' }, { status: 400 });
 
-  const { data, error } = await sb
-    .from('portal_reports')
-    .insert({ client_id: session.clientId, kind, ref_date, title, content: content ?? null })
-    .select()
-    .single();
+  const row: Record<string, unknown> = { client_id: session.clientId };
+  for (const k of ['kind','ref_date','title','content','headline','period_label','author','services','comparison','verdict','suggestions','next_plan','sheet_url']) {
+    if (k in body) row[k] = body[k] ?? null;
+  }
+
+  const { data, error } = await sb.from('portal_reports').insert(row).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ report: data });
 }
@@ -60,13 +62,18 @@ export async function PUT(req: NextRequest) {
   if (!session || session.role !== 'admin')
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const { id, kind, ref_date, title, content } = await req.json();
-  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+  const body = await req.json();
+  if (!body.id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+
+  const update: Record<string, unknown> = {};
+  for (const k of ['kind','ref_date','title','content','headline','period_label','author','services','comparison','verdict','suggestions','next_plan','sheet_url']) {
+    if (k in body) update[k] = body[k];
+  }
 
   const { data, error } = await sb
     .from('portal_reports')
-    .update({ kind, ref_date, title, content })
-    .eq('id', id)
+    .update(update)
+    .eq('id', body.id)
     .eq('client_id', session.clientId)
     .select()
     .single();

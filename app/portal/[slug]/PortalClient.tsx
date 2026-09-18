@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Report       = { id: string; kind: string; ref_date: string; title: string; content: string | null };
+type Report       = { id: string; kind: string; ref_date: string; title: string; content: string | null; headline?: string|null; period_label?: string|null; author?: string|null; services?: {value:number;label:string}[]|null; comparison?: {prev_label:string;curr_label:string;rows:{indicator:string;prev_value:string;curr_value:string;variation:string;good?:boolean}[]}|null; verdict?: {ok:{title:string;detail:string}[];bad:{title:string;detail:string}[];improve:{title:string;detail:string}[]}|null; suggestions?: {title:string;description:string;impact:string;effort:string}[]|null; next_plan?: string[]|null; sheet_url?: string|null };
 type Task         = { id: string; title: string; owner: string; status: string; note: string | null; due_date: string | null };
 type Link         = { id: string; group_name: string; label: string; url: string };
 type Launch       = { id: string; name: string; period: string | null; status: string; metrics: string | null; content: string | null; phases?: {name:string;start:string;end:string}[]; goals?: {label:string;current:number;target:number;unit:string}[]; launch_links?: {label:string;url:string}[]; ideas?: {title:string;description:string}[]; launch_optimizations?: {date:string;action:string;result:string}[]; learnings?: string|null; previous_data?: {name:string;kpis:{label:string;value:string}[]}|null; sheet_url?: string|null; current_phase?: number };
@@ -224,7 +224,372 @@ function OverviewSection({ slug }: { slug: string }) {
   );
 }
 
-// ─── Section: Relatórios (filtra por kind) ────────────────────────────────────
+// ─── Section: Relatório Mensal (rico, conforme protótipo) ─────────────────────
+type MRForm = {
+  ref_date:string; title:string; headline:string; period_label:string; author:string; sheet_url:string;
+  services:{value:string;label:string}[];
+  comparison:{prev_label:string;curr_label:string;rows:{indicator:string;prev_value:string;curr_value:string;variation:string;good:boolean}[]};
+  verdict:{ok:{title:string;detail:string}[];bad:{title:string;detail:string}[];improve:{title:string;detail:string}[]};
+  suggestions:{title:string;description:string;impact:string;effort:string}[];
+  next_plan:string[];
+  content:string;
+};
+const emptyMR: MRForm = {
+  ref_date:'',title:'',headline:'',period_label:'',author:'Ana Paula Romano, APR Digital',sheet_url:'',
+  services:[],comparison:{prev_label:'',curr_label:'',rows:[]},
+  verdict:{ok:[],bad:[],improve:[]},suggestions:[],next_plan:[],content:'',
+};
+
+function MonthlyReportSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Report|null>(null);
+  const [form, setForm] = useState<MRForm>(emptyMR);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const d = await apiFetch('GET','reports',slug,undefined,{kind:'mensal'});
+    const arr: Report[] = d.reports ?? [];
+    setReports(arr);
+    if (arr.length > 0 && !selected) setSelected(arr[0].id);
+    setLoading(false);
+  }, [slug, selected]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const cur = reports.find(r => r.id === selected);
+
+  function openNew() { setForm(emptyMR); setEditing(null); setShowForm(true); }
+  function openEdit(r: Report) {
+    setForm({
+      ref_date:r.ref_date, title:r.title, headline:r.headline??'', period_label:r.period_label??'',
+      author:r.author??'Ana Paula Romano, APR Digital', sheet_url:r.sheet_url??'',
+      services:(r.services??[]).map(s=>({value:String(s.value),label:s.label})),
+      comparison:r.comparison ? {prev_label:r.comparison.prev_label,curr_label:r.comparison.curr_label,rows:r.comparison.rows.map(x=>({...x,good:!!x.good}))} : emptyMR.comparison,
+      verdict:r.verdict ? {ok:r.verdict.ok??[],bad:r.verdict.bad??[],improve:r.verdict.improve??[]} : emptyMR.verdict,
+      suggestions:(r.suggestions??[]).map(s=>({...s})),
+      next_plan:r.next_plan??[],
+      content:r.content??'',
+    });
+    setEditing(r); setShowForm(true);
+  }
+  function cancel() { setShowForm(false); setEditing(null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (!form.title || !form.ref_date) return; setSaving(true);
+    const body: Record<string,unknown> = {
+      kind:'mensal', ref_date:form.ref_date, title:form.title, content:form.content||null,
+      headline:form.headline||null, period_label:form.period_label||null, author:form.author||null,
+      sheet_url:form.sheet_url||null,
+      services:form.services.length?form.services.map(s=>({value:Number(s.value),label:s.label})):null,
+      comparison:form.comparison.rows.length?form.comparison:null,
+      verdict:(form.verdict.ok.length||form.verdict.bad.length||form.verdict.improve.length)?form.verdict:null,
+      suggestions:form.suggestions.length?form.suggestions:null,
+      next_plan:form.next_plan.length?form.next_plan:null,
+    };
+    if (editing) body.id = editing.id;
+    await apiFetch(editing?'PUT':'POST','reports',slug,body);
+    setSaving(false); cancel(); await load();
+  }
+
+  async function del(r: Report) {
+    if (!confirm(`Excluir "${r.title}"?`)) return;
+    await apiFetch('DELETE','reports',slug,undefined,{id:r.id}); setSelected(''); await load();
+  }
+
+  // Month label for selector
+  function monthLabel(d: string) {
+    const dt = new Date(d+'T12:00:00');
+    return dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());
+  }
+
+  if (loading) return <p className="muted small">Carregando...</p>;
+
+  /* ── Admin Form ── */
+  if (showForm) {
+    const v = form.verdict;
+    return (
+    <>
+      <div className="page-head"><div><div className="period">Relatório mensal</div><h1>{editing?'Editar relatório':'Novo relatório mensal'}</h1></div></div>
+      <InlineForm onSubmit={save}>
+        <Field label="Data de referência *"><input className="input" type="date" value={form.ref_date} onChange={e=>setForm(f=>({...f,ref_date:e.target.value}))} required/></Field>
+        <Field label="Título (para lista) *"><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required placeholder="Agosto de 2026"/></Field>
+        <FullField label="Headline (manchete grande)">
+          <textarea className="input" value={form.headline} onChange={e=>setForm(f=>({...f,headline:e.target.value}))} rows={2} placeholder="Agosto fechou com 4.912 leads, cada um 19% mais barato que em julho."/>
+        </FullField>
+        <Field label="Período"><input className="input" value={form.period_label} onChange={e=>setForm(f=>({...f,period_label:e.target.value}))} placeholder="01 a 31 de agosto de 2026"/></Field>
+        <Field label="Preparado por"><input className="input" value={form.author} onChange={e=>setForm(f=>({...f,author:e.target.value}))}/></Field>
+        <FullField label="URL da planilha"><input className="input" value={form.sheet_url} onChange={e=>setForm(f=>({...f,sheet_url:e.target.value}))} placeholder="https://docs.google.com/spreadsheets/d/..."/></FullField>
+
+        {/* Serviços */}
+        <div className="full" style={{marginTop:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+            <label className="small" style={{fontWeight:600}}>Serviços prestados</label>
+            <button type="button" className="link-btn" onClick={()=>setForm(f=>({...f,services:[...f.services,{value:'',label:''}]}))}>+ Serviço</button>
+          </div>
+          {form.services.map((s,i)=>(
+            <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
+              <input className="input" type="number" style={{width:80,flex:'none'}} placeholder="Nº" value={s.value} onChange={e=>setForm(f=>({...f,services:updArr(f.services,i,{value:e.target.value})}))}/>
+              <input className="input" style={{flex:1}} placeholder="descrição (ex: otimizações registradas)" value={s.label} onChange={e=>setForm(f=>({...f,services:updArr(f.services,i,{label:e.target.value})}))}/>
+              <button type="button" className="link-btn" style={{color:'var(--bad)'}} onClick={()=>setForm(f=>({...f,services:f.services.filter((_,j)=>j!==i)}))}>×</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Comparação */}
+        <div className="full" style={{marginTop:16}}>
+          <label className="small" style={{fontWeight:600}}>Resultados comparativos</label>
+          <div style={{display:'flex',gap:6,marginTop:8,marginBottom:6}}>
+            <input className="input" style={{flex:1}} placeholder="Mês anterior (ex: Julho)" value={form.comparison.prev_label} onChange={e=>setForm(f=>({...f,comparison:{...f.comparison,prev_label:e.target.value}}))}/>
+            <input className="input" style={{flex:1}} placeholder="Mês atual (ex: Agosto)" value={form.comparison.curr_label} onChange={e=>setForm(f=>({...f,comparison:{...f.comparison,curr_label:e.target.value}}))}/>
+            <button type="button" className="link-btn" onClick={()=>setForm(f=>({...f,comparison:{...f.comparison,rows:[...f.comparison.rows,{indicator:'',prev_value:'',curr_value:'',variation:'',good:true}]}}))}>+ Linha</button>
+          </div>
+          {form.comparison.rows.map((r,i)=>(
+            <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
+              <input className="input" style={{flex:2}} placeholder="Indicador" value={r.indicator} onChange={e=>setForm(f=>({...f,comparison:{...f.comparison,rows:updArr(f.comparison.rows,i,{indicator:e.target.value})}}))}/>
+              <input className="input" style={{flex:1}} placeholder="Anterior" value={r.prev_value} onChange={e=>setForm(f=>({...f,comparison:{...f.comparison,rows:updArr(f.comparison.rows,i,{prev_value:e.target.value})}}))}/>
+              <input className="input" style={{flex:1}} placeholder="Atual" value={r.curr_value} onChange={e=>setForm(f=>({...f,comparison:{...f.comparison,rows:updArr(f.comparison.rows,i,{curr_value:e.target.value})}}))}/>
+              <input className="input" style={{width:70,flex:'none'}} placeholder="Var." value={r.variation} onChange={e=>setForm(f=>({...f,comparison:{...f.comparison,rows:updArr(f.comparison.rows,i,{variation:e.target.value})}}))}/>
+              <label className="small" style={{display:'flex',gap:2,alignItems:'center',whiteSpace:'nowrap'}}><input type="checkbox" checked={r.good} onChange={e=>setForm(f=>({...f,comparison:{...f.comparison,rows:updArr(f.comparison.rows,i,{good:e.target.checked})}}))}/>Bom</label>
+              <button type="button" className="link-btn" style={{color:'var(--bad)'}} onClick={()=>setForm(f=>({...f,comparison:{...f.comparison,rows:f.comparison.rows.filter((_,j)=>j!==i)}}))}> ×</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Veredito */}
+        {(['ok','bad','improve'] as const).map(col=>{
+          const labels = {ok:'Deu certo',bad:'Deu errado',improve:'Pode melhorar'};
+          return (
+            <div key={col} className="full" style={{marginTop:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                <label className="small" style={{fontWeight:600}}>{labels[col]}</label>
+                <button type="button" className="link-btn" onClick={()=>setForm(f=>({...f,verdict:{...f.verdict,[col]:[...v[col],{title:'',detail:''}]}}))}>+ Item</button>
+              </div>
+              {v[col].map((item,i)=>(
+                <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
+                  <input className="input" style={{flex:1}} placeholder="Título" value={item.title} onChange={e=>setForm(f=>({...f,verdict:{...f.verdict,[col]:updArr(v[col],i,{title:e.target.value})}}))}/>
+                  <input className="input" style={{flex:1}} placeholder="Detalhe (mono)" value={item.detail} onChange={e=>setForm(f=>({...f,verdict:{...f.verdict,[col]:updArr(v[col],i,{detail:e.target.value})}}))}/>
+                  <button type="button" className="link-btn" style={{color:'var(--bad)'}} onClick={()=>setForm(f=>({...f,verdict:{...f.verdict,[col]:v[col].filter((_,j)=>j!==i)}}))}> ×</button>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+
+        {/* Sugestões */}
+        <div className="full" style={{marginTop:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+            <label className="small" style={{fontWeight:600}}>Sugestões de melhoria</label>
+            <button type="button" className="link-btn" onClick={()=>setForm(f=>({...f,suggestions:[...f.suggestions,{title:'',description:'',impact:'alto',effort:'baixo'}]}))}>+ Sugestão</button>
+          </div>
+          {form.suggestions.map((s,i)=>(
+            <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
+              <input className="input" style={{flex:2}} placeholder="Título" value={s.title} onChange={e=>setForm(f=>({...f,suggestions:updArr(f.suggestions,i,{title:e.target.value})}))}/>
+              <input className="input" style={{flex:2}} placeholder="Descrição" value={s.description} onChange={e=>setForm(f=>({...f,suggestions:updArr(f.suggestions,i,{description:e.target.value})}))}/>
+              <select className="input" style={{width:110,flex:'none'}} value={s.impact} onChange={e=>setForm(f=>({...f,suggestions:updArr(f.suggestions,i,{impact:e.target.value})}))}>
+                <option value="alto">Impacto alto</option><option value="medio">Impacto médio</option><option value="baixo">Impacto baixo</option>
+              </select>
+              <select className="input" style={{width:110,flex:'none'}} value={s.effort} onChange={e=>setForm(f=>({...f,suggestions:updArr(f.suggestions,i,{effort:e.target.value})}))}>
+                <option value="baixo">Esforço baixo</option><option value="medio">Esforço médio</option><option value="alto">Esforço alto</option>
+              </select>
+              <button type="button" className="link-btn" style={{color:'var(--bad)'}} onClick={()=>setForm(f=>({...f,suggestions:f.suggestions.filter((_,j)=>j!==i)}))}>×</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Plano */}
+        <div className="full" style={{marginTop:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+            <label className="small" style={{fontWeight:600}}>Plano para o próximo mês</label>
+            <button type="button" className="link-btn" onClick={()=>setForm(f=>({...f,next_plan:[...f.next_plan,'']}))}>+ Item</button>
+          </div>
+          {form.next_plan.map((p,i)=>(
+            <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
+              <input className="input" style={{flex:1}} placeholder="Ação planejada" value={p} onChange={e=>setForm(f=>({...f,next_plan:f.next_plan.map((x,j)=>j===i?e.target.value:x)}))}/>
+              <button type="button" className="link-btn" style={{color:'var(--bad)'}} onClick={()=>setForm(f=>({...f,next_plan:f.next_plan.filter((_,j)=>j!==i)}))}>×</button>
+            </div>
+          ))}
+        </div>
+
+        <FullField label="Observações gerais">
+          <textarea className="input" value={form.content} onChange={e=>setForm(f=>({...f,content:e.target.value}))} rows={3}/>
+        </FullField>
+
+        <div className="full" style={{display:'flex',gap:8,marginTop:16}}>
+          <button className="btn btn-sm" type="submit">{saving?'Salvando...':'Salvar'}</button>
+          <button className="btn-ghost btn-sm" type="button" onClick={cancel}>Cancelar</button>
+        </div>
+      </InlineForm>
+    </>
+  );}
+
+  /* ── Empty ── */
+  if (!cur) return (
+    <>
+      <div className="page-head"><div><div className="period">Relatório mensal de performance</div><h1>Relatório mensal</h1></div>
+        {isAdmin && <button className="btn btn-sm" onClick={openNew}>+ Novo</button>}
+      </div>
+      <EmptyState msg="Nenhum relatório mensal publicado ainda." action={isAdmin?<button className="btn btn-sm" onClick={openNew}>+ Novo</button>:undefined}/>
+    </>
+  );
+
+  /* ── Dashboard view ── */
+  const svc  = cur.services ?? [];
+  const comp = cur.comparison;
+  const verd = cur.verdict;
+  const sugs = cur.suggestions ?? [];
+  const plan = cur.next_plan ?? [];
+  const others = reports.filter(r => r.id !== cur.id);
+  const impTag = (v:string) => v==='alto'?'ok':v==='medio'?'warn':'';
+  const effTag = (v:string) => v==='alto'?'bad':v==='medio'?'warn':'';
+
+  return (
+    <>
+      {/* Header */}
+      <div className="page-head">
+        <div><div className="period">Relatório de serviços prestados</div></div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          {reports.length > 1 && (
+            <select className="input" value={selected} onChange={e=>setSelected(e.target.value)} style={{width:'auto'}}>
+              {reports.map(r=><option key={r.id} value={r.id}>{r.title}</option>)}
+            </select>
+          )}
+          {isAdmin && <>
+            <button className="btn-ghost btn-sm" onClick={()=>openEdit(cur)}>Editar</button>
+            <button className="btn-ghost btn-sm" style={{color:'var(--bad)'}} onClick={()=>del(cur)}>Excluir</button>
+            <button className="btn btn-sm" onClick={openNew}>+ Novo</button>
+          </>}
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div className="report-hero">
+        {cur.headline && <h1>{cur.headline}</h1>}
+        {!cur.headline && <h1>{cur.title}</h1>}
+        <div className="meta">
+          {cur.period_label && <span>Período: {cur.period_label}</span>}
+          {cur.author && <span>Preparado por {cur.author}</span>}
+          <span>Publicado em {fmtDate(cur.ref_date)}</span>
+        </div>
+      </div>
+
+      {/* Serviços */}
+      {svc.length > 0 && (
+        <section>
+          <h2>Serviços prestados no período</h2>
+          <div className="services" style={{marginTop:12}}>
+            {svc.map((s,i)=>(
+              <div key={i} className="service">
+                <div className="v">{s.value}</div>
+                <div className="l">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Tabela comparativa */}
+      {comp && comp.rows.length > 0 && (
+        <section>
+          <h2>Resultados: {comp.prev_label.toLowerCase()} x {comp.curr_label.toLowerCase()}</h2>
+          <div className="table-wrap" style={{marginTop:12}}>
+            <table className="compare">
+              <thead><tr>
+                <th>Indicador</th><th>{comp.prev_label}</th><th>{comp.curr_label}</th><th>Variação</th>
+              </tr></thead>
+              <tbody>{comp.rows.map((r,i)=>(
+                <tr key={i}>
+                  <td>{r.indicator}</td><td>{r.prev_value}</td><td>{r.curr_value}</td>
+                  <td className={r.good?'up':'down'}>{r.variation}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Veredito */}
+      {verd && (verd.ok?.length>0 || verd.bad?.length>0 || verd.improve?.length>0) && (
+        <section>
+          <div className="verdict">
+            <div>
+              <h3><span className="dot" style={{background:'var(--ok)'}}/>Deu certo</h3>
+              <ul>{(verd.ok??[]).map((v,i)=>(<li key={i}>{v.title}{v.detail&&<span className="n">{v.detail}</span>}</li>))}</ul>
+            </div>
+            <div>
+              <h3><span className="dot" style={{background:'var(--bad)'}}/>Deu errado</h3>
+              <ul>{(verd.bad??[]).map((v,i)=>(<li key={i}>{v.title}{v.detail&&<span className="n">{v.detail}</span>}</li>))}</ul>
+            </div>
+            <div>
+              <h3><span className="dot" style={{background:'var(--warn)'}}/>Pode melhorar</h3>
+              <ul>{(verd.improve??[]).map((v,i)=>(<li key={i}>{v.title}{v.detail&&<span className="n">{v.detail}</span>}</li>))}</ul>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Sugestões */}
+      {sugs.length > 0 && (
+        <section>
+          <h2>Sugestões de melhoria</h2>
+          <p className="small muted" style={{marginBottom:12}}>Em ordem de prioridade, das que trazem mais resultado com menos esforço.</p>
+          <div className="sugs">
+            {sugs.map((s,i)=>(
+              <div key={i} className="sug">
+                <div><h3>{s.title}</h3>{s.description&&<p className="small muted" style={{marginTop:4}}>{s.description}</p>}</div>
+                <div className="tags">
+                  <Tag v={impTag(s.impact)}>Impacto {s.impact}</Tag>
+                  <Tag v={effTag(s.effort)}>Esforço {s.effort}</Tag>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Plano */}
+      {plan.length > 0 && (
+        <section>
+          <h2>Plano para o próximo mês</h2>
+          <div className="rows" style={{marginTop:12}}>
+            {plan.map((p,i)=><div key={i} className="row"><p>{p}</p></div>)}
+          </div>
+        </section>
+      )}
+
+      {/* Conteúdo extra */}
+      {cur.content && (
+        <section>
+          <div className="panel" style={{whiteSpace:'pre-wrap'}}><p className="small muted">{cur.content}</p></div>
+        </section>
+      )}
+
+      {/* Relatórios anteriores */}
+      {others.length > 0 && (
+        <section>
+          <h2>Relatórios anteriores</h2>
+          <div className="archive" style={{marginTop:12}}>
+            {others.map(r=>(
+              <button key={r.id} className="chip" onClick={()=>setSelected(r.id)}>{r.title}</button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Sheet URL */}
+      {isAdmin && cur.sheet_url && (
+        <section>
+          <p className="small muted">Planilha conectada: <a href={cur.sheet_url} target="_blank" rel="noopener noreferrer">{cur.sheet_url.length>60?cur.sheet_url.slice(0,60)+'…':cur.sheet_url}</a></p>
+        </section>
+      )}
+    </>
+  );
+}
+
+// ─── Section: Relatórios (filtra por kind — semanal/diário) ───────────────────
 function ReportsSection({ slug, isAdmin, kind, title, period }: {
   slug: string; isAdmin: boolean; kind: string; title: string; period: string;
 }) {
@@ -1363,7 +1728,7 @@ export default function PortalClient({
 
       <main>
         {tab==='overview'     && <OverviewSection slug={slug}/>}
-        {tab==='mensal'       && <ReportsSection slug={slug} isAdmin={isAdmin} kind="mensal"  title="Relatório mensal"   period="Relatório mensal de performance"/>}
+        {tab==='mensal'       && <MonthlyReportSection slug={slug} isAdmin={isAdmin}/>}
         {tab==='semanal'      && <ReportsSection slug={slug} isAdmin={isAdmin} kind="semanal" title="Relatório semanal"  period="Relatório semanal de performance"/>}
         {tab==='diarios'      && <ReportsSection slug={slug} isAdmin={isAdmin} kind="diario"  title="Relatórios diários" period="Atualizações do dia a dia"/>}
         {tab==='otimizacoes'  && <OptimizationsSection slug={slug} isAdmin={isAdmin}/>}
