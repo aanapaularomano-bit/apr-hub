@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import LaunchDashboard from '@/components/portal/LaunchDashboard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Report       = { id: string; kind: string; ref_date: string; title: string; content: string | null; headline?: string|null; period_label?: string|null; author?: string|null; services?: {value:number;label:string}[]|null; comparison?: {prev_label:string;curr_label:string;rows:{indicator:string;prev_value:string;curr_value:string;variation:string;good?:boolean}[]}|null; verdict?: {ok:{title:string;detail:string}[];bad:{title:string;detail:string}[];improve:{title:string;detail:string}[]}|null; suggestions?: {title:string;description:string;impact:string;effort:string}[]|null; next_plan?: string[]|null; sheet_url?: string|null };
@@ -1665,7 +1666,7 @@ function LinksSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
 }
 
 // ─── Nav type ─────────────────────────────────────────────────────────────────
-type Tab = 'overview'|'mensal'|'semanal'|'diarios'|'otimizacoes'|'tarefas'|'solicitacoes'|'ideias'|'lancamentos'|'links';
+type Tab = 'overview'|'mensal'|'semanal'|'diarios'|'otimizacoes'|'tarefas'|'solicitacoes'|'ideias'|'lancamentos'|'dashboard_lanc'|'links';
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PortalClient({
@@ -1708,6 +1709,7 @@ export default function PortalClient({
     { id:'solicitacoes', label:'Solicitações' },
     { id:'ideias',       label:'Ideias' },
     { id:'lancamentos',  label:'Lançamentos' },
+    { id:'dashboard_lanc', label:'Dashboard do lançamento' },
     { id:'links',        label:'Links e arquivos' },
   ];
 
@@ -1755,6 +1757,7 @@ export default function PortalClient({
         {tab==='solicitacoes' && <RequestsSection slug={slug} isAdmin={isAdmin}/>}
         {tab==='ideias'       && <IdeasSection slug={slug} isAdmin={isAdmin}/>}
         {tab==='lancamentos'  && <LaunchesSection slug={slug} isAdmin={isAdmin}/>}
+        {tab==='dashboard_lanc' && <LaunchDashboard launchName={clientName}/>}
         {tab==='links'        && <LinksSection slug={slug} isAdmin={isAdmin}/>}
       </main>
     </div>

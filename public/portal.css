@@ -64,7 +64,7 @@ p{margin:0}
 .side-foot{margin-top:auto;font-size:13px;color:var(--muted);display:grid;gap:10px}
 .side-foot .who{display:flex;gap:10px;align-items:center}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:600;font-size:13px;flex:none}
-main{padding:36px clamp(18px,4vw,56px) 80px;max-width:1120px;width:100%}
+main{padding:36px clamp(18px,4vw,56px) 80px;max-width:1280px;width:100%}
 .page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:32px}
 .page-head .period{font-size:13px;color:var(--muted);margin-bottom:6px}
 section{margin-top:40px}
@@ -76,6 +76,8 @@ section > h2{margin-bottom:16px}
 .grid{display:grid;gap:14px}
 .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g5{grid-template-columns:repeat(2,minmax(0,1fr))}
 
 /* KPI strip */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
@@ -216,7 +218,7 @@ textarea.input{min-height:80px;resize:vertical}
   .nav{display:flex;overflow-x:auto;gap:4px}
   .nav button{white-space:nowrap;gap:8px}
   .nav-group,.side-foot{display:none}
-  .g2,.g3,.verdict{grid-template-columns:1fr}
+  .g2,.g3,.g4,.g5,.verdict{grid-template-columns:1fr}
   .verdict > div{border-right:0;border-bottom:1px solid var(--line)}
   .phases{grid-template-columns:1fr 1fr}
   .ag-grid{grid-template-columns:1fr}
@@ -225,4 +227,6 @@ textarea.input{min-height:80px;resize:vertical}
   .form-grid{grid-template-columns:1fr}
   .kpi{border-right:0;border-bottom:1px solid var(--line)}
 }
+@media(min-width:901px){.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:1200px){.g5{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
