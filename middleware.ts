@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/api/login', '/api/logout', '/portal', '/api/portal'];
+const PUBLIC_PATHS = ['/login', '/api/login', '/api/logout', '/portal', '/api/portal', '/api/keep-alive'];
+// Rotas chamadas pelo Vercel Cron (sem cookie) — liberadas via header Authorization: Bearer CRON_SECRET
+const CRON_PATHS = ['/api/sync-sheets'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -15,6 +17,11 @@ export function middleware(request: NextRequest) {
   }
 
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && CRON_PATHS.includes(pathname) && request.headers.get('authorization') === `Bearer ${cronSecret}`) {
     return NextResponse.next();
   }
 
