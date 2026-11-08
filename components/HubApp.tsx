@@ -303,7 +303,7 @@ export default function HubApp({ user }: { user: any }) {
 
   // ═══ SIDEBAR ═══
   const navBtn = (p: string, i: string, l: string, badge?: number) => (
-    <button key={p} onClick={() => { setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: page === p && !sel ? 'rgba(99,102,241,0.12)' : 'transparent', border: page === p && !sel ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? '#a5b4fc' : T.mt, fontSize: 14, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
+    <button key={p} onClick={() => { if (p === 'financeiro') { window.location.href = '/financeiro'; return; } setPage(p); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: page === p && !sel ? 'rgba(99,102,241,0.12)' : 'transparent', border: page === p && !sel ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent', borderRadius: 9, cursor: 'pointer', color: page === p && !sel ? '#a5b4fc' : T.mt, fontSize: 14, fontWeight: 600, width: '100%', textAlign: 'left' as const }}>
       <span style={{ fontSize: 16 }}>{i}</span><span style={{ flex: 1 }}>{l}</span>
       {badge !== undefined && badge > 0 && <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '2px 7px', borderRadius: 5 }}>{badge}</span>}
     </button>
