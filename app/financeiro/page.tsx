@@ -6,6 +6,7 @@ import { SeletorSquad } from '@/components/SquadValorPJ';
 import { EditorValorMoeda, BotaoNovaReceita } from '@/components/ValorEditavelPJ';
 import { SeletorDiaPagamento, ESTILO_TABELA } from '@/components/LayoutTabelaPJ';
 import { ClienteEditavel } from '@/components/TabelaPJGrid';
+import RanchoRecebiveis, { RANCHO_KEY } from '@/components/RanchoRecebiveis';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -666,6 +667,7 @@ export default function FinanceiroPage() {
           ['investimentos', '📈 Investimentos'],
           ['dre', 'DRE'],
           ['cenarios', 'Cenários'],
+          ['rancho', '🏡 Rancho'],
         ].map(([id, label]) => (
           <button key={id} className={`tab ${activeTab === id ? 'active' : ''}`} onClick={() => setActiveTab(id)}>
             <span className="tab-dot"></span>{label}
@@ -1407,6 +1409,17 @@ export default function FinanceiroPage() {
 
         {/* FLUXO */}
         {activeTab === 'fluxo' && <FluxoTab m={m} fmtBR={fmtBR} />}
+
+        {/* RANCHO — recebíveis da venda (registro próprio, independe do mês) */}
+        {activeTab === 'rancho' && (
+          <RanchoRecebiveis
+            data={db[RANCHO_KEY]}
+            onChange={(d: any) => {
+              setDb(prev => ({ ...prev, [RANCHO_KEY]: d }));
+              saveMonth(RANCHO_KEY, d);
+            }}
+          />
+        )}
 
         {/* METAS */}
         {activeTab === 'metas' && (
