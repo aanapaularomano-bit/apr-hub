@@ -7,6 +7,8 @@ import { EditorValorMoeda, BotaoNovaReceita } from '@/components/ValorEditavelPJ
 import { SeletorDiaPagamento, ESTILO_TABELA } from '@/components/LayoutTabelaPJ';
 import { ClienteEditavel } from '@/components/TabelaPJGrid';
 import RanchoRecebiveis, { RANCHO_KEY } from '@/components/RanchoRecebiveis';
+import FinanceiroAReceber from '@/components/FinanceiroAReceber';
+import FinanceiroVisaoAno from '@/components/FinanceiroVisaoAno';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -263,6 +265,9 @@ export default function FinanceiroPage() {
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState('Carregando...');
   const [activeTab, setActiveTab] = useState('resumo');
+  // Versão (updated_at) de cada mês carregado — evita que uma aba antiga grave por cima de dados novos
+  const versionsRef = useRef<Record<string, string | null>>({});
+  const savingRef = useRef(0);
   const [searchRec, setSearchRec] = useState('');
   const [addFormCard, setAddFormCard] = useState<string | null>(null);
   const [addFormDraft, setAddFormDraft] = useState({ data: '', desc: '', cat: CATS_CARD[0], origem: 'PF', valor: '', parcelado: false, parcela_atual: 1, parcela_total: 2, valor_parcela: '', data_termino: '' });
@@ -299,25 +304,47 @@ export default function FinanceiroPage() {
   }, []);
 
   // CARREGAR dados do Supabase
+  const loadAll = useCallback(async (silent = false) => {
+    const res = await fetch('/api/financeiro', { cache: 'no-store' });
+    const json = await res.json();
+    if (json.error) {
+      console.error(json.error);
+      if (!silent) setSaveStatus('Erro ao carregar');
+      return;
+    }
+    const newDb: Record<string, any> = {};
+    const versions: Record<string, string | null> = {};
+    (json.data || []).forEach((row: any) => {
+      newDb[row.month_key] = row.data;
+      versions[row.month_key] = row.updated_at ?? null;
+    });
+    versionsRef.current = versions;
+    setDb(newDb);
+    setSaveStatus(silent ? 'Atualizado da nuvem ✓' : 'Carregado da nuvem ✓');
+  }, []);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const res = await fetch('/api/financeiro');
-      const json = await res.json();
-      if (json.error) {
-        console.error(json.error);
-        setSaveStatus('Erro ao carregar');
-      } else {
-        const newDb: Record<string, any> = {};
-        (json.data || []).forEach((row: any) => {
-          newDb[row.month_key] = row.data;
-        });
-        setDb(newDb);
-        setSaveStatus('Carregado da nuvem ✓');
-      }
+      await loadAll();
       setLoading(false);
     })();
-  }, []);
+  }, [loadAll]);
+
+  // Ao voltar para a aba, busca a versão mais nova (se não houver edição pendente)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (saveTimerRef.current || savingRef.current > 0) return;
+      loadAll(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [loadAll]);
 
   // MIGRAÇÃO: popula card-tx seedado se estiver vazio ou faltando transações de algum cartão
   useEffect(() => {
@@ -379,11 +406,7 @@ export default function FinanceiroPage() {
     if (changed) {
       const migrated = { ...saved, 'card-tx': current, 'investimentos': invs, 'metas': metas };
       setDb(prev => ({ ...prev, [currentMonth]: migrated }));
-      fetch('/api/financeiro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month_key: currentMonth, data: migrated }),
-      });
+      saveMonth(currentMonth, migrated);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, currentMonth]);
@@ -391,18 +414,30 @@ export default function FinanceiroPage() {
   // SALVAR no Supabase (debounced)
   const saveMonth = useCallback(async (monthKey: string, monthData: any) => {
     setSaveStatus('Salvando...');
-    const res = await fetch('/api/financeiro', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month_key: monthKey, data: monthData }),
-    });
-    const json = await res.json();
-    if (json.error) {
-      console.error(json.error);
-      setSaveStatus('Erro ao salvar');
-    } else {
-      setSaveStatus('Salvo na nuvem ✓');
-      setTimeout(() => setSaveStatus('Sincronizado'), 2000);
+    savingRef.current++;
+    try {
+      const expected = monthKey in versionsRef.current ? versionsRef.current[monthKey] : null;
+      const res = await fetch('/api/financeiro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month_key: monthKey, data: monthData, expected_updated_at: expected }),
+      });
+      const json = await res.json();
+      if (res.status === 409 && json.conflict) {
+        // Outro lugar alterou este mês: traz a versão da nuvem em vez de gravar por cima
+        versionsRef.current[monthKey] = json.updated_at ?? null;
+        if (json.data) setDb(prev => ({ ...prev, [monthKey]: json.data }));
+        setSaveStatus('⚠ Este mês foi alterado em outro lugar. Recarreguei os dados — refaça sua última alteração.');
+      } else if (json.error) {
+        console.error(json.error);
+        setSaveStatus('Erro ao salvar');
+      } else {
+        versionsRef.current[monthKey] = json.updated_at ?? null;
+        setSaveStatus('Salvo na nuvem ✓');
+        setTimeout(() => setSaveStatus('Sincronizado'), 2000);
+      }
+    } finally {
+      savingRef.current--;
     }
   }, []);
 
@@ -412,7 +447,7 @@ export default function FinanceiroPage() {
       const updated = updater(JSON.parse(JSON.stringify(current)));
       const newDb = { ...prev, [currentMonth]: updated };
       clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => saveMonth(currentMonth, updated), 600);
+      saveTimerRef.current = setTimeout(() => { saveTimerRef.current = undefined; saveMonth(currentMonth, updated); }, 600);
       return newDb;
     });
   }, [currentMonth, saveMonth]);
@@ -659,6 +694,8 @@ export default function FinanceiroPage() {
       <nav className="tabs">
         {[
           ['resumo', 'Resumo'],
+          ['receber', '💸 A receber'],
+          ['ano', '📊 Ano'],
           ['pj', 'PJ · APR Digital'],
           ['pf', 'PF · Pessoal'],
           ['cartoes', 'Cartões'],
@@ -1406,6 +1443,26 @@ export default function FinanceiroPage() {
             </section>
           );
         })()}
+
+        {/* A RECEBER — pendências de todos os meses */}
+        {activeTab === 'receber' && (
+          <FinanceiroAReceber
+            db={db}
+            eurRate={eurRate}
+            onMarcarRecebido={(monthKey, idx) => {
+              const cur = db[monthKey];
+              if (!cur) return;
+              const upd = JSON.parse(JSON.stringify(cur));
+              if (!upd['rec-pj']?.[idx]) return;
+              upd['rec-pj'][idx].recebido = true;
+              setDb(prev => ({ ...prev, [monthKey]: upd }));
+              saveMonth(monthKey, upd);
+            }}
+          />
+        )}
+
+        {/* VISÃO DO ANO */}
+        {activeTab === 'ano' && <FinanceiroVisaoAno db={db} eurRate={eurRate} />}
 
         {/* FLUXO */}
         {activeTab === 'fluxo' && <FluxoTab m={m} fmtBR={fmtBR} />}
