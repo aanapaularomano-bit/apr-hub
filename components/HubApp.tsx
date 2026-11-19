@@ -10,6 +10,7 @@ import DashboardManager from './DashboardManager';
 import ProximasAcoes from './ProximasAcoes';
 import Dossies from './Dossies';
 import CentralDeControle from './CentralDeControle';
+import SaudeContas from './SaudeContas';
 import PortalManager from './PortalManager';
 
 const btnS = (color: string, extra?: any) => ({
@@ -320,6 +321,7 @@ export default function HubApp({ user }: { user: any }) {
       </div>
 
       {navBtn('central', '⚡', 'Central', allAlerts.length > 0 ? allAlerts.length : undefined)}
+      {navBtn('saude', '🩺', 'Saúde das contas')}
       {navBtn('alice', '🤖', 'Alice', allAlerts.length + overdueTasks.length)}
 
       {sectionLabel('CRM')}
@@ -430,6 +432,16 @@ Responda a pergunta da Ana Paula sobre a agência.`;
           T={T}
           onOpenClient={openC}
         />
+      </main>
+    </div>
+  );
+
+  // ═══ SAÚDE DAS CONTAS (Meta) ═══
+  if (page === 'saude') return (
+    <div style={{ minHeight: '100vh', background: T.bg, color: T.tx, fontFamily: T.fn, display: 'flex' }}>
+      {sidebar}
+      <main style={{ flex: 1, padding: '24px 28px', overflowY: 'auto', maxHeight: '100vh' }}>
+        <SaudeContas T={T} />
       </main>
     </div>
   );
