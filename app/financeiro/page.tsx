@@ -9,6 +9,7 @@ import { ClienteEditavel } from '@/components/TabelaPJGrid';
 import RanchoRecebiveis, { RANCHO_KEY } from '@/components/RanchoRecebiveis';
 import FinanceiroAReceber from '@/components/FinanceiroAReceber';
 import FinanceiroVisaoAno from '@/components/FinanceiroVisaoAno';
+import FinanceiroExtratos, { EXTRATOS_KEY } from '@/components/FinanceiroExtratos';
 // Acesso via API server-side (/api/financeiro)
 
 /* ============================================
@@ -696,6 +697,7 @@ export default function FinanceiroPage() {
           ['resumo', 'Resumo'],
           ['receber', '💸 A receber'],
           ['ano', '📊 Ano'],
+          ['extratos', '🏦 Extratos'],
           ['pj', 'PJ · APR Digital'],
           ['pf', 'PF · Pessoal'],
           ['cartoes', 'Cartões'],
@@ -1463,6 +1465,17 @@ export default function FinanceiroPage() {
 
         {/* VISÃO DO ANO */}
         {activeTab === 'ano' && <FinanceiroVisaoAno db={db} eurRate={eurRate} />}
+
+        {/* EXTRATOS — o que realmente passou pelas contas */}
+        {activeTab === 'extratos' && (
+          <FinanceiroExtratos
+            data={db[EXTRATOS_KEY]}
+            onChange={(d: any) => {
+              setDb(prev => ({ ...prev, [EXTRATOS_KEY]: d }));
+              saveMonth(EXTRATOS_KEY, d);
+            }}
+          />
+        )}
 
         {/* FLUXO */}
         {activeTab === 'fluxo' && <FluxoTab m={m} fmtBR={fmtBR} />}
